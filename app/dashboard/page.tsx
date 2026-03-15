@@ -307,8 +307,8 @@ const IC = {
 // ═══════════════════════════════════════════════════════════
 // STORAGE (local – wird durch Supabase ersetzt)
 // ═══════════════════════════════════════════════════════════
-async function ld(k, fb) { try { const r = await window.storage.get(k); return r ? JSON.parse(r.value) : fb; } catch { return fb; } }
-async function sv(k, v) { try { await window.storage.set(k, JSON.stringify(v)); } catch (e) { console.error(e); } }
+function ld(k, fb) { try { const r = localStorage.getItem(k); return r ? JSON.parse(r) : fb; } catch { return fb; } }
+function sv(k, v) { try { localStorage.setItem(k, JSON.stringify(v)); } catch (e) { console.error(e); } }
 
 // ═══════════════════════════════════════════════════════════
 // §14 UStG VALIDATION
@@ -334,7 +334,7 @@ function validateRechnung(r, f) {
 function datevCSV(re, f) {
   const h = "Umsatz;S/H;WKZ;Kurs;Basis;WKZ-B;Konto;Gegenkonto;BU;Belegdatum;Beleg1;Beleg2;Skonto;Text";
   const rows = re.filter(r => r.status !== "angebot" && r.status !== "storniert").map(r => {
-    const d = new Date(r.datum); return `${fcn(r.gesamt)};S;EUR;;;;;;8400;;${d.getDate()}${d.getMonth() + 1};${r.nummer};;0,00;${r.kundeName}`;
+    const d = new Date(r.datum); return `${fcn(r.gesamt)};S;EUR;;;;;;8400;;${String(d.getDate()).padStart(2,"0")}${String(d.getMonth()+1).padStart(2,"0")};${r.nummer};;0,00;${r.kundeName}`;
   });
   return h + "\n" + rows.join("\n");
 }
@@ -439,11 +439,16 @@ function generatePdfHtml(rechnung, firma) {
 
 function downloadPdf(rechnung, firma) {
   const html = generatePdfHtml(rechnung, firma);
-  const win = window.open("", "_blank", "width=800,height=1000");
-  if (!win) { alert("Bitte Pop-ups erlauben für den PDF-Download"); return; }
-  win.document.write(html);
-  win.document.close();
-  setTimeout(() => { win.print(); }, 500);
+  const iframe = document.createElement("iframe");
+  Object.assign(iframe.style, { position: "fixed", top: "-9999px", left: "-9999px", width: "800px", height: "1100px", border: "none" });
+  document.body.appendChild(iframe);
+  iframe.contentDocument.write(html);
+  iframe.contentDocument.close();
+  iframe.contentWindow.focus();
+  setTimeout(() => {
+    iframe.contentWindow.print();
+    setTimeout(() => { if (document.body.contains(iframe)) document.body.removeChild(iframe); }, 1500);
+  }, 600);
 }
 
 // ═══════════════════════════════════════════════════════════
@@ -653,17 +658,15 @@ export default function App() {
   const [mobNav, setMobNav] = useState(false);
 
   useEffect(() => {
-    (async () => {
-      const [f, k, r, p, ob] = await Promise.all([ld("inv-firma", null), ld("inv-kunden", []), ld("inv-rechnungen", []), ld("inv-plan", "free"), ld("inv-onboarded", false)]);
-      setFirma(f); setKunden(k); setRechnungen(r); setPlan(p); setLoaded(true);
-      if (!ob || !f) setPg("onboarding");
-    })();
+    const f = ld("inv-firma", null), k = ld("inv-kunden", []), r = ld("inv-rechnungen", []), p = ld("inv-plan", "free"), ob = ld("inv-onboarded", false);
+    setFirma(f); setKunden(k); setRechnungen(r); setPlan(p); setLoaded(true);
+    if (!ob || !f) setPg("onboarding");
   }, []);
 
-  const sf = async f => { setFirma(f); await sv("inv-firma", f); showT("Gespeichert!"); };
-  const skn = async k => { setKunden(k); await sv("inv-kunden", k); };
-  const sre = async r => { setRechnungen(r); await sv("inv-rechnungen", r); };
-  const spl = async p => { setPlan(p); await sv("inv-plan", p); showT(`Plan: ${p.toUpperCase()}`); };
+  const sf = f => { setFirma(f); sv("inv-firma", f); showT("Gespeichert!"); };
+  const skn = k => { setKunden(k); sv("inv-kunden", k); };
+  const sre = r => { setRechnungen(r); sv("inv-rechnungen", r); };
+  const spl = p => { setPlan(p); sv("inv-plan", p); showT(`Plan: ${p.toUpperCase()}`); };
   const showT = m => { setToast(m); setTimeout(() => setToast(null), 2800); };
 
   const addRe = async r => { await sre([...rechnungen, r]); showT("Erstellt!"); };
@@ -722,8 +725,9 @@ function OnboardingWizard({ onComplete }) {
   const [step, setStep] = useState(0); // 0=welcome, 1=branche, 2=firma, 3=steuer, 4=bank, 5=logo, 6=fertig
   const [brancheKat, setBrancheKat] = useState("");
   const [form, setForm] = useState({ name: "", inhaber: "", strasse: "", plz: "", ort: "", telefon: "", email: "", web: "", steuernr: "", ustid: "", bankName: "", iban: "", bic: "", gewerk: "", logo: "" });
+  const [logoErr, setLogoErr] = useState("");
   const fRef = useRef();
-  const handleLogo = e => { const f = e.target.files[0]; if (!f) return; if (f.size > 500000) return; const r = new FileReader(); r.onload = ev => setForm({ ...form, logo: ev.target.result }); r.readAsDataURL(f); };
+  const handleLogo = e => { const f = e.target.files[0]; if (!f) return; if (f.size > 500000) { setLogoErr("Datei zu groß – max. 500 KB erlaubt."); return; } setLogoErr(""); const r = new FileReader(); r.onload = ev => setForm({ ...form, logo: ev.target.result }); r.readAsDataURL(f); };
 
   const canNext = () => {
     if (step === 1) return !!form.gewerk;
@@ -868,7 +872,8 @@ function OnboardingWizard({ onComplete }) {
                 </div>
               )}
               <input ref={fRef} type="file" accept="image/png,image/jpeg" style={{ display: "none" }} onChange={handleLogo} />
-              {!form.logo && <p style={{ fontSize: 12, color: "#475569", marginTop: 12 }}>Du kannst diesen Schritt überspringen und das Logo später hinzufügen.</p>}
+              {logoErr && <p style={{ fontSize: 12, color: "#f87171", marginTop: 10, fontWeight: 600 }}>⚠ {logoErr}</p>}
+              {!form.logo && !logoErr && <p style={{ fontSize: 12, color: "#475569", marginTop: 12 }}>Du kannst diesen Schritt überspringen und das Logo später hinzufügen.</p>}
             </div>
           </div>
         )}
@@ -1029,6 +1034,7 @@ function NeueRechnung({ firma, kunden, addKu, addRe, nextNr, nav, plan, lim, can
 function RechnungenListe({ rechnungen, updRe, nav, dupRe, firma }) {
   const [filter, setFilter] = useState("alle"); const [search, setSearch] = useState("");
   const [mahnM, setMahnM] = useState(null); const [mahnS, setMahnS] = useState(1);
+  const [stornierConfirm, setStornierConfirm] = useState(null);
   const fl = rechnungen.filter(r => filter === "alle" || r.status === filter).filter(r => r.kundeName?.toLowerCase().includes(search.toLowerCase()) || r.nummer?.includes(search)).sort((a, b) => new Date(b.datum) - new Date(a.datum));
   const exportDatev = () => { const csv = datevCSV(rechnungen, firma); const b = new Blob([csv], { type: "text/csv" }); const a = document.createElement("a"); a.href = URL.createObjectURL(b); a.download = `DATEV_${new Date().toISOString().split("T")[0]}.csv`; a.click(); };
 
@@ -1050,10 +1056,13 @@ function RechnungenListe({ rechnungen, updRe, nav, dupRe, firma }) {
               {(r.status === "offen" || r.status === "gemahnt") && firma && <button className="s-btn" onClick={() => { setMahnM(r); setMahnS(r.status === "gemahnt" ? 2 : 1); }}>{IC.mail}</button>}
               {r.status === "angebot" && <button className="s-btn-g" onClick={() => updRe(r.id, { status: "offen", typ: "rechnung" })}>→RE</button>}
               <button className="s-btn" onClick={() => dupRe(r)}>{IC.copy}</button>
+              {r.status !== "storniert" && r.status !== "bezahlt" && <button className="d-btn" style={{ padding: "4px 8px", fontSize: 11 }} onClick={() => setStornierConfirm(r)}>{IC.trash}</button>}
             </span>
           </div>)}</div>}
 
       {mahnM && firma && <div className="modal-overlay" onClick={() => setMahnM(null)}><div className="modal-box" style={{ maxWidth: 560 }} onClick={e => e.stopPropagation()}><div style={{ padding: 24 }}><h2 style={{ fontSize: 16, fontWeight: 700, marginBottom: 10, color: "#111" }}>Zahlungserinnerung</h2><div style={{ display: "flex", gap: 4, marginBottom: 12 }}>{[1, 2, 3].map(s => <button key={s} className={`tab ${mahnS === s ? "active" : ""}`} onClick={() => setMahnS(s)}>{s}. Mahnung</button>)}</div><textarea style={{ width: "100%", minHeight: 180, padding: 12, border: "1px solid #d1d5db", borderRadius: 7, fontSize: 12, fontFamily: "'DM Sans',sans-serif", color: "#111", resize: "vertical" }} value={mahnung(mahnM, firma, mahnS)} readOnly /><div style={{ display: "flex", gap: 6, marginTop: 12, justifyContent: "flex-end" }}><button className="p-btn" onClick={() => { navigator.clipboard.writeText(mahnung(mahnM, firma, mahnS)); setMahnM(null); updRe(mahnM.id, { status: "gemahnt" }); }}>Kopieren</button><button className="s-btn" onClick={() => setMahnM(null)}>Schließen</button></div></div></div></div>}
+
+      {stornierConfirm && <div className="modal-overlay" onClick={() => setStornierConfirm(null)}><div className="modal-box" style={{ maxWidth: 380 }} onClick={e => e.stopPropagation()}><div style={{ padding: 24 }}><h2 style={{ fontSize: 16, fontWeight: 700, marginBottom: 8, color: "#111" }}>Rechnung stornieren?</h2><p style={{ fontSize: 13, color: "#555", marginBottom: 16, lineHeight: 1.5 }}><strong>{stornierConfirm.nummer}</strong> – {stornierConfirm.kundeName}<br />Betrag: {fc(stornierConfirm.gesamt)}<br /><br />Die Rechnung wird als storniert markiert und aus allen Auswertungen ausgeschlossen.</p><div style={{ display: "flex", gap: 8, justifyContent: "flex-end" }}><button className="d-btn" onClick={() => { updRe(stornierConfirm.id, { status: "storniert" }); setStornierConfirm(null); }}>Ja, stornieren</button><button className="s-btn" onClick={() => setStornierConfirm(null)}>Abbrechen</button></div></div></div></div>}
     </div>
   );
 }
