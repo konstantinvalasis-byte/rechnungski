@@ -1040,11 +1040,14 @@ function Dashboard({ rechnungen, kunden, firma, nav, updRe, addRe, addKu, plan, 
     const y = now.getFullYear();
     const prefix = `RE-${y}-`;
     const maxNr = rechnungen.filter(r => r.nummer?.startsWith(prefix)).reduce((mx, r) => { const n = parseInt(r.nummer.slice(prefix.length), 10); return isNaN(n) ? mx : Math.max(mx, n); }, 0);
-    await addRe({
+    const re = {
       id: uid(), nummer: `${prefix}${String(maxNr + 1).padStart(4, "0")}`, datum: heute, faelligDatum: faellig.toISOString().split("T")[0],
       kundeId: musterKunde.id, kundeName: musterKunde.name, kundeAdresse: `${musterKunde.strasse}, ${musterKunde.plz} ${musterKunde.ort}`, kundeEmail: musterKunde.email,
       positionen, netto, mwst, gesamt: netto + mwst, zahlungsziel: 14, notiz: "Leistungszeitraum: siehe Auftragsbestätigung AB-2026-003.\nZahlbar innerhalb 14 Tagen ohne Abzug.", status: "offen", gewerk: firma?.gewerk || "", rabatt: 0, zeitraumVon: "", zeitraumBis: "", typ: "rechnung",
-    });
+    };
+    await addRe(re);
+    if (firma) downloadPdf(re, firma);
+    nav("rechnungen");
   };
 
   return (
