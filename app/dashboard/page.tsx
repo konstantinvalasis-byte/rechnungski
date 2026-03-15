@@ -292,6 +292,8 @@ const uid = () => Date.now().toString(36) + Math.random().toString(36).slice(2, 
 const fc = v => new Intl.NumberFormat("de-DE", { style: "currency", currency: "EUR" }).format(v);
 const fd = d => d ? new Date(d).toLocaleDateString("de-DE", { day: "2-digit", month: "2-digit", year: "numeric" }) : "–";
 const fcn = v => v.toFixed(2).replace(".", ",");
+const he = s => s == null ? "" : String(s).replace(/&/g,"&amp;").replace(/</g,"&lt;").replace(/>/g,"&gt;").replace(/"/g,"&quot;").replace(/'/g,"&#39;");
+const safeSrc = s => s && /^data:image\/(jpeg|png|gif|webp|svg\+xml);base64,/.test(s) ? s : null;
 
 // ═══════════════════════════════════════════════════════════
 // ICONS
@@ -325,7 +327,7 @@ const IC = {
 // STORAGE (local – wird durch Supabase ersetzt)
 // ═══════════════════════════════════════════════════════════
 function ld(k, fb) { try { const r = localStorage.getItem(k); return r ? JSON.parse(r) : fb; } catch { return fb; } }
-function sv(k, v) { try { localStorage.setItem(k, JSON.stringify(v)); } catch (e) { console.error(e); } }
+function sv(k, v) { try { const s = JSON.stringify(v); if (s.length > 4000000) { console.warn("RechnungsKI: Datenmenge zu groß –", k); return; } localStorage.setItem(k, s); } catch (e) { console.error("RechnungsKI: Speicherfehler:", k, e); } }
 
 // ═══════════════════════════════════════════════════════════
 // §14 UStG VALIDATION
@@ -371,16 +373,17 @@ function generatePdfHtml(rechnung, firma) {
   const arbeit = pos.filter(p => p.typ === "arbeit").reduce((s, p) => s + p.menge * p.preis, 0);
   const mat = pos.filter(p => p.typ === "material").reduce((s, p) => s + p.menge * p.preis, 0);
 
-  const logoHtml = firma.logo ? `<img src="${firma.logo}" style="max-height:55px;max-width:170px;object-fit:contain;margin-bottom:8px;" />` : "";
+  const safeLogo = safeSrc(firma.logo);
+  const logoHtml = safeLogo ? `<img src="${safeLogo}" style="max-height:55px;max-width:170px;object-fit:contain;margin-bottom:8px;" />` : "";
 
   const rows = pos.map((p, i) => `
     <tr>
       <td style="padding:7px 8px;border-bottom:1px solid #eee;font-size:12px;color:#666">${i + 1}</td>
-      <td style="padding:7px 8px;border-bottom:1px solid #eee;font-size:12px;font-weight:500">${p.beschreibung}</td>
+      <td style="padding:7px 8px;border-bottom:1px solid #eee;font-size:12px;font-weight:500">${he(p.beschreibung)}</td>
       <td style="padding:7px 8px;border-bottom:1px solid #eee;font-size:10px;color:#888">${p.typ === "material" ? "Material" : "Arbeit"}</td>
-      <td style="padding:7px 8px;border-bottom:1px solid #eee;font-size:12px;text-align:right">${p.menge} ${p.einheit}</td>
+      <td style="padding:7px 8px;border-bottom:1px solid #eee;font-size:12px;text-align:right">${he(String(p.menge))} ${he(p.einheit)}</td>
       <td style="padding:7px 8px;border-bottom:1px solid #eee;font-size:12px;text-align:right">${fc(p.preis)}</td>
-      <td style="padding:7px 8px;border-bottom:1px solid #eee;font-size:12px;text-align:right">${p.mwst}%</td>
+      <td style="padding:7px 8px;border-bottom:1px solid #eee;font-size:12px;text-align:right">${Number(p.mwst)}%</td>
       <td style="padding:7px 8px;border-bottom:1px solid #eee;font-size:12px;text-align:right;font-weight:600">${fc(p.menge * p.preis)}</td>
     </tr>`).join("");
 
@@ -401,14 +404,14 @@ function generatePdfHtml(rechnung, firma) {
     <div style="display:flex;justify-content:space-between;margin-bottom:30px">
       <div>
         ${logoHtml}
-        <div style="font-size:17px;font-weight:700">${firma.name}</div>
-        <div style="font-size:11px;color:#666">${firma.inhaber ? firma.inhaber + " · " : ""}${firma.strasse}<br>${firma.plz} ${firma.ort}</div>
-        ${firma.telefon ? `<div style="font-size:11px;color:#666">Tel: ${firma.telefon}</div>` : ""}
-        ${firma.email ? `<div style="font-size:11px;color:#666">${firma.email}</div>` : ""}
+        <div style="font-size:17px;font-weight:700">${he(firma.name)}</div>
+        <div style="font-size:11px;color:#666">${firma.inhaber ? he(firma.inhaber) + " · " : ""}${he(firma.strasse)}<br>${he(firma.plz)} ${he(firma.ort)}</div>
+        ${firma.telefon ? `<div style="font-size:11px;color:#666">Tel: ${he(firma.telefon)}</div>` : ""}
+        ${firma.email ? `<div style="font-size:11px;color:#666">${he(firma.email)}</div>` : ""}
       </div>
       <div style="text-align:right">
         <div style="font-size:24px;font-weight:800;color:#4f46e5;text-transform:uppercase">${rechnung.typ === "angebot" ? "Angebot" : "Rechnung"}</div>
-        <div style="font-size:12px;color:#666;margin-top:4px">Nr. ${rechnung.nummer}</div>
+        <div style="font-size:12px;color:#666;margin-top:4px">Nr. ${he(rechnung.nummer)}</div>
         <div style="font-size:12px;color:#666">Datum: ${fd(rechnung.datum)}</div>
         ${rechnung.faelligDatum ? `<div style="font-size:12px;color:#666">Fällig: ${fd(rechnung.faelligDatum)}</div>` : ""}
         ${rechnung.zeitraumVon && rechnung.zeitraumBis ? `<div style="font-size:11px;color:#666;margin-top:4px">Leistungszeitraum: ${fd(rechnung.zeitraumVon)} – ${fd(rechnung.zeitraumBis)}</div>` : ""}
@@ -417,8 +420,8 @@ function generatePdfHtml(rechnung, firma) {
 
     <div style="background:#f8f9fa;border-radius:6px;padding:14px;margin-bottom:24px">
       <div style="font-size:10px;color:#999;text-transform:uppercase;letter-spacing:1px;margin-bottom:3px">${rechnung.typ === "angebot" ? "Angebot an" : "Rechnungsempfänger"}</div>
-      <div style="font-weight:600">${rechnung.kundeName}</div>
-      <div style="font-size:12px;color:#666">${rechnung.kundeAdresse}</div>
+      <div style="font-weight:600">${he(rechnung.kundeName)}</div>
+      <div style="font-size:12px;color:#666">${he(rechnung.kundeAdresse)}</div>
     </div>
 
     <table style="margin-bottom:22px">
@@ -445,12 +448,12 @@ function generatePdfHtml(rechnung, firma) {
       </div>
     </div>
 
-    ${rechnung.notiz ? `<div style="margin-top:18px;padding:10px;background:#f8f9fa;border-radius:5px;font-size:11px;color:#666"><strong>Hinweis:</strong> ${rechnung.notiz}</div>` : ""}
+    ${rechnung.notiz ? `<div style="margin-top:18px;padding:10px;background:#f8f9fa;border-radius:5px;font-size:11px;color:#666"><strong>Hinweis:</strong> ${he(rechnung.notiz)}</div>` : ""}
     ${firma.kleinunternehmer ? `<div style="margin-top:12px;padding:8px 10px;background:#fffbeb;border:1px solid #fde68a;border-radius:5px;font-size:11px;color:#92400e">Gemäß §19 UStG wird keine Umsatzsteuer berechnet.</div>` : ""}
 
     <div style="margin-top:28px;padding-top:14px;border-top:1px solid #e5e7eb;display:flex;justify-content:space-between;font-size:10px;color:#999">
-      <span>${firma.bankName ? firma.bankName + " · " : ""}${firma.iban ? "IBAN: " + firma.iban : ""}</span>
-      <span>${firma.steuernr ? "St.Nr: " + firma.steuernr : ""}${firma.ustid ? " · USt-ID: " + firma.ustid : ""}</span>
+      <span>${firma.bankName ? he(firma.bankName) + " · " : ""}${firma.iban ? "IBAN: " + he(firma.iban) : ""}</span>
+      <span>${firma.steuernr ? "St.Nr: " + he(firma.steuernr) : ""}${firma.ustid ? " · USt-ID: " + he(firma.ustid) : ""}</span>
     </div>
   </body></html>`;
 }
@@ -465,30 +468,33 @@ function generateMahnungPdfHtml(rechnung, firma, stufe) {
     @media print{body{padding:30px 36px}@page{margin:15mm 12mm;size:A4}}
   </style></head><body>
     <div style="display:flex;justify-content:space-between;margin-bottom:40px;align-items:flex-start">
-      <div>${firma.logo ? `<img src="${firma.logo}" style="max-height:50px;max-width:160px;object-fit:contain;margin-bottom:6px;" />` : ""}<div style="font-size:16px;font-weight:700">${firma.name}</div><div style="font-size:11px;color:#666">${firma.strasse || ""}, ${firma.plz || ""} ${firma.ort || ""}</div></div>
-      <div style="text-align:right"><div style="font-size:20px;font-weight:800;color:#ef4444;text-transform:uppercase">${stufenLabel}</div><div style="font-size:12px;color:#666;margin-top:4px">Datum: ${fd(new Date().toISOString())}</div><div style="font-size:12px;color:#666">Zu Rechnung: ${rechnung.nummer}</div></div>
+      <div>${safeSrc(firma.logo) ? `<img src="${safeSrc(firma.logo)}" style="max-height:50px;max-width:160px;object-fit:contain;margin-bottom:6px;" />` : ""}<div style="font-size:16px;font-weight:700">${he(firma.name)}</div><div style="font-size:11px;color:#666">${he(firma.strasse || "")}, ${he(firma.plz || "")} ${he(firma.ort || "")}</div></div>
+      <div style="text-align:right"><div style="font-size:20px;font-weight:800;color:#ef4444;text-transform:uppercase">${he(stufenLabel)}</div><div style="font-size:12px;color:#666;margin-top:4px">Datum: ${fd(new Date().toISOString())}</div><div style="font-size:12px;color:#666">Zu Rechnung: ${he(rechnung.nummer)}</div></div>
     </div>
-    <div style="margin-bottom:24px"><div style="font-size:10px;color:#999;text-transform:uppercase;letter-spacing:1px;margin-bottom:4px">An</div><div style="font-weight:600">${rechnung.kundeName}</div><div style="font-size:12px;color:#666">${rechnung.kundeAdresse || ""}</div></div>
-    <div style="white-space:pre-line;font-size:13px;line-height:1.8;margin-bottom:32px">${text}</div>
+    <div style="margin-bottom:24px"><div style="font-size:10px;color:#999;text-transform:uppercase;letter-spacing:1px;margin-bottom:4px">An</div><div style="font-weight:600">${he(rechnung.kundeName)}</div><div style="font-size:12px;color:#666">${he(rechnung.kundeAdresse || "")}</div></div>
+    <div style="white-space:pre-line;font-size:13px;line-height:1.8;margin-bottom:32px">${he(text)}</div>
     <div style="margin-top:32px;padding-top:14px;border-top:1px solid #e5e7eb;font-size:10px;color:#999;display:flex;justify-content:space-between">
-      <span>${firma.bankName ? firma.bankName + " · " : ""}${firma.iban ? "IBAN: " + firma.iban : ""}</span>
-      <span>${firma.steuernr ? "St.Nr: " + firma.steuernr : ""}${firma.ustid ? " · USt-ID: " + firma.ustid : ""}</span>
+      <span>${firma.bankName ? he(firma.bankName) + " · " : ""}${firma.iban ? "IBAN: " + he(firma.iban) : ""}</span>
+      <span>${firma.steuernr ? "St.Nr: " + he(firma.steuernr) : ""}${firma.ustid ? " · USt-ID: " + he(firma.ustid) : ""}</span>
     </div>
   </body></html>`;
 }
 
-function downloadPdf(rechnung, firma) {
-  const html = generatePdfHtml(rechnung, firma);
+function printHtmlInIframe(html) {
   const iframe = document.createElement("iframe");
   Object.assign(iframe.style, { position: "fixed", top: "-9999px", left: "-9999px", width: "800px", height: "1100px", border: "none" });
+  const cleanup = () => { if (document.body.contains(iframe)) document.body.removeChild(iframe); };
+  iframe.addEventListener("load", () => {
+    try { iframe.contentWindow.focus(); iframe.contentWindow.print(); } catch(e) { console.error("PDF-Druck Fehler:", e); }
+    setTimeout(cleanup, 2000);
+  });
   document.body.appendChild(iframe);
   iframe.contentDocument.write(html);
   iframe.contentDocument.close();
-  iframe.contentWindow.focus();
-  setTimeout(() => {
-    iframe.contentWindow.print();
-    setTimeout(() => { if (document.body.contains(iframe)) document.body.removeChild(iframe); }, 1500);
-  }, 600);
+}
+
+function downloadPdf(rechnung, firma) {
+  printHtmlInIframe(generatePdfHtml(rechnung, firma));
 }
 
 // ═══════════════════════════════════════════════════════════
@@ -700,10 +706,12 @@ function App() {
   const [favoriten, setFavoriten] = useState([]);
 
   useEffect(() => {
+    let mounted = true;
     const f = ld("inv-firma", null), k = ld("inv-kunden", []), r = ld("inv-rechnungen", []), p = ld("inv-plan", "free"), ob = ld("inv-onboarded", false), fav = ld("inv-favoriten", []), wdk = ld("inv-wdk", []);
+    if (!mounted) return;
     setFirma(f); setKunden(k); setRechnungen(r); setPlan(p); setFavoriten(fav); setWdk(wdk); setLoaded(true);
     if (!ob || !f) setPg("onboarding");
-    // Auto-create due recurring invoices
+    // Auto-create due recurring invoices (runs only once on mount)
     const today = new Date().toISOString().split("T")[0];
     const due = wdk.filter(w => w.aktiv && w.nextDue <= today);
     if (due.length > 0) {
@@ -711,15 +719,18 @@ function App() {
       const allRe = [...r];
       const updWdkList = [...wdk];
       due.forEach(w => {
-        const nr = `RE-${y}-${String(allRe.filter(re => re.nummer?.startsWith(`RE-${y}`)).length + 1).padStart(4,"0")}`;
+        const prefix = `RE-${y}-`;
+        const maxNr = allRe.filter(re => re.nummer?.startsWith(prefix)).reduce((mx, re) => { const n = parseInt(re.nummer.slice(prefix.length), 10); return isNaN(n) ? mx : Math.max(mx, n); }, 0);
+        const nr = `${prefix}${String(maxNr + 1).padStart(4,"0")}`;
         const fdt = new Date(); fdt.setDate(fdt.getDate() + (w.zahlungsziel || 14));
         allRe.push({ id: uid(), nummer: nr, datum: today, faelligDatum: fdt.toISOString().split("T")[0], kundeId: w.kundeId, kundeName: w.kundeName, kundeAdresse: w.kundeAdresse || "", kundeEmail: w.kundeEmail || "", positionen: w.positionen || [], netto: w.netto || 0, mwst: w.mwst || 0, gesamt: w.gesamt || 0, zahlungsziel: w.zahlungsziel || 14, notiz: w.notiz || "", status: "offen", gewerk: w.gewerk || "", rabatt: w.rabatt || 0, zeitraumVon: "", zeitraumBis: "" });
         const idx = updWdkList.findIndex(x => x.id === w.id);
         if (idx >= 0) updWdkList[idx] = { ...w, nextDue: (() => { const d = new Date(w.nextDue); if (w.interval === "monatlich") d.setMonth(d.getMonth()+1); else if (w.interval === "quartal") d.setMonth(d.getMonth()+3); else d.setFullYear(d.getFullYear()+1); return d.toISOString().split("T")[0]; })() };
       });
       sv("inv-rechnungen", allRe); sv("inv-wdk", updWdkList);
-      setRechnungen(allRe); setWdk(updWdkList);
+      if (mounted) { setRechnungen(allRe); setWdk(updWdkList); }
     }
+    return () => { mounted = false; };
   }, []);
 
   const sf = f => { setFirma(f); sv("inv-firma", f); showT("Gespeichert!"); };
@@ -743,7 +754,7 @@ function App() {
   const updRe = async (rid, up) => { await sre(rechnungen.map(r => r.id === rid ? { ...r, ...up } : r)); };
   const addKu = async k => { const ex = kunden.find(x => x.name === k.name && x.strasse === k.strasse); if (ex) return ex; const nk = { ...k, id: uid() }; await skn([...kunden, nk]); return nk; };
   const dupRe = async o => { const nr = nxtNr(); const d = new Date().toISOString().split("T")[0]; const fdt = new Date(); fdt.setDate(fdt.getDate() + (o.zahlungsziel || 14)); await addRe({ ...o, id: uid(), nummer: nr, datum: d, faelligDatum: fdt.toISOString().split("T")[0], status: "offen" }); };
-  const nxtNr = () => { const y = new Date().getFullYear(); return `RE-${y}-${String(rechnungen.filter(r => r.nummer?.startsWith(`RE-${y}`)).length + 1).padStart(4, "0")}`; };
+  const nxtNr = () => { const y = new Date().getFullYear(); const prefix = `RE-${y}-`; const maxNr = rechnungen.filter(r => r.nummer?.startsWith(prefix)).reduce((max, r) => { const n = parseInt(r.nummer.slice(prefix.length), 10); return isNaN(n) ? max : Math.max(max, n); }, 0); return `${prefix}${String(maxNr + 1).padStart(4, "0")}`; };
   const lim = { free: { re: 5, ku: 3 }, starter: { re: 50, ku: 25 }, pro: { re: 500, ku: 999 }, enterprise: { re: 99999, ku: 99999 } }[plan] || { re: 5, ku: 3 };
   const nav = p => { setPg(p); setMobNav(false); };
 
@@ -784,7 +795,7 @@ function App() {
         {pg === "wiederkehrend" && <WiederkehrendPage {...{ wiederkehrend, addWdk, updWdk, delWdk, kunden, rechnungen, firma }} />}
         {pg === "abo" && <AboPage {...{ plan, spl }} />}
         {pg === "supabase" && <SupabasePage />}
-        {pg === "settings" && <SettingsPage {...{ firma, sf, rechnungen, kunden, sre, skn }} />}
+        {pg === "settings" && <SettingsPage {...{ firma, sf, rechnungen, kunden, sre, skn, favoriten, setFavoriten, wiederkehrend, saveWdk, plan, spl, showT }} />}
       </main>
       {toast && <div className="toast"><span style={{ color: "#34d399", display: "flex" }}>{IC.check}</span>{toast}</div>}
       {mobNav && <div className="mob-overlay" onClick={() => setMobNav(false)} />}
@@ -999,28 +1010,159 @@ function Dashboard({ rechnungen, kunden, firma, nav, updRe, plan, lim }) {
   const fE = validateFirma(firma);
   const months = []; for (let i = 5; i >= 0; i--) { const d = new Date(); d.setMonth(d.getMonth() - i); months.push({ l: d.toLocaleDateString("de-DE", { month: "short" }), s: paid.filter(r => { const rd = new Date(r.datum); return rd.getMonth() === d.getMonth() && rd.getFullYear() === d.getFullYear(); }).reduce((s, r) => s + r.gesamt, 0), k: `${d.getFullYear()}-${d.getMonth()}` }); }
   const mx = Math.max(...months.map(m => m.s), 1);
+  const totalUmsatz = paid.reduce((s, r) => s + r.gesamt, 0);
+  const offenSum = offen.reduce((s, r) => s + r.gesamt, 0);
   // Quartals-MwSt
   const now = new Date(); const q = Math.floor(now.getMonth() / 3); const qStart = new Date(now.getFullYear(), q * 3, 1); const qEnd = new Date(now.getFullYear(), q * 3 + 3, 0);
   const qPaid = paid.filter(r => { const d = new Date(r.datum); return d >= qStart && d <= qEnd; });
   const qNetto = qPaid.reduce((s, r) => s + (r.netto || 0), 0); const qMwst = qPaid.reduce((s, r) => s + (r.mwst || 0), 0);
   // Angebots-Follow-up
   const alteAngebote = rechnungen.filter(r => r.status === "angebot" && new Date(r.datum) < new Date(Date.now() - 7 * 24 * 60 * 60 * 1000));
+  // Leer-Zustand
+  const isEmpty = rechnungen.length === 0 && kunden.length === 0;
 
   return (
     <div className="page">
-      <div className="page-head"><div><h1 className="h1">Dashboard</h1><p className="sub">{firma ? `Willkommen, ${firma.inhaber || firma.name}` : "Firmendaten einrichten"}</p></div><button className="p-btn" onClick={() => nav("neue-rechnung")}>{IC.plus} Neue Rechnung</button></div>
+      {/* ── Header mit Begrüßung und Datum ── */}
+      <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start", marginBottom: 20, flexWrap: "wrap", gap: 10 }}>
+        <div>
+          <h1 className="h1" style={{ fontSize: 24 }}>Guten {now.getHours() < 12 ? "Morgen" : now.getHours() < 18 ? "Tag" : "Abend"}{firma?.inhaber ? `, ${firma.inhaber.split(" ")[0]}` : ""}</h1>
+          <p className="sub" style={{ marginTop: 4 }}>{now.toLocaleDateString("de-DE", { weekday: "long", day: "numeric", month: "long", year: "numeric" })}{firma?.name ? ` · ${firma.name}` : ""}</p>
+        </div>
+        <div style={{ display: "flex", gap: 8 }}>
+          <button className="s-btn" onClick={() => nav("rechnungen")}>{IC.euro} Rechnungen</button>
+          <button className="p-btn" onClick={() => nav("neue-rechnung")}>{IC.plus} Neue Rechnung</button>
+        </div>
+      </div>
+
       {fE.length > 0 && <div className="warn-bar"><span style={{ display: "flex", color: "#f87171" }}>{IC.shield}</span><div><strong>§14 UStG:</strong> {fE.join(", ")} fehlt. <button className="link-btn" onClick={() => nav("settings")}>Beheben →</button></div></div>}
       {plan === "free" && <div className="upgrade-bar">{IC.crown}<span><strong>Free</strong> – {lim.re} Rechnungen</span><button className="upgrade-sm" onClick={() => nav("abo")}>Upgraden</button></div>}
-      <div className="kpi-grid">{[{ l: "Umsatz", v: fc(paid.reduce((s, r) => s + r.gesamt, 0)), s: `${paid.length} bezahlt`, c: "#34d399" }, { l: "Offen", v: fc(offen.reduce((s, r) => s + r.gesamt, 0)), s: `${offen.length} offen`, c: "#fbbf24" }, { l: "Überfällig", v: ueber.length, s: ueber.length ? "Mahnen!" : "Alles gut", c: "#f87171" }, { l: "Kunden", v: kunden.length, c: "#818cf8", s: "gespeichert" }].map((k, i) => <div key={i} className="kpi" style={{ borderLeft: `4px solid ${k.c}` }}><div className="kpi-l">{k.l}</div><div className="kpi-v" style={k.l === "Überfällig" && ueber.length > 0 ? { color: "#f87171" } : {}}>{k.v}</div><div className="kpi-s">{k.s}</div></div>)}</div>
-      <div className="dash-grid">
-        <div className="card"><h3 className="card-t">Umsatz (6 Monate)</h3><div style={{ display: "flex", alignItems: "flex-end", gap: 8, height: 130 }}>{months.map(m => <div key={m.k} style={{ flex: 1, display: "flex", flexDirection: "column", alignItems: "center", gap: 4 }}><div style={{ width: "100%", height: 100, display: "flex", alignItems: "flex-end" }}><div className="chart-bar" style={{ height: `${Math.max(m.s / mx * 100, 3)}%` }} /></div><span style={{ fontSize: 10, color: "#64748b" }}>{m.l}</span></div>)}</div></div>
-        <div className="card"><h3 className="card-t">Letzte Rechnungen</h3>{rechnungen.length === 0 ? <p className="sub">Keine.</p> : [...rechnungen].reverse().slice(0, 5).map(r => <div key={r.id} className="recent-item"><div><div style={{ fontWeight: 600, fontSize: 13 }}>{r.kundeName}</div><div className="sub">{r.nummer}</div></div><div style={{ textAlign: "right" }}><div style={{ fontWeight: 600, fontSize: 13 }}>{fc(r.gesamt)}</div><SB s={r.status} /></div></div>)}</div>
+
+      {/* ── Leerzustand: Onboarding-Tipps ── */}
+      {isEmpty && (
+        <div className="card" style={{ padding: 28, marginBottom: 18, background: "linear-gradient(135deg, #0f172a 0%, #1e1b4b 100%)", border: "1px solid #312e81" }}>
+          <div style={{ textAlign: "center", maxWidth: 440, margin: "0 auto" }}>
+            <div style={{ fontSize: 36, marginBottom: 12 }}>{IC.star}</div>
+            <h2 style={{ fontSize: 18, fontWeight: 700, marginBottom: 8 }}>Willkommen bei RechnungsKI</h2>
+            <p style={{ fontSize: 13, color: "#94a3b8", lineHeight: 1.6, marginBottom: 20 }}>Erstelle deine erste Rechnung in unter 2 Minuten. Alle Daten werden lokal in deinem Browser gespeichert.</p>
+            <div style={{ display: "flex", gap: 10, justifyContent: "center", flexWrap: "wrap" }}>
+              {[
+                { l: "Kunde anlegen", ico: IC.users, pg: "kunden" },
+                { l: "Erste Rechnung", ico: IC.doc, pg: "neue-rechnung" },
+                { l: "Firmendaten prüfen", ico: IC.gear, pg: "settings" },
+              ].map((a, i) => (
+                <button key={i} onClick={() => nav(a.pg)} style={{ display: "flex", alignItems: "center", gap: 6, padding: "10px 16px", background: "#1e293b", border: "1px solid #334155", borderRadius: 8, color: "#e2e8f0", fontSize: 13, fontWeight: 500, cursor: "pointer" }}>
+                  <span style={{ opacity: .6, display: "flex" }}>{a.ico}</span>{a.l}
+                </button>
+              ))}
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* ── KPI-Kacheln mit Icons ── */}
+      <div className="kpi-grid">
+        {[
+          { l: "Umsatz", v: fc(totalUmsatz), s: `${paid.length} bezahlt`, c: "#34d399", ico: IC.euro },
+          { l: "Offen", v: fc(offenSum), s: `${offen.length} Rechnungen`, c: "#fbbf24", ico: IC.doc },
+          { l: "Überfällig", v: ueber.length, s: ueber.length ? "Jetzt mahnen" : "Alles im Griff", c: "#f87171", ico: IC.alert },
+          { l: "Kunden", v: kunden.length, c: "#818cf8", s: "gespeichert", ico: IC.users },
+        ].map((k, i) => (
+          <div key={i} className="kpi" style={{ borderLeft: `4px solid ${k.c}`, position: "relative", overflow: "hidden" }}>
+            <div style={{ position: "absolute", top: 12, right: 12, opacity: .08, color: k.c }}><svg width="40" height="40" viewBox="0 0 24 24" fill="currentColor">{k.ico.props.children}</svg></div>
+            <div className="kpi-l">{k.l}</div>
+            <div className="kpi-v" style={k.l === "Überfällig" && ueber.length > 0 ? { color: "#f87171" } : {}}>{k.v}</div>
+            <div className="kpi-s">{k.s}</div>
+          </div>
+        ))}
       </div>
-      {ueber.length > 0 && <div className="warn-card"><div style={{ display: "flex", alignItems: "center", gap: 8, marginBottom: 8, fontWeight: 600 }}><span style={{ color: "#f87171", display: "flex" }}>{IC.alert}</span>Überfällig</div>{ueber.map(r => <div key={r.id} style={{ display: "flex", alignItems: "center", gap: 10, padding: "6px 0", fontSize: 12, flexWrap: "wrap", borderBottom: "1px solid #33251a" }}><span style={{ fontWeight: 600 }}>{r.nummer}</span><span>{r.kundeName}</span><span style={{ fontWeight: 600 }}>{fc(r.gesamt)}</span><button className="s-btn" onClick={() => updRe(r.id, { status: "gemahnt" })}>Mahnen</button></div>)}</div>}
 
-      {alteAngebote.length > 0 && <div className="warn-card" style={{ borderColor: "#1e3a5f" }}><div style={{ display: "flex", alignItems: "center", gap: 8, marginBottom: 8, fontWeight: 600 }}><span style={{ fontSize: 16 }}>📋</span>Angebote ohne Antwort ({alteAngebote.length})</div>{alteAngebote.map(r => <div key={r.id} style={{ display: "flex", alignItems: "center", gap: 10, padding: "6px 0", fontSize: 12, flexWrap: "wrap", borderBottom: "1px solid #1e2d3f" }}><span style={{ fontWeight: 600 }}>{r.nummer}</span><span>{r.kundeName}</span><span style={{ fontWeight: 600 }}>{fc(r.gesamt)}</span><span style={{ opacity: .6 }}>{Math.floor((Date.now() - new Date(r.datum)) / 86400000)}d offen</span><button className="s-btn-g" onClick={() => updRe(r.id, { status: "offen", typ: "rechnung" })}>Annehmen</button><button className="s-btn" onClick={() => updRe(r.id, { status: "storniert" })}>Ablehnen</button></div>)}</div>}
+      {/* ── Überfällig-Alarm (prominent, oben) ── */}
+      {ueber.length > 0 && <div className="warn-card" style={{ marginBottom: 18 }}><div style={{ display: "flex", alignItems: "center", gap: 8, marginBottom: 8, fontWeight: 600 }}><span style={{ color: "#f87171", display: "flex" }}>{IC.alert}</span>Überfällig ({ueber.length})</div>{ueber.map(r => <div key={r.id} style={{ display: "flex", alignItems: "center", gap: 10, padding: "8px 0", fontSize: 12, flexWrap: "wrap", borderBottom: "1px solid #33251a" }}><span style={{ fontWeight: 600, fontFamily: "'JetBrains Mono',mono", fontSize: 11 }}>{r.nummer}</span><span style={{ flex: 1 }}>{r.kundeName}</span><span style={{ fontWeight: 600 }}>{fc(r.gesamt)}</span><span style={{ fontSize: 11, color: "#f87171" }}>{Math.floor((Date.now() - new Date(r.faelligDatum)) / 86400000)}d überfällig</span><button className="s-btn" onClick={() => updRe(r.id, { status: "gemahnt" })}>{IC.mail} Mahnen</button></div>)}</div>}
 
-      {!firma?.kleinunternehmer && (qNetto > 0 || qMwst > 0) && <div className="card" style={{ marginTop: 16 }}><h3 className="card-t">Quartal {q + 1}/{now.getFullYear()} – Steuerübersicht</h3><div style={{ display: "flex", gap: 16, flexWrap: "wrap", marginTop: 8 }}><div style={{ flex: 1, minWidth: 120, padding: "10px 14px", background: "#111827", borderRadius: 8, border: "1px solid #1e293b" }}><div style={{ fontSize: 10, color: "#64748b", textTransform: "uppercase", letterSpacing: ".05em" }}>Nettoumsatz</div><div style={{ fontSize: 20, fontWeight: 700, marginTop: 2 }}>{fc(qNetto)}</div></div><div style={{ flex: 1, minWidth: 120, padding: "10px 14px", background: "#111827", borderRadius: 8, border: "1px solid #1e293b" }}><div style={{ fontSize: 10, color: "#64748b", textTransform: "uppercase", letterSpacing: ".05em" }}>MwSt-Schuld</div><div style={{ fontSize: 20, fontWeight: 700, marginTop: 2, color: "#f87171" }}>{fc(qMwst)}</div></div><div style={{ flex: 1, minWidth: 120, padding: "10px 14px", background: "#111827", borderRadius: 8, border: "1px solid #1e293b" }}><div style={{ fontSize: 10, color: "#64748b", textTransform: "uppercase", letterSpacing: ".05em" }}>Bruttoeinnahmen</div><div style={{ fontSize: 20, fontWeight: 700, marginTop: 2, color: "#34d399" }}>{fc(qNetto + qMwst)}</div></div></div><p style={{ fontSize: 11, color: "#475569", marginTop: 8 }}>Nur bezahlte Rechnungen · {qStart.toLocaleDateString("de-DE")} – {qEnd.toLocaleDateString("de-DE")}</p></div>}
+      {/* ── Chart + Letzte Rechnungen ── */}
+      <div className="dash-grid">
+        <div className="card">
+          <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 12 }}>
+            <h3 className="card-t" style={{ marginBottom: 0 }}>Umsatz (6 Monate)</h3>
+            <span style={{ fontSize: 18, fontWeight: 700, color: "#34d399" }}>{fc(totalUmsatz)}</span>
+          </div>
+          <div style={{ display: "flex", alignItems: "flex-end", gap: 8, height: 140 }}>
+            {months.map(m => (
+              <div key={m.k} style={{ flex: 1, display: "flex", flexDirection: "column", alignItems: "center", gap: 4 }}>
+                {m.s > 0 && <span style={{ fontSize: 9, color: "#64748b", fontWeight: 500 }}>{m.s >= 1000 ? `${(m.s/1000).toFixed(1)}k` : fc(m.s)}</span>}
+                <div style={{ width: "100%", height: 110, display: "flex", alignItems: "flex-end" }}>
+                  <div className="chart-bar" style={{ height: `${Math.max(m.s / mx * 100, 4)}%` }} />
+                </div>
+                <span style={{ fontSize: 10, color: "#64748b" }}>{m.l}</span>
+              </div>
+            ))}
+          </div>
+        </div>
+
+        <div className="card">
+          <h3 className="card-t">Letzte Aktivität</h3>
+          {rechnungen.length === 0 ? (
+            <div style={{ display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center", padding: "24px 0", color: "#475569" }}>
+              <div style={{ opacity: .3, marginBottom: 8 }}>{IC.doc}</div>
+              <p style={{ fontSize: 12 }}>Noch keine Rechnungen</p>
+              <button className="link-btn" onClick={() => nav("neue-rechnung")}>Erste Rechnung erstellen →</button>
+            </div>
+          ) : [...rechnungen].reverse().slice(0, 5).map(r => (
+            <div key={r.id} className="recent-item">
+              <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
+                <div style={{ width: 28, height: 28, borderRadius: 6, background: "#1e293b", display: "flex", alignItems: "center", justifyContent: "center", fontSize: 11, fontWeight: 700, color: "#818cf8", flexShrink: 0 }}>{r.kundeName?.charAt(0)?.toUpperCase()}</div>
+                <div><div style={{ fontWeight: 600, fontSize: 13 }}>{r.kundeName}</div><div className="sub">{r.nummer} · {fd(r.datum)}</div></div>
+              </div>
+              <div style={{ textAlign: "right" }}><div style={{ fontWeight: 600, fontSize: 13 }}>{fc(r.gesamt)}</div><SB s={r.status} /></div>
+            </div>
+          ))}
+        </div>
+      </div>
+
+      {/* ── Schnellaktionen ── */}
+      {!isEmpty && <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(150px, 1fr))", gap: 8, marginBottom: 18 }}>
+        {[
+          { l: "Neue Rechnung", ico: IC.doc, pg: "neue-rechnung", c: "#6366f1" },
+          { l: "Neues Angebot", ico: IC.eye, pg: "neue-rechnung", c: "#8b5cf6" },
+          { l: "Kunden", ico: IC.users, pg: "kunden", c: "#3b82f6" },
+          { l: "DATEV Export", ico: IC.dl, pg: "rechnungen", c: "#14b8a6" },
+        ].map((a, i) => (
+          <button key={i} onClick={() => nav(a.pg)} style={{ display: "flex", alignItems: "center", gap: 8, padding: "12px 14px", background: "#111827", border: "1px solid #1e293b", borderRadius: 8, color: "#e2e8f0", fontSize: 12, fontWeight: 500, cursor: "pointer", textAlign: "left" }}>
+            <span style={{ color: a.c, display: "flex", opacity: .7 }}>{a.ico}</span>{a.l}
+          </button>
+        ))}
+      </div>}
+
+      {/* ── Angebote ohne Antwort ── */}
+      {alteAngebote.length > 0 && <div className="warn-card" style={{ borderColor: "#1e3a5f", marginBottom: 18 }}><div style={{ display: "flex", alignItems: "center", gap: 8, marginBottom: 8, fontWeight: 600 }}>{IC.eye} Angebote ohne Antwort ({alteAngebote.length})</div>{alteAngebote.map(r => <div key={r.id} style={{ display: "flex", alignItems: "center", gap: 10, padding: "8px 0", fontSize: 12, flexWrap: "wrap", borderBottom: "1px solid #1e2d3f" }}><span style={{ fontWeight: 600, fontFamily: "'JetBrains Mono',mono", fontSize: 11 }}>{r.nummer}</span><span style={{ flex: 1 }}>{r.kundeName}</span><span style={{ fontWeight: 600 }}>{fc(r.gesamt)}</span><span style={{ opacity: .6, fontSize: 11 }}>{Math.floor((Date.now() - new Date(r.datum)) / 86400000)} Tage</span><button className="s-btn-g" onClick={() => updRe(r.id, { status: "offen", typ: "rechnung" })}>→ Rechnung</button><button className="s-btn" onClick={() => updRe(r.id, { status: "storniert" })}>Ablehnen</button></div>)}</div>}
+
+      {/* ── Quartals-Steuerübersicht ── */}
+      {!firma?.kleinunternehmer && (qNetto > 0 || qMwst > 0) && (
+        <div className="card" style={{ marginBottom: 18 }}>
+          <h3 className="card-t">Q{q + 1}/{now.getFullYear()} – Steuerübersicht</h3>
+          <div style={{ display: "grid", gridTemplateColumns: "repeat(3, 1fr)", gap: 10, marginTop: 8 }}>
+            <div style={{ padding: "12px 14px", background: "#0b0d14", borderRadius: 8, border: "1px solid #1e293b" }}>
+              <div style={{ fontSize: 10, color: "#64748b", textTransform: "uppercase", letterSpacing: ".05em" }}>Nettoumsatz</div>
+              <div style={{ fontSize: 22, fontWeight: 700, marginTop: 4 }}>{fc(qNetto)}</div>
+            </div>
+            <div style={{ padding: "12px 14px", background: "#0b0d14", borderRadius: 8, border: "1px solid #1e293b" }}>
+              <div style={{ fontSize: 10, color: "#64748b", textTransform: "uppercase", letterSpacing: ".05em" }}>MwSt-Schuld</div>
+              <div style={{ fontSize: 22, fontWeight: 700, marginTop: 4, color: "#f87171" }}>{fc(qMwst)}</div>
+            </div>
+            <div style={{ padding: "12px 14px", background: "#0b0d14", borderRadius: 8, border: "1px solid #1e293b" }}>
+              <div style={{ fontSize: 10, color: "#64748b", textTransform: "uppercase", letterSpacing: ".05em" }}>Bruttoeinnahmen</div>
+              <div style={{ fontSize: 22, fontWeight: 700, marginTop: 4, color: "#34d399" }}>{fc(qNetto + qMwst)}</div>
+            </div>
+          </div>
+          <p style={{ fontSize: 11, color: "#475569", marginTop: 10 }}>Nur bezahlte Rechnungen · {qStart.toLocaleDateString("de-DE")} – {qEnd.toLocaleDateString("de-DE")}</p>
+        </div>
+      )}
+
+      {/* ── Lokaler Speicher Hinweis ── */}
+      <div style={{ display: "flex", alignItems: "center", gap: 8, padding: "10px 14px", background: "#0b0d14", border: "1px solid #1e293b", borderRadius: 8, fontSize: 11, color: "#475569" }}>
+        {IC.db}<span>Daten werden lokal im Browser gespeichert. Nutze den <button className="link-btn" style={{ fontSize: 11, display: "inline" }} onClick={() => nav("settings")}>Daten-Export</button> für Backups.</span>
+      </div>
     </div>
   );
 }
@@ -1159,7 +1301,7 @@ function RechnungenListe({ rechnungen, updRe, nav, dupRe, firma, onEdit }) {
             <span style={{ flex: 2, display: "flex", gap: 4, justifyContent: "flex-end", flexWrap: "wrap" }}>
               {firma && <button className="s-btn pdf-btn" onClick={() => downloadPdf(r, firma)}>{IC.pdf} PDF</button>}
               {r.status === "offen" && <button className="s-btn-g" onClick={() => updRe(r.id, { status: "bezahlt" })}>{IC.check}</button>}
-              {(r.status === "offen" || r.status === "gemahnt") && firma && <button className="s-btn" onClick={() => { setMahnM(r); setMahnS(r.status === "gemahnt" ? 2 : 1); }}>{IC.mail}</button>}
+              {(r.status === "offen" || r.status === "gemahnt") && firma && <button className="s-btn" onClick={() => { setMahnM(r); setMahnS(r.mahnstufe ? Math.min(r.mahnstufe + 1, 3) : (r.status === "gemahnt" ? 2 : 1)); }}>{IC.mail}</button>}
               {r.status === "angebot" && <button className="s-btn-g" onClick={() => updRe(r.id, { status: "offen", typ: "rechnung" })}>→RE</button>}
               {r.status !== "storniert" && <button className="s-btn" onClick={() => onEdit(r)} title="Bearbeiten">✏️</button>}
               <button className="s-btn" onClick={() => dupRe(r)}>{IC.copy}</button>
@@ -1167,7 +1309,7 @@ function RechnungenListe({ rechnungen, updRe, nav, dupRe, firma, onEdit }) {
             </span>
           </div>)}</div>}
 
-      {mahnM && firma && <div className="modal-overlay" onClick={() => setMahnM(null)}><div className="modal-box" style={{ maxWidth: 560 }} onClick={e => e.stopPropagation()}><div style={{ padding: 24 }}><h2 style={{ fontSize: 16, fontWeight: 700, marginBottom: 10, color: "#111" }}>Zahlungserinnerung</h2><div style={{ display: "flex", gap: 4, marginBottom: 12 }}>{[1, 2, 3].map(s => <button key={s} className={`tab ${mahnS === s ? "active" : ""}`} onClick={() => setMahnS(s)}>{s}. Mahnung</button>)}</div><textarea style={{ width: "100%", minHeight: 180, padding: 12, border: "1px solid #d1d5db", borderRadius: 7, fontSize: 12, fontFamily: "'DM Sans',sans-serif", color: "#111", resize: "vertical" }} value={mahnung(mahnM, firma, mahnS)} readOnly /><div style={{ display: "flex", gap: 6, marginTop: 12, justifyContent: "flex-end" }}><button className="s-btn pdf-btn" onClick={() => { const html = generateMahnungPdfHtml(mahnM, firma, mahnS); const iframe = document.createElement("iframe"); Object.assign(iframe.style, { position:"fixed", top:"-9999px", left:"-9999px", width:"800px", height:"1100px", border:"none" }); document.body.appendChild(iframe); iframe.contentDocument.write(html); iframe.contentDocument.close(); iframe.contentWindow.focus(); setTimeout(() => { iframe.contentWindow.print(); setTimeout(() => { if(document.body.contains(iframe)) document.body.removeChild(iframe); }, 1500); }, 600); }}>{IC.pdf} PDF</button><button className="p-btn" onClick={() => { navigator.clipboard.writeText(mahnung(mahnM, firma, mahnS)); setMahnM(null); updRe(mahnM.id, { status: "gemahnt" }); }}>Kopieren</button><button className="s-btn" onClick={() => setMahnM(null)}>Schließen</button></div></div></div></div>}
+      {mahnM && firma && <div className="modal-overlay" onClick={() => setMahnM(null)}><div className="modal-box" style={{ maxWidth: 560 }} onClick={e => e.stopPropagation()}><div style={{ padding: 24 }}><h2 style={{ fontSize: 16, fontWeight: 700, marginBottom: 10, color: "#111" }}>Zahlungserinnerung</h2><div style={{ display: "flex", gap: 4, marginBottom: 12 }}>{[1, 2, 3].map(s => <button key={s} className={`tab ${mahnS === s ? "active" : ""}`} onClick={() => setMahnS(s)}>{s}. Mahnung</button>)}</div><textarea style={{ width: "100%", minHeight: 180, padding: 12, border: "1px solid #d1d5db", borderRadius: 7, fontSize: 12, fontFamily: "'DM Sans',sans-serif", color: "#111", resize: "vertical" }} value={mahnung(mahnM, firma, mahnS)} readOnly /><div style={{ display: "flex", gap: 6, marginTop: 12, justifyContent: "flex-end" }}><button className="s-btn pdf-btn" onClick={() => { printHtmlInIframe(generateMahnungPdfHtml(mahnM, firma, mahnS)); updRe(mahnM.id, { status: "gemahnt", mahnstufe: mahnS }); setMahnM(null); }}>{IC.pdf} PDF</button><button className="p-btn" onClick={() => { navigator.clipboard.writeText(mahnung(mahnM, firma, mahnS)); updRe(mahnM.id, { status: "gemahnt", mahnstufe: mahnS }); setMahnM(null); }}>Kopieren</button><button className="s-btn" onClick={() => setMahnM(null)}>Schließen</button></div></div></div></div>}
 
       {stornierConfirm && <div className="modal-overlay" onClick={() => setStornierConfirm(null)}><div className="modal-box" style={{ maxWidth: 380 }} onClick={e => e.stopPropagation()}><div style={{ padding: 24 }}><h2 style={{ fontSize: 16, fontWeight: 700, marginBottom: 8, color: "#111" }}>Rechnung stornieren?</h2><p style={{ fontSize: 13, color: "#555", marginBottom: 16, lineHeight: 1.5 }}><strong>{stornierConfirm.nummer}</strong> – {stornierConfirm.kundeName}<br />Betrag: {fc(stornierConfirm.gesamt)}<br /><br />Die Rechnung wird als storniert markiert und aus allen Auswertungen ausgeschlossen.</p><div style={{ display: "flex", gap: 8, justifyContent: "flex-end" }}><button className="d-btn" onClick={() => { updRe(stornierConfirm.id, { status: "storniert" }); setStornierConfirm(null); }}>Ja, stornieren</button><button className="s-btn" onClick={() => setStornierConfirm(null)}>Abbrechen</button></div></div></div></div>}
     </div>
@@ -1369,9 +1511,10 @@ function SupabasePage() {
 }
 
 // ═══ SETTINGS ═══
-function SettingsPage({ firma, sf, rechnungen, kunden, sre, skn }) {
+function SettingsPage({ firma, sf, rechnungen, kunden, sre, skn, favoriten, setFavoriten, wiederkehrend, saveWdk, plan, spl, showT }) {
   const [form, setForm] = useState(firma || { name: "", inhaber: "", strasse: "", plz: "", ort: "", telefon: "", email: "", web: "", steuernr: "", ustid: "", bankName: "", iban: "", bic: "", gewerk: "", logo: "" });
-  const [showR, setShowR] = useState(false); const fRef = useRef();
+  const [showR, setShowR] = useState(false);
+  const [deleteInput, setDeleteInput] = useState(""); const fRef = useRef();
   const handleLogo = e => { const f = e.target.files[0]; if (!f) return; if (f.size > 2000000) { alert("Datei zu groß – max. 2 MB."); return; } const img = new Image(); const url = URL.createObjectURL(f); img.onload = () => { const c = document.createElement("canvas"); const MAX = 400; let w = img.width, h = img.height; if (w > MAX) { h = h * MAX / w; w = MAX; } c.width = w; c.height = h; c.getContext("2d").drawImage(img, 0, 0, w, h); const compressed = c.toDataURL("image/jpeg", 0.75); setForm(prev => ({ ...prev, logo: compressed })); URL.revokeObjectURL(url); }; img.src = url; };
 
   return (
@@ -1390,8 +1533,15 @@ function SettingsPage({ firma, sf, rechnungen, kunden, sre, skn }) {
         <div className="sec"><h3 className="sec-title">Steuern (§14 Pflicht)</h3><div style={{ display: "flex", gap: 7, marginBottom: 8 }}><FI l="Steuernr." v={form.steuernr} k="steuernr" f={form} s={setForm} /><FI l="USt-ID" v={form.ustid} k="ustid" f={form} s={setForm} /></div><label style={{ display: "flex", alignItems: "center", gap: 8, cursor: "pointer", fontSize: 13 }}><input type="checkbox" checked={!!form.kleinunternehmer} onChange={e => setForm({ ...form, kleinunternehmer: e.target.checked })} /><span>Kleinunternehmer nach §19 UStG (kein MwSt-Ausweis)</span></label></div>
         <div className="sec"><h3 className="sec-title">Bank</h3><div style={{ display: "flex", flexDirection: "column", gap: 7 }}><FI l="Bank" v={form.bankName} k="bankName" f={form} s={setForm} /><div style={{ display: "flex", gap: 7 }}><FI l="IBAN" v={form.iban} k="iban" f={form} s={setForm} /><FI l="BIC" v={form.bic} k="bic" f={form} s={setForm} w={140} /></div></div></div>
         <button className="p-btn" onClick={() => { if (!form.name) return; sf(form); }}>Speichern</button>
+        <div className="sec"><h3 className="sec-title">{IC.dl} Datensicherung</h3>
+          <p style={{ fontSize: 12, color: "#64748b", marginBottom: 10, lineHeight: 1.5 }}>Exportiere alle Daten als JSON-Backup oder importiere ein vorhandenes Backup.</p>
+          <div style={{ display: "flex", gap: 8, flexWrap: "wrap" }}>
+            <button className="s-btn" onClick={() => { const data = { version: 1, date: new Date().toISOString(), firma, rechnungen, kunden, favoriten: favoriten || [], wiederkehrend: wiederkehrend || [], plan }; const blob = new Blob([JSON.stringify(data, null, 2)], { type: "application/json" }); const a = document.createElement("a"); a.href = URL.createObjectURL(blob); a.download = `RechnungsKI_Backup_${new Date().toISOString().split("T")[0]}.json`; a.click(); URL.revokeObjectURL(a.href); showT("Backup heruntergeladen!"); }}>{IC.dl} Export (.json)</button>
+            <label className="s-btn" style={{ cursor: "pointer" }}><input type="file" accept=".json" style={{ display: "none" }} onChange={e => { const f = e.target.files?.[0]; if (!f) return; const reader = new FileReader(); reader.onload = ev => { try { const d = JSON.parse(ev.target.result); if (!d.version || !d.firma) { showT("Ungültiges Backup!"); return; } if (!confirm(`Backup vom ${fd(d.date)} importieren? Aktuelle Daten werden überschrieben.`)) return; sf(d.firma); sre(d.rechnungen || []); skn(d.kunden || []); if (d.favoriten) { setFavoriten(d.favoriten); sv("inv-favoriten", d.favoriten); } if (d.wiederkehrend) { saveWdk(d.wiederkehrend); } if (d.plan) { spl(d.plan); } setForm(d.firma); showT("Backup importiert!"); } catch { showT("Datei konnte nicht gelesen werden!"); } }; reader.readAsText(f); e.target.value = ""; }} />⬆ Import</label>
+          </div>
+        </div>
         <div style={{ background: "#1c1917", borderRadius: 10, padding: 16, border: "1px solid #7f1d1d" }}><h3 style={{ fontSize: 13, fontWeight: 700, color: "#f87171", marginBottom: 6 }}>Gefahrenzone</h3>
-          {!showR ? <button className="d-btn" onClick={() => setShowR(true)}>Alles löschen</button> : <div style={{ display: "flex", gap: 6 }}><button className="d-btn" onClick={async () => { await sre([]); await skn([]); await sf(null); window.location.reload(); }}>Ja</button><button className="s-btn" onClick={() => setShowR(false)}>Nein</button></div>}
+          {!showR ? <button className="d-btn" onClick={() => { setShowR(true); setDeleteInput(""); }}>Alles löschen</button> : <div style={{ display: "flex", flexDirection: "column", gap: 8 }}><p style={{ fontSize: 12, color: "#fca5a5", lineHeight: 1.5 }}>Alle Rechnungen, Kunden und Firmendaten werden unwiderruflich gelöscht.<br />Gib <strong>LÖSCHEN</strong> ein um zu bestätigen:</p><input className="inp" style={{ color: "#f87171", borderColor: "#991b1b" }} placeholder="LÖSCHEN" value={deleteInput} onChange={e => setDeleteInput(e.target.value)} /><div style={{ display: "flex", gap: 6 }}><button className="d-btn" disabled={deleteInput !== "LÖSCHEN"} style={{ opacity: deleteInput !== "LÖSCHEN" ? 0.4 : 1, cursor: deleteInput !== "LÖSCHEN" ? "not-allowed" : "pointer" }} onClick={async () => { if (deleteInput !== "LÖSCHEN") return; await sre([]); await skn([]); await sf(null); window.location.reload(); }}>Endgültig löschen</button><button className="s-btn" onClick={() => { setShowR(false); setDeleteInput(""); }}>Abbrechen</button></div></div>}
         </div>
       </div>
     </div>
