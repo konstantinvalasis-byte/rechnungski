@@ -45,7 +45,7 @@ export default function LP() {
             <a href="#branchen" className="nav-l">Branchen</a>
             <a href="#features" className="nav-l">Features</a>
             <a href="#preise" className="nav-l">Preise</a>
-            <button className="btn-p nav-cta">Kostenlos starten</button>
+            <a href="/dashboard" className="btn-p nav-cta">Kostenlos starten</a>
           </div>
         </div>
       </nav>
@@ -66,7 +66,7 @@ export default function LP() {
             <div className="hero-cta">
               {!sent ? <>
                 <input className="hero-inp" placeholder="deine@email.de" value={email} onChange={e => setEmail(e.target.value)} onKeyDown={e => e.key === "Enter" && email.includes("@") && setSent(true)} />
-                <button className="btn-p hero-btn" onClick={() => email.includes("@") && setSent(true)}>Kostenlos starten {ARR}</button>
+                <button className="btn-p hero-btn" onClick={() => { if (email.includes("@")) { setSent(true); setTimeout(() => window.location.href = "/dashboard", 1200); } else { window.location.href = "/dashboard"; } }}>Kostenlos starten {ARR}</button>
               </> : <div className="hero-ok">Perfekt — check dein Postfach!</div>}
             </div>
             <div className="trust-row">{["Keine Kreditkarte", "5 Rechnungen gratis", "DSGVO-konform"].map((t, i) => <span key={i} className="trust-i">{CK} {t}</span>)}</div>
@@ -218,7 +218,7 @@ export default function LP() {
                 <div className="pc-pr"><span className="pc-num">{bill === "jaehrlich" ? pl.pj : pl.p}€</span><span className="pc-per">/Mo</span></div>
                 <div className="pc-sub">{pl.s}</div>
                 <div className="pc-feats">{pl.f.map((f, j) => <div key={j} className="pc-f">{CK} {f}</div>)}</div>
-                <button className={pl.pop ? "btn-p pc-btn" : "pc-btn-o"}>{pl.p === 0 ? "Kostenlos starten" : "Auswählen"}</button>
+                <a href="/dashboard" className={pl.pop ? "btn-p pc-btn" : "pc-btn-o"} style={{ textDecoration: "none", justifyContent: "center" }}>{pl.p === 0 ? "Kostenlos starten" : "Auswählen"}</a>
               </div>
             ))}
           </div>
@@ -253,7 +253,7 @@ export default function LP() {
         <div className="cta-in">
           <h2 className="sh2 cta-h">Bereit loszulegen?</h2>
           <p className="cta-p">Kostenlos starten. Keine Kreditkarte. 30 Sekunden Setup.</p>
-          <button className="btn-p cta-btn">Jetzt kostenlos starten {ARR}</button>
+          <a href="/dashboard" className="btn-p cta-btn" style={{ textDecoration: "none" }}>Jetzt kostenlos starten {ARR}</a>
         </div>
       </section>
 
