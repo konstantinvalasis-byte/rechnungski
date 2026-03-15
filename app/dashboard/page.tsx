@@ -429,6 +429,7 @@ function generatePdfHtml(rechnung, firma) {
     </div>
 
     ${rechnung.notiz ? `<div style="margin-top:18px;padding:10px;background:#f8f9fa;border-radius:5px;font-size:11px;color:#666"><strong>Hinweis:</strong> ${rechnung.notiz}</div>` : ""}
+    ${firma.kleinunternehmer ? `<div style="margin-top:12px;padding:8px 10px;background:#fffbeb;border:1px solid #fde68a;border-radius:5px;font-size:11px;color:#92400e">Gemäß §19 UStG wird keine Umsatzsteuer berechnet.</div>` : ""}
 
     <div style="margin-top:28px;padding-top:14px;border-top:1px solid #e5e7eb;display:flex;justify-content:space-between;font-size:10px;color:#999">
       <span>${firma.bankName ? firma.bankName + " · " : ""}${firma.iban ? "IBAN: " + firma.iban : ""}</span>
@@ -656,6 +657,7 @@ export default function App() {
   const [loaded, setLoaded] = useState(false);
   const [toast, setToast] = useState(null);
   const [mobNav, setMobNav] = useState(false);
+  const [editRe, setEditRe] = useState(null);
 
   useEffect(() => {
     const f = ld("inv-firma", null), k = ld("inv-kunden", []), r = ld("inv-rechnungen", []), p = ld("inv-plan", "free"), ob = ld("inv-onboarded", false);
@@ -670,6 +672,8 @@ export default function App() {
   const showT = m => { setToast(m); setTimeout(() => setToast(null), 2800); };
 
   const addRe = async r => { await sre([...rechnungen, r]); showT("Erstellt!"); };
+  const delKu = kid => skn(kunden.filter(k => k.id !== kid));
+  const updKu = (kid, up) => skn(kunden.map(k => k.id === kid ? { ...k, ...up } : k));
   const updRe = async (rid, up) => { await sre(rechnungen.map(r => r.id === rid ? { ...r, ...up } : r)); };
   const addKu = async k => { const ex = kunden.find(x => x.name === k.name && x.strasse === k.strasse); if (ex) return ex; const nk = { ...k, id: uid() }; await skn([...kunden, nk]); return nk; };
   const dupRe = async o => { const nr = nxtNr(); const d = new Date().toISOString().split("T")[0]; const fdt = new Date(); fdt.setDate(fdt.getDate() + (o.zahlungsziel || 14)); await addRe({ ...o, id: uid(), nummer: nr, datum: d, faelligDatum: fdt.toISOString().split("T")[0], status: "offen" }); };
@@ -692,7 +696,7 @@ export default function App() {
   const navItems = [
     { id: "dashboard", icon: IC.dash, l: "Dashboard" }, { id: "neue-rechnung", icon: IC.doc, l: "Neue Rechnung" },
     { id: "rechnungen", icon: IC.euro, l: "Rechnungen" }, { id: "kunden", icon: IC.users, l: "Kunden" },
-    { id: "abo", icon: IC.crown, l: "Abo & Preise" }, { id: "supabase", icon: IC.db, l: "Backend" },
+    { id: "abo", icon: IC.crown, l: "Abo & Preise" },
     { id: "settings", icon: IC.gear, l: "Einstellungen" },
   ];
 
@@ -707,9 +711,9 @@ export default function App() {
       </nav>
       <main className="main-content">
         {pg === "dashboard" && <Dashboard {...{ rechnungen, kunden, firma, nav, updRe, plan, lim }} />}
-        {pg === "neue-rechnung" && <NeueRechnung {...{ firma, kunden, addKu, addRe, nextNr: nxtNr(), nav, plan, lim, canCreate: rechnungen.length < lim.re }} />}
-        {pg === "rechnungen" && <RechnungenListe {...{ rechnungen, updRe, nav, dupRe, firma }} />}
-        {pg === "kunden" && <KundenListe {...{ kunden, rechnungen }} />}
+        {pg === "neue-rechnung" && <NeueRechnung {...{ firma, kunden, addKu, addRe, updRe, nextNr: nxtNr(), nav, plan, lim, canCreate: rechnungen.length < lim.re, editRechnung: editRe, onEditDone: () => setEditRe(null) }} />}
+        {pg === "rechnungen" && <RechnungenListe {...{ rechnungen, updRe, nav, dupRe, firma, onEdit: r => { setEditRe(r); setPg("neue-rechnung"); } }} />}
+        {pg === "kunden" && <KundenListe {...{ kunden, rechnungen, updKu, delKu }} />}
         {pg === "abo" && <AboPage {...{ plan, spl }} />}
         {pg === "supabase" && <SupabasePage />}
         {pg === "settings" && <SettingsPage {...{ firma, sf, rechnungen, kunden, sre, skn }} />}
@@ -727,7 +731,7 @@ function OnboardingWizard({ onComplete }) {
   const [form, setForm] = useState({ name: "", inhaber: "", strasse: "", plz: "", ort: "", telefon: "", email: "", web: "", steuernr: "", ustid: "", bankName: "", iban: "", bic: "", gewerk: "", logo: "" });
   const [logoErr, setLogoErr] = useState("");
   const fRef = useRef();
-  const handleLogo = e => { const f = e.target.files[0]; if (!f) return; if (f.size > 500000) { setLogoErr("Datei zu groß – max. 500 KB erlaubt."); return; } setLogoErr(""); const r = new FileReader(); r.onload = ev => setForm({ ...form, logo: ev.target.result }); r.readAsDataURL(f); };
+  const handleLogo = e => { const f = e.target.files[0]; if (!f) return; if (f.size > 2000000) { setLogoErr("Datei zu groß – max. 2 MB erlaubt."); return; } setLogoErr(""); const img = new Image(); const url = URL.createObjectURL(f); img.onload = () => { const c = document.createElement("canvas"); const MAX = 400; let w = img.width, h = img.height; if (w > MAX) { h = h * MAX / w; w = MAX; } c.width = w; c.height = h; c.getContext("2d").drawImage(img, 0, 0, w, h); const compressed = c.toDataURL("image/jpeg", 0.75); setForm(prev => ({ ...prev, logo: compressed })); URL.revokeObjectURL(url); }; img.src = url; };
 
   const canNext = () => {
     if (step === 1) return !!form.gewerk;
@@ -944,7 +948,7 @@ function Dashboard({ rechnungen, kunden, firma, nav, updRe, plan, lim }) {
 function SB({ s }) { const m = { offen: { b: "#fef3c7", c: "#92400e", l: "Offen" }, bezahlt: { b: "#d1fae5", c: "#065f46", l: "Bezahlt" }, gemahnt: { b: "#fee2e2", c: "#991b1b", l: "Gemahnt" }, storniert: { b: "#e5e7eb", c: "#374151", l: "Storniert" }, angebot: { b: "#e0e7ff", c: "#3730a3", l: "Angebot" } }; const v = m[s] || m.offen; return <span className="status-badge" style={{ background: v.b, color: v.c }}>{v.l}</span>; }
 
 // ═══ NEUE RECHNUNG (compact – same logic as v3) ═══
-function NeueRechnung({ firma, kunden, addKu, addRe, nextNr, nav, plan, lim, canCreate }) {
+function NeueRechnung({ firma, kunden, addKu, addRe, updRe, nextNr, nav, plan, lim, canCreate, editRechnung, onEditDone }) {
   const [gw, setGw] = useState(firma?.gewerk || ""); const [kS, setKS] = useState(""); const [selK, setSelK] = useState(null);
   const [neuK, setNeuK] = useState({ name: "", strasse: "", plz: "", ort: "", email: "" }); const [showN, setShowN] = useState(false);
   const [pos, setPos] = useState([]); const [ziel, setZiel] = useState(14); const [notiz, setNotiz] = useState("");
@@ -952,8 +956,22 @@ function NeueRechnung({ firma, kunden, addKu, addRe, nextNr, nav, plan, lim, can
   const [rabatt, setRabatt] = useState(0); const [typ, setTyp] = useState("rechnung");
   const [zvon, setZvon] = useState(""); const [zbis, setZbis] = useState(""); const [valE, setValE] = useState([]);
 
+  useEffect(() => {
+    if (!editRechnung) return;
+    setGw(editRechnung.gewerk || "");
+    setPos(editRechnung.positionen || []);
+    setZiel(editRechnung.zahlungsziel || 14);
+    setNotiz(editRechnung.notiz || "");
+    setRabatt(editRechnung.rabatt || 0);
+    setTyp(editRechnung.typ === "angebot" ? "angebot" : "rechnung");
+    setZvon(editRechnung.zeitraumVon || "");
+    setZbis(editRechnung.zeitraumBis || "");
+    const k = kunden.find(k => k.id === editRechnung.kundeId);
+    if (k) setSelK(k);
+  }, [editRechnung]);
+
   const fK = kunden.filter(k => k.name.toLowerCase().includes(kS.toLowerCase()));
-  const addP = p => setPos([...pos, { ...p, id: uid(), menge: p.menge || 1, mwst: 19, typ: p.typ || "arbeit" }]);
+  const addP = p => setPos([...pos, { ...p, id: uid(), menge: p.menge || 1, mwst: firma?.kleinunternehmer ? 0 : 19, typ: p.typ || "arbeit" }]);
   const updP = (pid, f, v) => setPos(pos.map(p => p.id === pid ? { ...p, [f]: v } : p));
   const rmP = pid => setPos(pos.filter(p => p.id !== pid));
   const netto = pos.reduce((s, p) => s + p.menge * p.preis, 0);
@@ -969,14 +987,21 @@ function NeueRechnung({ firma, kunden, addKu, addRe, nextNr, nav, plan, lim, can
     const d = new Date().toISOString().split("T")[0]; const fdt = new Date(); fdt.setDate(fdt.getDate() + ziel);
     const re = { id: uid(), nummer: nextNr, typ, datum: d, faelligDatum: fdt.toISOString().split("T")[0], kundeId: kunde.id, kundeName: kunde.name, kundeAdresse: `${kunde.strasse}, ${kunde.plz} ${kunde.ort}`, kundeEmail: kunde.email || "", positionen: pos, netto: nettoNR, mwst: mwstB, gesamt: brutto, zahlungsziel: ziel, notiz, status: typ === "angebot" ? "angebot" : "offen", gewerk: gw, rabatt, zeitraumVon: zvon, zeitraumBis: zbis };
     const errs = validateRechnung(re, firma); if (errs.length > 0) { setValE(errs); return; }
-    setSaving(true); await addRe(re); setSaving(false); nav("rechnungen");
+    setSaving(true);
+    if (editRechnung) {
+      updRe(editRechnung.id, { ...re, id: editRechnung.id, nummer: editRechnung.nummer });
+      onEditDone?.();
+    } else {
+      addRe(re);
+    }
+    setSaving(false); nav("rechnungen");
   };
 
   if (!firma) return <div className="page"><div className="empty"><div className="empty-ico">{IC.gear}</div><h2>Firmendaten fehlen</h2><button className="p-btn" style={{ marginTop: 14 }} onClick={() => nav("settings")}>Einstellungen</button></div></div>;
 
   return (
     <div className="page">
-      <div className="page-head"><div><h1 className="h1">{typ === "angebot" ? "Neues Angebot" : "Neue Rechnung"}</h1><p className="sub">Nr. {nextNr}</p></div>
+      <div className="page-head"><div><h1 className="h1">{editRechnung ? "Rechnung bearbeiten" : typ === "angebot" ? "Neues Angebot" : "Neue Rechnung"}</h1><p className="sub">Nr. {editRechnung ? editRechnung.nummer : nextNr}</p></div>
         <div className="toggle-wrap"><button className={`tog-btn ${typ === "rechnung" ? "active" : ""}`} onClick={() => setTyp("rechnung")}>Rechnung</button><button className={`tog-btn ${typ === "angebot" ? "active" : ""}`} onClick={() => setTyp("angebot")}>Angebot</button></div>
       </div>
       {valE.length > 0 && <div className="warn-bar">{IC.alert}<div><strong>Fehler:</strong> {valE.join(", ")}</div></div>}
@@ -1031,7 +1056,7 @@ function NeueRechnung({ firma, kunden, addKu, addRe, nextNr, nav, plan, lim, can
 }
 
 // ═══ RECHNUNGEN MIT PDF ═══
-function RechnungenListe({ rechnungen, updRe, nav, dupRe, firma }) {
+function RechnungenListe({ rechnungen, updRe, nav, dupRe, firma, onEdit }) {
   const [filter, setFilter] = useState("alle"); const [search, setSearch] = useState("");
   const [mahnM, setMahnM] = useState(null); const [mahnS, setMahnS] = useState(1);
   const [stornierConfirm, setStornierConfirm] = useState(null);
@@ -1041,7 +1066,7 @@ function RechnungenListe({ rechnungen, updRe, nav, dupRe, firma }) {
   return (
     <div className="page">
       <div className="page-head"><div><h1 className="h1">Rechnungen</h1><p className="sub">{rechnungen.length} insgesamt</p></div><div style={{ display: "flex", gap: 6, flexWrap: "wrap" }}><button className="s-btn" onClick={exportDatev}>{IC.dl} DATEV</button><button className="p-btn" onClick={() => nav("neue-rechnung")}>{IC.plus} Neu</button></div></div>
-      <div style={{ display: "flex", gap: 8, marginBottom: 16, flexWrap: "wrap" }}><div style={{ position: "relative", flex: 1, minWidth: 160 }}><span className="search-ico">{IC.search}</span><input className="inp search-inp" placeholder="Suchen..." value={search} onChange={e => setSearch(e.target.value)} /></div><div className="tabs">{["alle", "offen", "bezahlt", "gemahnt", "angebot"].map(f => <button key={f} className={`tab ${filter === f ? "active" : ""}`} onClick={() => setFilter(f)}>{f.charAt(0).toUpperCase() + f.slice(1)}</button>)}</div></div>
+      <div style={{ display: "flex", gap: 8, marginBottom: 16, flexWrap: "wrap" }}><div style={{ position: "relative", flex: 1, minWidth: 160 }}><span className="search-ico">{IC.search}</span><input className="inp search-inp" placeholder="Suchen..." value={search} onChange={e => setSearch(e.target.value)} /></div><div className="tabs">{["alle", "offen", "bezahlt", "gemahnt", "storniert", "angebot"].map(f => <button key={f} className={`tab ${filter === f ? "active" : ""}`} onClick={() => setFilter(f)}>{f.charAt(0).toUpperCase() + f.slice(1)}</button>)}</div></div>
       {fl.length === 0 ? <div className="empty"><div className="empty-ico">{IC.doc}</div><h2>Keine Ergebnisse</h2></div> :
         <div className="tbl-wrap"><div className="tbl-h"><span style={{ flex: 1 }}>Nr.</span><span style={{ flex: 1.5 }}>Kunde</span><span style={{ flex: .7 }}>Datum</span><span style={{ flex: .8, textAlign: "right" }}>Betrag</span><span style={{ flex: .6, textAlign: "center" }}>Status</span><span style={{ flex: 2, textAlign: "right" }}>Aktionen</span></div>
           {fl.map(r => <div key={r.id} className="tbl-r">
@@ -1055,6 +1080,7 @@ function RechnungenListe({ rechnungen, updRe, nav, dupRe, firma }) {
               {r.status === "offen" && <button className="s-btn-g" onClick={() => updRe(r.id, { status: "bezahlt" })}>{IC.check}</button>}
               {(r.status === "offen" || r.status === "gemahnt") && firma && <button className="s-btn" onClick={() => { setMahnM(r); setMahnS(r.status === "gemahnt" ? 2 : 1); }}>{IC.mail}</button>}
               {r.status === "angebot" && <button className="s-btn-g" onClick={() => updRe(r.id, { status: "offen", typ: "rechnung" })}>→RE</button>}
+              {r.status !== "storniert" && <button className="s-btn" onClick={() => onEdit(r)} title="Bearbeiten">✏️</button>}
               <button className="s-btn" onClick={() => dupRe(r)}>{IC.copy}</button>
               {r.status !== "storniert" && r.status !== "bezahlt" && <button className="d-btn" style={{ padding: "4px 8px", fontSize: 11 }} onClick={() => setStornierConfirm(r)}>{IC.trash}</button>}
             </span>
@@ -1068,15 +1094,42 @@ function RechnungenListe({ rechnungen, updRe, nav, dupRe, firma }) {
 }
 
 // ═══ KUNDEN ═══
-function KundenListe({ kunden, rechnungen }) {
+function KundenListe({ kunden, rechnungen, updKu, delKu }) {
   const [search, setSearch] = useState("");
+  const [editK, setEditK] = useState(null);
+  const [delConfirm, setDelConfirm] = useState(null);
+  const [editForm, setEditForm] = useState({});
   const f = kunden.filter(k => k.name?.toLowerCase().includes(search.toLowerCase()));
   const st = kid => { const kr = rechnungen.filter(r => r.kundeId === kid); return { c: kr.length, u: kr.filter(r => r.status === "bezahlt").reduce((s, r) => s + r.gesamt, 0) }; };
+  const openEdit = k => { setEditK(k); setEditForm({ name: k.name || "", strasse: k.strasse || "", plz: k.plz || "", ort: k.ort || "", email: k.email || "", telefon: k.telefon || "" }); };
+  const hasOpenRE = kid => rechnungen.some(r => r.kundeId === kid && (r.status === "offen" || r.status === "gemahnt"));
   return (
-    <div className="page"><div className="page-head"><div><h1 className="h1">Kunden</h1><p className="sub">{kunden.length}</p></div></div>
+    <div className="page">
+      <div className="page-head"><div><h1 className="h1">Kunden</h1><p className="sub">{kunden.length}</p></div></div>
       <div style={{ position: "relative", maxWidth: 320, marginBottom: 16 }}><span className="search-ico">{IC.search}</span><input className="inp search-inp" placeholder="Suchen..." value={search} onChange={e => setSearch(e.target.value)} /></div>
       {f.length === 0 ? <div className="empty"><div className="empty-ico">{IC.users}</div><h2>Keine Kunden</h2></div> :
-        <div className="kunden-grid">{f.map(k => { const s = st(k.id); return <div key={k.id} className="kunde-c"><div className="kunde-av">{k.name?.charAt(0)?.toUpperCase()}</div><div style={{ flex: 1, minWidth: 0 }}><div style={{ fontWeight: 600, fontSize: 13 }}>{k.name}</div><div style={{ fontSize: 11, color: "#64748b" }}>{k.plz} {k.ort}</div></div><div style={{ fontSize: 11, textAlign: "right" }}><div>{s.c} RE</div><div>{fc(s.u)}</div></div></div>; })}</div>}
+        <div className="kunden-grid">{f.map(k => { const s = st(k.id); return (
+          <div key={k.id} className="kunde-c">
+            <div className="kunde-av">{k.name?.charAt(0)?.toUpperCase()}</div>
+            <div style={{ flex: 1, minWidth: 0 }}>
+              <div style={{ fontWeight: 600, fontSize: 13 }}>{k.name}</div>
+              <div style={{ fontSize: 11, color: "#64748b" }}>{k.strasse && `${k.strasse}, `}{k.plz} {k.ort}</div>
+              {k.email && <div style={{ fontSize: 11, color: "#64748b" }}>{k.email}</div>}
+              {k.telefon && <div style={{ fontSize: 11, color: "#64748b" }}>{k.telefon}</div>}
+            </div>
+            <div style={{ display: "flex", flexDirection: "column", alignItems: "flex-end", gap: 4 }}>
+              <div style={{ fontSize: 11, textAlign: "right" }}><div>{s.c} RE</div><div>{fc(s.u)}</div></div>
+              <div style={{ display: "flex", gap: 4 }}>
+                <button className="s-btn" style={{ padding: "3px 8px", fontSize: 11 }} onClick={() => openEdit(k)}>✏️</button>
+                <button className="d-btn" style={{ padding: "3px 8px", fontSize: 11 }} onClick={() => setDelConfirm(k)} title="Löschen">{IC.trash}</button>
+              </div>
+            </div>
+          </div>
+        ); })}</div>}
+
+      {editK && <div className="modal-overlay" onClick={() => setEditK(null)}><div className="modal-box" style={{ maxWidth: 420 }} onClick={e => e.stopPropagation()}><div style={{ padding: 24 }}><h2 style={{ fontSize: 16, fontWeight: 700, marginBottom: 16, color: "#111" }}>Kunde bearbeiten</h2><div style={{ display: "flex", flexDirection: "column", gap: 8 }}><input className="inp" style={{ color: "#111" }} placeholder="Name *" value={editForm.name} onChange={e => setEditForm({ ...editForm, name: e.target.value })} /><input className="inp" style={{ color: "#111" }} placeholder="Straße" value={editForm.strasse} onChange={e => setEditForm({ ...editForm, strasse: e.target.value })} /><div style={{ display: "flex", gap: 8 }}><input className="inp" style={{ width: 90, color: "#111" }} placeholder="PLZ" value={editForm.plz} onChange={e => setEditForm({ ...editForm, plz: e.target.value })} /><input className="inp" style={{ flex: 1, color: "#111" }} placeholder="Ort" value={editForm.ort} onChange={e => setEditForm({ ...editForm, ort: e.target.value })} /></div><input className="inp" style={{ color: "#111" }} placeholder="E-Mail" value={editForm.email} onChange={e => setEditForm({ ...editForm, email: e.target.value })} /><input className="inp" style={{ color: "#111" }} placeholder="Telefon" value={editForm.telefon} onChange={e => setEditForm({ ...editForm, telefon: e.target.value })} /></div><div style={{ display: "flex", gap: 8, marginTop: 16, justifyContent: "flex-end" }}><button className="p-btn" onClick={() => { if (!editForm.name) return; updKu(editK.id, editForm); setEditK(null); }}>Speichern</button><button className="s-btn" onClick={() => setEditK(null)}>Abbrechen</button></div></div></div></div>}
+
+      {delConfirm && <div className="modal-overlay" onClick={() => setDelConfirm(null)}><div className="modal-box" style={{ maxWidth: 360 }} onClick={e => e.stopPropagation()}><div style={{ padding: 24 }}><h2 style={{ fontSize: 16, fontWeight: 700, marginBottom: 8, color: "#111" }}>Kunde löschen?</h2><p style={{ fontSize: 13, color: "#555", marginBottom: 16, lineHeight: 1.5 }}><strong>{delConfirm.name}</strong>{hasOpenRE(delConfirm.id) ? <><br /><span style={{ color: "#ef4444" }}>⚠ Dieser Kunde hat noch offene Rechnungen!</span></> : ""}<br /><br />Alle Kundendaten werden gelöscht. Rechnungen bleiben erhalten.</p><div style={{ display: "flex", gap: 8, justifyContent: "flex-end" }}><button className="d-btn" onClick={() => { delKu(delConfirm.id); setDelConfirm(null); }}>Löschen</button><button className="s-btn" onClick={() => setDelConfirm(null)}>Abbrechen</button></div></div></div></div>}
     </div>
   );
 }
@@ -1178,7 +1231,7 @@ function SupabasePage() {
 function SettingsPage({ firma, sf, rechnungen, kunden, sre, skn }) {
   const [form, setForm] = useState(firma || { name: "", inhaber: "", strasse: "", plz: "", ort: "", telefon: "", email: "", web: "", steuernr: "", ustid: "", bankName: "", iban: "", bic: "", gewerk: "", logo: "" });
   const [showR, setShowR] = useState(false); const fRef = useRef();
-  const handleLogo = e => { const f = e.target.files[0]; if (!f) return; if (f.size > 500000) { alert("Max 500KB"); return; } const r = new FileReader(); r.onload = ev => setForm({ ...form, logo: ev.target.result }); r.readAsDataURL(f); };
+  const handleLogo = e => { const f = e.target.files[0]; if (!f) return; if (f.size > 2000000) { alert("Datei zu groß – max. 2 MB."); return; } const img = new Image(); const url = URL.createObjectURL(f); img.onload = () => { const c = document.createElement("canvas"); const MAX = 400; let w = img.width, h = img.height; if (w > MAX) { h = h * MAX / w; w = MAX; } c.width = w; c.height = h; c.getContext("2d").drawImage(img, 0, 0, w, h); const compressed = c.toDataURL("image/jpeg", 0.75); setForm(prev => ({ ...prev, logo: compressed })); URL.revokeObjectURL(url); }; img.src = url; };
 
   return (
     <div className="page"><div className="page-head"><div><h1 className="h1">Einstellungen</h1></div></div>
@@ -1193,7 +1246,7 @@ function SettingsPage({ firma, sf, rechnungen, kunden, sre, skn }) {
           <div style={{ display: "flex", gap: 7 }}><FI l="PLZ *" v={form.plz} k="plz" f={form} s={setForm} w={100} /><FI l="Ort *" v={form.ort} k="ort" f={form} s={setForm} /></div>
           <div style={{ display: "flex", gap: 7 }}><FI l="Tel" v={form.telefon} k="telefon" f={form} s={setForm} /><FI l="E-Mail" v={form.email} k="email" f={form} s={setForm} /></div>
         </div></div>
-        <div className="sec"><h3 className="sec-title">Steuern (§14 Pflicht)</h3><div style={{ display: "flex", gap: 7 }}><FI l="Steuernr." v={form.steuernr} k="steuernr" f={form} s={setForm} /><FI l="USt-ID" v={form.ustid} k="ustid" f={form} s={setForm} /></div></div>
+        <div className="sec"><h3 className="sec-title">Steuern (§14 Pflicht)</h3><div style={{ display: "flex", gap: 7, marginBottom: 8 }}><FI l="Steuernr." v={form.steuernr} k="steuernr" f={form} s={setForm} /><FI l="USt-ID" v={form.ustid} k="ustid" f={form} s={setForm} /></div><label style={{ display: "flex", alignItems: "center", gap: 8, cursor: "pointer", fontSize: 13 }}><input type="checkbox" checked={!!form.kleinunternehmer} onChange={e => setForm({ ...form, kleinunternehmer: e.target.checked })} /><span>Kleinunternehmer nach §19 UStG (kein MwSt-Ausweis)</span></label></div>
         <div className="sec"><h3 className="sec-title">Bank</h3><div style={{ display: "flex", flexDirection: "column", gap: 7 }}><FI l="Bank" v={form.bankName} k="bankName" f={form} s={setForm} /><div style={{ display: "flex", gap: 7 }}><FI l="IBAN" v={form.iban} k="iban" f={form} s={setForm} /><FI l="BIC" v={form.bic} k="bic" f={form} s={setForm} w={140} /></div></div></div>
         <button className="p-btn" onClick={() => { if (!form.name) return; sf(form); }}>Speichern</button>
         <div style={{ background: "#1c1917", borderRadius: 10, padding: 16, border: "1px solid #7f1d1d" }}><h3 style={{ fontSize: 13, fontWeight: 700, color: "#f87171", marginBottom: 6 }}>Gefahrenzone</h3>
