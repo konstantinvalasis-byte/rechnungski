@@ -754,6 +754,7 @@ function App() {
   const updRe = async (rid, up) => { await sre(rechnungen.map(r => r.id === rid ? { ...r, ...up } : r)); };
   const addKu = async k => { const ex = kunden.find(x => x.name === k.name && x.strasse === k.strasse); if (ex) return ex; const nk = { ...k, id: uid() }; await skn([...kunden, nk]); return nk; };
   const dupRe = async o => { const nr = nxtNr(); const d = new Date().toISOString().split("T")[0]; const fdt = new Date(); fdt.setDate(fdt.getDate() + (o.zahlungsziel || 14)); await addRe({ ...o, id: uid(), nummer: nr, datum: d, faelligDatum: fdt.toISOString().split("T")[0], status: "offen" }); };
+  const delRe = rid => sre(rechnungen.filter(r => r.id !== rid));
   const nxtNr = () => { const y = new Date().getFullYear(); const prefix = `RE-${y}-`; const maxNr = rechnungen.filter(r => r.nummer?.startsWith(prefix)).reduce((max, r) => { const n = parseInt(r.nummer.slice(prefix.length), 10); return isNaN(n) ? max : Math.max(max, n); }, 0); return `${prefix}${String(maxNr + 1).padStart(4, "0")}`; };
   const lim = { free: { re: 5, ku: 3 }, starter: { re: 50, ku: 25 }, pro: { re: 500, ku: 999 }, enterprise: { re: 99999, ku: 99999 } }[plan] || { re: 5, ku: 3 };
   const nav = p => { setPg(p); setMobNav(false); };
@@ -790,7 +791,7 @@ function App() {
       <main className="main-content">
         {pg === "dashboard" && <Dashboard {...{ rechnungen, kunden, firma, nav, updRe, addRe, addKu, plan, lim }} />}
         {pg === "neue-rechnung" && <NeueRechnung {...{ firma, kunden, addKu, addRe, updRe, nextNr: nxtNr(), nav, plan, lim, canCreate: rechnungen.length < lim.re, editRechnung: editRe, onEditDone: () => setEditRe(null), favoriten, addFav, delFav }} />}
-        {pg === "rechnungen" && <RechnungenListe {...{ rechnungen, updRe, nav, dupRe, firma, onEdit: r => { setEditRe(r); setPg("neue-rechnung"); } }} />}
+        {pg === "rechnungen" && <RechnungenListe {...{ rechnungen, updRe, delRe, nav, dupRe, firma, onEdit: r => { setEditRe(r); setPg("neue-rechnung"); } }} />}
         {pg === "kunden" && <KundenListe {...{ kunden, rechnungen, updKu, delKu }} />}
         {pg === "wiederkehrend" && <WiederkehrendPage {...{ wiederkehrend, addWdk, updWdk, delWdk, kunden, rechnungen, firma }} />}
         {pg === "abo" && <AboPage {...{ plan, spl }} />}
@@ -1313,10 +1314,11 @@ function NeueRechnung({ firma, kunden, addKu, addRe, updRe, nextNr, nav, plan, l
 }
 
 // ═══ RECHNUNGEN MIT PDF ═══
-function RechnungenListe({ rechnungen, updRe, nav, dupRe, firma, onEdit }) {
+function RechnungenListe({ rechnungen, updRe, delRe, nav, dupRe, firma, onEdit }) {
   const [filter, setFilter] = useState("alle"); const [search, setSearch] = useState("");
   const [mahnM, setMahnM] = useState(null); const [mahnS, setMahnS] = useState(1);
   const [stornierConfirm, setStornierConfirm] = useState(null);
+  const [deleteConfirm, setDeleteConfirm] = useState(null);
   const fl = rechnungen.filter(r => filter === "alle" || r.status === filter).filter(r => r.kundeName?.toLowerCase().includes(search.toLowerCase()) || r.nummer?.includes(search)).sort((a, b) => new Date(b.datum) - new Date(a.datum));
   const exportDatev = () => { const csv = datevCSV(rechnungen, firma); const b = new Blob([csv], { type: "text/csv" }); const a = document.createElement("a"); a.href = URL.createObjectURL(b); a.download = `DATEV_${new Date().toISOString().split("T")[0]}.csv`; a.click(); };
 
@@ -1339,13 +1341,16 @@ function RechnungenListe({ rechnungen, updRe, nav, dupRe, firma, onEdit }) {
               {r.status === "angebot" && <button className="s-btn-g" onClick={() => updRe(r.id, { status: "offen", typ: "rechnung" })}>→RE</button>}
               {r.status !== "storniert" && <button className="s-btn" onClick={() => onEdit(r)} title="Bearbeiten">✏️</button>}
               <button className="s-btn" onClick={() => dupRe(r)}>{IC.copy}</button>
-              {r.status !== "storniert" && r.status !== "bezahlt" && <button className="d-btn" style={{ padding: "4px 8px", fontSize: 11 }} onClick={() => setStornierConfirm(r)}>{IC.trash}</button>}
+              {r.status !== "storniert" && r.status !== "bezahlt" && <button className="d-btn" style={{ padding: "4px 8px", fontSize: 11 }} onClick={() => setStornierConfirm(r)}>Storno</button>}
+              {(r.status === "storniert" || r.status === "angebot") && <button className="d-btn" style={{ padding: "4px 8px", fontSize: 11 }} onClick={() => setDeleteConfirm(r)}>{IC.trash}</button>}
             </span>
           </div>)}</div>}
 
       {mahnM && firma && <div className="modal-overlay" onClick={() => setMahnM(null)}><div className="modal-box" style={{ maxWidth: 560 }} onClick={e => e.stopPropagation()}><div style={{ padding: 24 }}><h2 style={{ fontSize: 16, fontWeight: 700, marginBottom: 10, color: "#111" }}>Zahlungserinnerung</h2><div style={{ display: "flex", gap: 4, marginBottom: 12 }}>{[1, 2, 3].map(s => <button key={s} className={`tab ${mahnS === s ? "active" : ""}`} onClick={() => setMahnS(s)}>{s}. Mahnung</button>)}</div><textarea style={{ width: "100%", minHeight: 180, padding: 12, border: "1px solid #d1d5db", borderRadius: 7, fontSize: 12, fontFamily: "'DM Sans',sans-serif", color: "#111", resize: "vertical" }} value={mahnung(mahnM, firma, mahnS)} readOnly /><div style={{ display: "flex", gap: 6, marginTop: 12, justifyContent: "flex-end" }}><button className="s-btn pdf-btn" onClick={() => { printHtmlInIframe(generateMahnungPdfHtml(mahnM, firma, mahnS)); updRe(mahnM.id, { status: "gemahnt", mahnstufe: mahnS }); setMahnM(null); }}>{IC.pdf} PDF</button><button className="p-btn" onClick={() => { navigator.clipboard.writeText(mahnung(mahnM, firma, mahnS)); updRe(mahnM.id, { status: "gemahnt", mahnstufe: mahnS }); setMahnM(null); }}>Kopieren</button><button className="s-btn" onClick={() => setMahnM(null)}>Schließen</button></div></div></div></div>}
 
       {stornierConfirm && <div className="modal-overlay" onClick={() => setStornierConfirm(null)}><div className="modal-box" style={{ maxWidth: 380 }} onClick={e => e.stopPropagation()}><div style={{ padding: 24 }}><h2 style={{ fontSize: 16, fontWeight: 700, marginBottom: 8, color: "#111" }}>Rechnung stornieren?</h2><p style={{ fontSize: 13, color: "#555", marginBottom: 16, lineHeight: 1.5 }}><strong>{stornierConfirm.nummer}</strong> – {stornierConfirm.kundeName}<br />Betrag: {fc(stornierConfirm.gesamt)}<br /><br />Die Rechnung wird als storniert markiert und aus allen Auswertungen ausgeschlossen.</p><div style={{ display: "flex", gap: 8, justifyContent: "flex-end" }}><button className="d-btn" onClick={() => { updRe(stornierConfirm.id, { status: "storniert" }); setStornierConfirm(null); }}>Ja, stornieren</button><button className="s-btn" onClick={() => setStornierConfirm(null)}>Abbrechen</button></div></div></div></div>}
+
+      {deleteConfirm && <div className="modal-overlay" onClick={() => setDeleteConfirm(null)}><div className="modal-box" style={{ maxWidth: 380 }} onClick={e => e.stopPropagation()}><div style={{ padding: 24 }}><h2 style={{ fontSize: 16, fontWeight: 700, marginBottom: 8, color: "#111" }}>Rechnung endgültig löschen?</h2><p style={{ fontSize: 13, color: "#555", marginBottom: 16, lineHeight: 1.5 }}><strong>{deleteConfirm.nummer}</strong> – {deleteConfirm.kundeName}<br />Betrag: {fc(deleteConfirm.gesamt)}<br /><br /><span style={{ color: "#ef4444" }}>Die Rechnung wird unwiderruflich gelöscht und kann nicht wiederhergestellt werden.</span></p><div style={{ display: "flex", gap: 8, justifyContent: "flex-end" }}><button className="d-btn" onClick={() => { delRe(deleteConfirm.id); setDeleteConfirm(null); }}>Endgültig löschen</button><button className="s-btn" onClick={() => setDeleteConfirm(null)}>Abbrechen</button></div></div></div></div>}
     </div>
   );
 }
