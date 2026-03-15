@@ -1,440 +1,859 @@
-// @ts-nocheck
 "use client";
-import { useState, useEffect, useRef } from "react";
+import { useState, useEffect, useRef, type ReactNode } from "react";
 
-const CK = <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="#059669" strokeWidth="2.5"><polyline points="20 6 9 17 4 12"/></svg>;
-const ARR = <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><line x1="5" y1="12" x2="19" y2="12"/><polyline points="12 5 19 12 12 19"/></svg>;
-
-// CSS-only branch illustrations (gradient + emoji combo that works in artifacts)
+// ─── Data ────────────────────────────────────────────────
 const BRANCHES = [
-  { name: "Elektriker", grad: "linear-gradient(135deg,#fef3c7,#fbbf24)", symbol: "⚡", color: "#92400e" },
-  { name: "Grafikdesign", grad: "linear-gradient(135deg,#fce7f3,#ec4899)", symbol: "🎨", color: "#9d174d" },
-  { name: "Fotografie", grad: "linear-gradient(135deg,#e0e7ff,#6366f1)", symbol: "📸", color: "#3730a3" },
-  { name: "IT-Beratung", grad: "linear-gradient(135deg,#d1fae5,#10b981)", symbol: "💻", color: "#065f46" },
-  { name: "Personal Training", grad: "linear-gradient(135deg,#fee2e2,#ef4444)", symbol: "💪", color: "#991b1b" },
-  { name: "Catering", grad: "linear-gradient(135deg,#ffedd5,#f97316)", symbol: "🍽️", color: "#9a3412" },
-  { name: "Gartenbau", grad: "linear-gradient(135deg,#d1fae5,#22c55e)", symbol: "🌿", color: "#166534" },
-  { name: "Massage", grad: "linear-gradient(135deg,#ede9fe,#8b5cf6)", symbol: "💆", color: "#5b21b6" },
-  { name: "Webentwicklung", grad: "linear-gradient(135deg,#dbeafe,#3b82f6)", symbol: "🌐", color: "#1e40af" },
-  { name: "DJ & Events", grad: "linear-gradient(135deg,#fae8ff,#d946ef)", symbol: "🎵", color: "#86198f" },
-  { name: "Reinigung", grad: "linear-gradient(135deg,#ccfbf1,#14b8a6)", symbol: "✨", color: "#115e59" },
-  { name: "+ 20 weitere", grad: "linear-gradient(135deg,#f1f5f9,#94a3b8)", symbol: "→", color: "#334155" },
+  { name: "Elektriker", icon: "⚡", gradient: "from-amber-100 to-amber-300" },
+  { name: "Grafikdesign", icon: "🎨", gradient: "from-pink-100 to-pink-300" },
+  { name: "Fotografie", icon: "📸", gradient: "from-indigo-100 to-indigo-300" },
+  { name: "IT-Beratung", icon: "💻", gradient: "from-emerald-100 to-emerald-300" },
+  { name: "Personal Training", icon: "💪", gradient: "from-red-100 to-red-300" },
+  { name: "Catering", icon: "🍽️", gradient: "from-orange-100 to-orange-300" },
+  { name: "Gartenbau", icon: "🌿", gradient: "from-green-100 to-green-300" },
+  { name: "Massage", icon: "💆", gradient: "from-violet-100 to-violet-300" },
+  { name: "Webentwicklung", icon: "🌐", gradient: "from-blue-100 to-blue-300" },
+  { name: "DJ & Events", icon: "🎵", gradient: "from-fuchsia-100 to-fuchsia-300" },
+  { name: "Reinigung", icon: "✨", gradient: "from-teal-100 to-teal-300" },
+  { name: "+ 20 weitere", icon: "→", gradient: "from-slate-100 to-slate-300" },
 ];
 
-export default function LP() {
-  const [sy, setSy] = useState(0);
-  const [email, setEmail] = useState("");
-  const [sent, setSent] = useState(false);
-  const [faq, setFaq] = useState(null);
-  const [bill, setBill] = useState("monatlich");
-  const [ds, setDs] = useState(0);
+const STEPS = [
+  { title: "Branche wählen", desc: "30+ Branchen mit passenden KI-Preisen", icon: "🎯", color: "bg-brand-600" },
+  { title: "Positionen hinzufügen", desc: "KI schlägt branchenübliche Preise vor", icon: "⚡", color: "bg-amber-500" },
+  { title: "Vorschau prüfen", desc: "Professionelles Layout, §14-konform", icon: "👁️", color: "bg-success-600" },
+  { title: "PDF exportieren", desc: "Download, drucken oder per Mail", icon: "📄", color: "bg-danger-500" },
+];
 
-  useEffect(() => { const h = () => setSy(window.scrollY); window.addEventListener("scroll", h, { passive: true }); return () => window.removeEventListener("scroll", h); }, []);
-  useEffect(() => { const t = setInterval(() => setDs(s => (s + 1) % 4), 3500); return () => clearInterval(t); }, []);
+const FEATURES = [
+  { title: "§14 UStG-konform", desc: "Automatische Validierung aller Pflichtangaben." },
+  { title: "Angebote → Rechnungen", desc: "Ein Klick konvertiert Angebote in Rechnungen." },
+  { title: "DATEV CSV-Export", desc: "Im richtigen Format für deinen Steuerberater." },
+  { title: "Material & Arbeit getrennt", desc: "Transparente Aufschlüsselung für Kunden." },
+  { title: "3-Stufen-Mahnwesen", desc: "Professionelle Mahntexte, 1 Klick versenden." },
+  { title: "Logo & Branding", desc: "Dein Logo auf jeder Rechnung." },
+];
+
+const FAQS = [
+  { q: "Ist RechnungsKI §14 UStG-konform?", a: "Ja. Automatische Validierung aller Pflichtangaben: Name, Adresse, Steuernummer, fortlaufende Nummer, Datum, Steuersatz." },
+  { q: "Für welche Branchen?", a: "30+ Branchen: Handwerk, IT, Kreativ, Beratung, Gesundheit, Events, Transport, Reinigung, Bildung und mehr." },
+  { q: "DATEV-Export möglich?", a: "Ab dem Pro-Plan: 1-Klick CSV-Export im DATEV-Format." },
+  { q: "Funktioniert es mobil?", a: "Ja. Vollständig responsive — auf jedem Gerät, jeder Bildschirmgröße." },
+  { q: "Vertragsbindung?", a: "Nein. Monatlich kündbar. Jährlich sparst du 20%." },
+  { q: "Was ist mit meinen Daten?", a: "DSGVO-konform, deutsche Server, keine Weitergabe an Dritte. Deine Daten gehören dir." },
+];
+
+const PLANS = [
+  { name: "Free", price: 0, priceYearly: 0, desc: "Zum Ausprobieren", features: ["5 Rechnungen/Mo", "3 Kunden", "KI-Vorschläge", "MwSt-Automatik"] },
+  { name: "Starter", price: 9.99, priceYearly: 7.99, desc: "Einzelunternehmer", features: ["50 Rechnungen", "25 Kunden", "Logo & Branding", "PDF-Export", "Angebote", "Material/Arbeit", "Rabattfunktion"], popular: true },
+  { name: "Pro", price: 24.99, priceYearly: 19.99, desc: "Wachsende Betriebe", features: ["500 Rechnungen", "Unbegr. Kunden", "Alles aus Starter", "3-Stufen-Mahnung", "DATEV Export", "§14 Validierung"] },
+  { name: "Enterprise", price: 49.99, priceYearly: 39.99, desc: "Teams & Agenturen", features: ["Unbegrenzt", "Multi-User", "API-Zugang", "DATEV direkt", "PDF-Mailversand", "Eigener Support"] },
+];
+
+// ─── Icons ───────────────────────────────────────────────
+function CheckIcon({ className = "w-4 h-4" }: { className?: string }) {
+  return (
+    <svg className={className} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5">
+      <polyline points="20 6 9 17 4 12" />
+    </svg>
+  );
+}
+
+function ArrowIcon() {
+  return (
+    <svg className="w-4 h-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+      <line x1="5" y1="12" x2="19" y2="12" />
+      <polyline points="12 5 19 12 12 19" />
+    </svg>
+  );
+}
+
+function ChevronDown({ open }: { open: boolean }) {
+  return (
+    <svg
+      className={`w-5 h-5 text-slate-400 transition-transform duration-200 ${open ? "rotate-180" : ""}`}
+      viewBox="0 0 24 24"
+      fill="none"
+      stroke="currentColor"
+      strokeWidth="2"
+    >
+      <polyline points="6 9 12 15 18 9" />
+    </svg>
+  );
+}
+
+// ─── Scroll-animated section ─────────────────────────────
+function FadeIn({ children, id, className = "" }: { children: ReactNode; id?: string; className?: string }) {
+  const ref = useRef<HTMLDivElement>(null);
+  const [visible, setVisible] = useState(false);
+
+  useEffect(() => {
+    const el = ref.current;
+    if (!el) return;
+    const observer = new IntersectionObserver(
+      ([entry]) => { if (entry.isIntersecting) setVisible(true); },
+      { threshold: 0.08 }
+    );
+    observer.observe(el);
+    return () => observer.disconnect();
+  }, []);
 
   return (
-    <div className="lp">
-      <style>{CSS}</style>
-
-      {/* ══ NAV ══ */}
-      <nav className={`nav ${sy > 40 ? "nav-s" : ""}`}>
-        <div className="nav-in">
-          <div className="brand"><div className="logo-dot" /><span className="logo-t">RechnungsKI</span></div>
-          <div className="nav-r">
-            <a href="#how" className="nav-l">So geht's</a>
-            <a href="#branchen" className="nav-l">Branchen</a>
-            <a href="#features" className="nav-l">Features</a>
-            <a href="#preise" className="nav-l">Preise</a>
-            <a href="/dashboard" className="btn-p nav-cta">Kostenlos starten</a>
-          </div>
-        </div>
-      </nav>
-
-      {/* ══ HERO ══ */}
-      <section className="hero">
-        <div className="hero-art">
-          <div className="ha-circle ha-c1" />
-          <div className="ha-circle ha-c2" />
-          <div className="ha-circle ha-c3" />
-          <div className="ha-dots" />
-        </div>
-        <div className="hero-in">
-          <div className="hero-left">
-            <span className="hero-tag">Für Dienstleister · Handwerker · Freelancer</span>
-            <h1 className="hero-h1">Professionelle<br />Rechnungen.<br /><span className="hero-accent">In unter 2 Minuten.</span></h1>
-            <p className="hero-p">Die Rechnungssoftware mit KI-Vorschlägen für 30+ Branchen. §14-konform, PDF-Export, DATEV-ready. Schluss mit Papierkram.</p>
-            <div className="hero-cta">
-              {!sent ? <>
-                <input className="hero-inp" placeholder="deine@email.de" value={email} onChange={e => setEmail(e.target.value)} onKeyDown={e => e.key === "Enter" && email.includes("@") && setSent(true)} />
-                <button className="btn-p hero-btn" onClick={() => { if (email.includes("@")) { setSent(true); setTimeout(() => window.location.href = "/dashboard", 1200); } else { window.location.href = "/dashboard"; } }}>Kostenlos starten {ARR}</button>
-              </> : <div className="hero-ok">Perfekt — check dein Postfach!</div>}
-            </div>
-            <div className="trust-row">{["Keine Kreditkarte", "5 Rechnungen gratis", "DSGVO-konform"].map((t, i) => <span key={i} className="trust-i">{CK} {t}</span>)}</div>
-          </div>
-
-          <div className="hero-right">
-            <div className="mockup">
-              <div className="mock-bar"><i /><i /><i /><span className="mock-url">app.rechnungski.de</span></div>
-              <div className="mock-kpis">
-                {[{ l: "Umsatz", v: "€ 47.380", c: "#059669" }, { l: "Offen", v: "€ 5.240", c: "#d97706" }, { l: "Kunden", v: "23", c: "#4f46e5" }].map((k, i) =>
-                  <div key={i} className="mock-kpi" style={{ borderLeftColor: k.c }}>
-                    <div className="mk-l">{k.l}</div><div className="mk-v">{k.v}</div>
-                  </div>
-                )}
-              </div>
-              <div className="mock-tbl">
-                {[{ n: "Müller Bau GmbH", b: "€ 3.480", s: "Bezahlt", c: "#059669" }, { n: "Lisa Weber Design", b: "€ 1.250", s: "Offen", c: "#d97706" }, { n: "Schmidt IT", b: "€ 4.200", s: "Bezahlt", c: "#059669" }].map((r, i) =>
-                  <div key={i} className="mock-tr">
-                    <span className="mock-tn">{r.n}</span><span className="mock-tb">{r.b}</span>
-                    <span className="mock-ts" style={{ background: `${r.c}14`, color: r.c }}>{r.s}</span>
-                  </div>
-                )}
-              </div>
-            </div>
-          </div>
-        </div>
-      </section>
-
-      {/* ══ BRANCHEN ══ */}
-      <FS id="branchen">
-        <section className="sec">
-          <div className="sh"><span className="stag">30+ Branchen</span><h2 className="sh2">Eine App. Jede Branche.</h2><p className="sh-p">Handwerk, IT, Kreativ, Gesundheit, Events — RechnungsKI kennt deine Preise.</p></div>
-          <div className="br-grid">
-            {BRANCHES.map((b, i) => (
-              <div key={i} className="br-card" style={{ background: b.grad }}>
-                <span className="br-symbol">{b.symbol}</span>
-                <span className="br-name" style={{ color: b.color }}>{b.name}</span>
-              </div>
-            ))}
-          </div>
-        </section>
-      </FS>
-
-      {/* ══ HOW IT WORKS ══ */}
-      <FS id="how">
-        <section className="sec how-sec">
-          <div className="sh"><span className="stag">So funktioniert's</span><h2 className="sh2">4 Schritte. 2 Minuten. Fertig.</h2></div>
-          <div className="how-grid">
-            <div className="how-steps">
-              {[
-                { t: "Branche wählen", d: "30+ Branchen mit passenden KI-Preisen", ic: "🎯", col: "#4f46e5" },
-                { t: "Positionen hinzufügen", d: "KI schlägt branchenübliche Preise vor", ic: "⚡", col: "#d97706" },
-                { t: "Vorschau prüfen", d: "Professionelles Layout, §14-konform", ic: "👁️", col: "#059669" },
-                { t: "PDF exportieren", d: "Download, drucken oder per Mail", ic: "📄", col: "#dc2626" },
-              ].map((s, i) => (
-                <div key={i} className={`how-step ${ds === i ? "how-a" : ""}`} onClick={() => setDs(i)}>
-                  <div className="how-ico" style={{ background: ds === i ? s.col : "#e7e5e4", color: ds === i ? "#fff" : "#78716c" }}>{ds === i ? s.ic : i + 1}</div>
-                  <div><div className="how-t">{s.t}</div><div className="how-d">{s.d}</div></div>
-                  {ds === i && <div className="how-bar" style={{ background: s.col }} />}
-                </div>
-              ))}
-            </div>
-            <div className="how-vis">
-              <div className="demo-scr">
-                {ds === 0 && <DA><div className="dl">Branche wählen</div><div className="demo-br">{BRANCHES.slice(0, 6).map((b, i) => <div key={i} className={`demo-b ${i === 0 ? "demo-ba" : ""}`} style={{ background: i === 0 ? b.grad : undefined }}><span style={{ fontSize: 20 }}>{b.symbol}</span><span>{b.name}</span></div>)}</div></DA>}
-                {ds === 1 && <DA><div className="dl">KI-Vorschläge: Webdesign</div><div className="demo-pos">{[["Website (One-Pager)", "1.500 €"], ["WordPress Setup", "800 €"], ["Wartung/Monat", "120 €"]].map(([n, p], i) => <div key={i} className="demo-pr" style={{ animationDelay: `${i * .1}s` }}><span>{n}</span><span className="demo-pp">{p}</span><span className="demo-pa">+ Hinzufügen</span></div>)}</div></DA>}
-                {ds === 2 && <DA><div className="dl">Rechnungsvorschau</div><div className="demo-prev"><div className="dp-h"><div><div className="dp-bar" style={{ width: 70 }} /><div className="dp-bar" style={{ width: 110, marginTop: 4, opacity: .5 }} /></div><div className="dp-re">RECHNUNG</div></div><div className="dp-line" />{[["Website erstellen", "1.500,00 €"], ["WordPress Setup", "800,00 €"], ["Wartung (1 Mo.)", "120,00 €"]].map(([n, p], i) => <div key={i} className="dp-row"><span className="dp-desc">{n}</span><span className="dp-amt">{p}</span></div>)}<div className="dp-total"><span>Gesamt (brutto)</span><span>2.879,80 €</span></div></div></DA>}
-                {ds === 3 && <DA><div className="dl">Fertig!</div><div className="demo-done"><div className="demo-di">{CK}</div><div className="demo-dt">PDF bereit zum Download</div><button className="btn-p" style={{ padding: "10px 24px", fontSize: 13 }}>Herunterladen</button></div></DA>}
-              </div>
-            </div>
-          </div>
-        </section>
-      </FS>
-
-      {/* ══ FEATURES ══ */}
-      <FS id="features">
-        <section className="sec">
-          <div className="sh"><span className="stag">Features</span><h2 className="sh2">Was drin steckt</h2></div>
-          <div className="fh-grid">
-            <div className="fh-card">
-              <div className="fh-visual fhv-mobile">
-                <div className="fh-phone"><div className="fhp-bar" /><div className="fhp-kpis"><div className="fhp-kpi" style={{ borderLeftColor: "#059669" }}>€12k</div><div className="fhp-kpi" style={{ borderLeftColor: "#d97706" }}>€2k</div></div><div className="fhp-row" /><div className="fhp-row w70" /><div className="fhp-row w50" /></div>
-              </div>
-              <div className="fh-c"><h3>Mobil-optimiert</h3><p>Erstelle Rechnungen auf der Baustelle, im Café oder zwischen zwei Terminen. Jedes Gerät, jede Größe.</p></div>
-            </div>
-            <div className="fh-card">
-              <div className="fh-visual fhv-ai">
-                <div className="fhai-row"><span className="fhai-dot" style={{ background: "#059669" }} /><span>Website erstellen</span><span className="fhai-p">1.500 €</span></div>
-                <div className="fhai-row"><span className="fhai-dot" style={{ background: "#4f46e5" }} /><span>Logo-Design</span><span className="fhai-p">500 €</span></div>
-                <div className="fhai-row"><span className="fhai-dot" style={{ background: "#d97706" }} /><span>Wartung/Monat</span><span className="fhai-p">120 €</span></div>
-              </div>
-              <div className="fh-c"><h3>KI-Preisvorschläge</h3><p>Wähle deine Branche — die KI kennt Preise, Einheiten und Positionen. Ein Klick, fertig.</p></div>
-            </div>
-          </div>
-          <div className="f-grid">
-            {[
-              { t: "§14 UStG-konform", d: "Automatische Validierung aller Pflichtangaben." },
-              { t: "Angebote → Rechnungen", d: "Ein Klick konvertiert Angebote in Rechnungen." },
-              { t: "DATEV CSV-Export", d: "Im richtigen Format für deinen Steuerberater." },
-              { t: "Material & Arbeit getrennt", d: "Transparente Aufschlüsselung für Kunden." },
-              { t: "3-Stufen-Mahnwesen", d: "Professionelle Mahntexte, 1 Klick versenden." },
-              { t: "Logo & Branding", d: "Dein Logo auf jeder Rechnung." },
-            ].map((f, i) => <div key={i} className="f-card"><h4>{f.t}</h4><p>{f.d}</p></div>)}
-          </div>
-        </section>
-      </FS>
-
-      {/* ══ VORHER / NACHHER ══ */}
-      <FS>
-        <section className="sec ba-sec">
-          <div className="sh"><span className="stag">Warum wechseln?</span><h2 className="sh2">Vorher vs. Nachher</h2></div>
-          <div className="ba-grid">
-            <div className="ba-col ba-bef">
-              <div className="ba-visual ba-vis-old">
-                <div className="bao-paper" /><div className="bao-paper bao-p2" /><div className="bao-pen">✏️</div>
-              </div>
-              <h3 className="ba-tit">Ohne RechnungsKI</h3>
-              <ul className="ba-list">{["Samstags 2-3 Stunden Rechnungen", "Word-Vorlage, manuell tippen", "MwSt von Hand ausrechnen", "Excel für alles", "Unsicher ob §14-konform"].map((t, i) => <li key={i}>{t}</li>)}</ul>
-            </div>
-            <div className="ba-div"><span className="ba-arr">→</span></div>
-            <div className="ba-col ba-aft">
-              <div className="ba-visual ba-vis-new">
-                <div className="ban-screen"><div className="ban-bar" /><div className="ban-row" /><div className="ban-row w60" /><div className="ban-check">{CK}</div></div>
-              </div>
-              <h3 className="ba-tit ba-tit-g">Mit RechnungsKI</h3>
-              <ul className="ba-list ba-list-g">{["2 Minuten, fertig", "KI schlägt Positionen vor", "MwSt automatisch", "Ein Dashboard für alles", "§14-Validierung warnt"].map((t, i) => <li key={i}>{t}</li>)}</ul>
-            </div>
-          </div>
-        </section>
-      </FS>
-
-      {/* ══ PRICING ══ */}
-      <FS id="preise">
-        <section className="sec">
-          <div className="sh">
-            <span className="stag">Preise</span><h2 className="sh2">Einfach. Fair. Transparent.</h2>
-            <div className="p-tog"><button className={`pt ${bill === "monatlich" ? "pta" : ""}`} onClick={() => setBill("monatlich")}>Monatlich</button><button className={`pt ${bill === "jaehrlich" ? "pta" : ""}`} onClick={() => setBill("jaehrlich")}>Jährlich <span className="pts">-20%</span></button></div>
-          </div>
-          <div className="p-grid">
-            {[
-              { n: "Free", p: 0, pj: 0, s: "Zum Ausprobieren", f: ["5 Rechnungen/Mo", "3 Kunden", "KI-Vorschläge", "MwSt-Automatik"] },
-              { n: "Starter", p: 9.99, pj: 7.99, s: "Einzelunternehmer", f: ["50 Rechnungen", "25 Kunden", "Logo & Branding", "PDF-Export", "Angebote", "Material/Arbeit", "Rabatt"], pop: true },
-              { n: "Pro", p: 24.99, pj: 19.99, s: "Wachsende Betriebe", f: ["500 Rechnungen", "Unbegr. Kunden", "Alles aus Starter", "3-Stufen-Mahnung", "DATEV Export", "§14 Validierung"] },
-              { n: "Enterprise", p: 49.99, pj: 39.99, s: "Teams", f: ["Unbegrenzt", "Multi-User", "API-Zugang", "DATEV direkt", "PDF-Mailversand", "Eigener Support"] },
-            ].map((pl, i) => (
-              <div key={i} className={`pc ${pl.pop ? "pc-pop" : ""}`}>
-                {pl.pop && <div className="pc-badge">EMPFOHLEN</div>}
-                <div className="pc-name">{pl.n}</div>
-                <div className="pc-pr"><span className="pc-num">{bill === "jaehrlich" ? pl.pj : pl.p}€</span><span className="pc-per">/Mo</span></div>
-                <div className="pc-sub">{pl.s}</div>
-                <div className="pc-feats">{pl.f.map((f, j) => <div key={j} className="pc-f">{CK} {f}</div>)}</div>
-                <a href="/dashboard" className={pl.pop ? "btn-p pc-btn" : "pc-btn-o"} style={{ textDecoration: "none", justifyContent: "center" }}>{pl.p === 0 ? "Kostenlos starten" : "Auswählen"}</a>
-              </div>
-            ))}
-          </div>
-        </section>
-      </FS>
-
-      {/* ══ FAQ ══ */}
-      <FS>
-        <section className="sec faq-sec">
-          <div className="sh"><h2 className="sh2">Häufige Fragen</h2></div>
-          <div className="faq-l">
-            {[
-              { q: "Ist RechnungsKI §14 UStG-konform?", a: "Ja. Automatische Validierung aller Pflichtangaben: Name, Adresse, Steuernummer, fortlaufende Nummer, Datum, Steuersatz." },
-              { q: "Für welche Branchen?", a: "30+ Branchen: Handwerk, IT, Kreativ, Beratung, Gesundheit, Events, Transport, Reinigung, Bildung und mehr." },
-              { q: "DATEV-Export möglich?", a: "Ab dem Pro-Plan: 1-Klick CSV-Export im DATEV-Format." },
-              { q: "Funktioniert es mobil?", a: "Ja. Vollständig responsive auf jedem Gerät." },
-              { q: "Vertragsbindung?", a: "Nein. Monatlich kündbar. Jährlich: 20% sparen." },
-              { q: "Was ist mit meinen Daten?", a: "DSGVO-konform, deutsche Server, keine Weitergabe an Dritte." },
-            ].map((f, i) => (
-              <div key={i} className="faq-i">
-                <button className="faq-q" onClick={() => setFaq(faq === i ? null : i)}><span>{f.q}</span><span className={`faq-arr ${faq === i ? "faq-o" : ""}`}>▾</span></button>
-                <div className={`faq-a ${faq === i ? "faq-ao" : ""}`}><p>{f.a}</p></div>
-              </div>
-            ))}
-          </div>
-        </section>
-      </FS>
-
-      {/* ══ CTA ══ */}
-      <section className="cta-sec">
-        <div className="cta-art"><div className="ha-circle ha-c1" /><div className="ha-circle ha-c2" /></div>
-        <div className="cta-in">
-          <h2 className="sh2 cta-h">Bereit loszulegen?</h2>
-          <p className="cta-p">Kostenlos starten. Keine Kreditkarte. 30 Sekunden Setup.</p>
-          <a href="/dashboard" className="btn-p cta-btn" style={{ textDecoration: "none" }}>Jetzt kostenlos starten {ARR}</a>
-        </div>
-      </section>
-
-      {/* ══ FOOTER ══ */}
-      <footer className="foot">
-        <div className="foot-in">
-          <div className="foot-left"><div className="brand"><div className="logo-dot" style={{ width: 22, height: 22 }} /><span className="logo-t" style={{ fontSize: 13 }}>RechnungsKI</span></div><p className="foot-desc">KI-Rechnungssoftware für Dienstleister.</p></div>
-          <div className="foot-cols">{[{ t: "Produkt", l: ["Features", "Preise", "Changelog"] }, { t: "Rechtliches", l: ["Impressum", "Datenschutz", "AGB"] }, { t: "Support", l: ["Hilfe-Center", "Kontakt", "Status"] }].map((c, i) => <div key={i}><div className="fct">{c.t}</div>{c.l.map((l, j) => <a key={j} className="fcl">{l}</a>)}</div>)}</div>
-        </div>
-        <div className="foot-bot">© 2026 RechnungsKI · Made in Deutschland</div>
-      </footer>
+    <div
+      ref={ref}
+      id={id}
+      className={`transition-all duration-700 ease-[cubic-bezier(0.16,1,0.3,1)] ${
+        visible ? "opacity-100 translate-y-0" : "opacity-0 translate-y-6"
+      } ${className}`}
+    >
+      {children}
     </div>
   );
 }
 
-function DA({ children }) { return <div className="da">{children}</div>; }
-function FS({ children, id }) { const r = useRef(); const [v, setV] = useState(false); useEffect(() => { const o = new IntersectionObserver(([e]) => { if (e.isIntersecting) setV(true); }, { threshold: .05 }); if (r.current) o.observe(r.current); return () => o.disconnect(); }, []); return <div ref={r} id={id} className={`fs ${v ? "fs-v" : ""}`}>{children}</div>; }
+// ─── Main Component ──────────────────────────────────────
+export default function LandingPage() {
+  const [scrolled, setScrolled] = useState(false);
+  const [email, setEmail] = useState("");
+  const [submitted, setSubmitted] = useState(false);
+  const [openFaq, setOpenFaq] = useState<number | null>(null);
+  const [billing, setBilling] = useState<"monthly" | "yearly">("monthly");
+  const [activeStep, setActiveStep] = useState(0);
+  const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
 
-const CSS = `
-@import url('https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&display=swap');
-*{box-sizing:border-box;margin:0;padding:0}html{scroll-behavior:smooth}::selection{background:#4f46e5;color:#fff}
-.lp{font-family:'Plus Jakarta Sans',sans-serif;background:#fafaf9;color:#1c1917;overflow-x:hidden}
-@keyframes fadeUp{from{opacity:0;transform:translateY(20px)}to{opacity:1;transform:translateY(0)}}
-@keyframes slideR{from{opacity:0;transform:translateX(-12px)}to{opacity:1;transform:translateX(0)}}
-@keyframes pop{from{opacity:0;transform:scale(.97)}to{opacity:1;transform:scale(1)}}
-@keyframes barF{from{width:0}to{width:100%}}
-@keyframes float{0%,100%{transform:translateY(0)}50%{transform:translateY(-6px)}}
-.fs{opacity:0;transform:translateY(16px);transition:all .65s cubic-bezier(.16,1,.3,1)}.fs-v{opacity:1;transform:translateY(0)}
-.da{animation:pop .3s ease}
+  useEffect(() => {
+    const handler = () => setScrolled(window.scrollY > 20);
+    window.addEventListener("scroll", handler, { passive: true });
+    return () => window.removeEventListener("scroll", handler);
+  }, []);
 
-/* NAV */
-.nav{position:fixed;top:0;left:0;right:0;z-index:100;padding:0 24px;transition:all .3s}
-.nav-s{background:rgba(250,250,249,.95);backdrop-filter:blur(20px);border-bottom:1px solid #e7e5e4;box-shadow:0 1px 4px rgba(0,0,0,.03)}
-.nav-in{max-width:1100px;margin:0 auto;display:flex;align-items:center;justify-content:space-between;height:58px}
-.brand{display:flex;align-items:center;gap:8px}.logo-dot{width:28px;height:28px;border-radius:8px;background:linear-gradient(135deg,#4f46e5,#7c3aed)}
-.logo-t{font-size:16px;font-weight:800;letter-spacing:-.02em}
-.nav-r{display:flex;align-items:center;gap:20px}.nav-l{color:#78716c;text-decoration:none;font-size:13.5px;font-weight:500;transition:color .2s}.nav-l:hover{color:#1c1917}
-.nav-cta{padding:7px 16px;font-size:12.5px}
-.btn-p{display:inline-flex;align-items:center;gap:6px;padding:10px 22px;background:#4f46e5;color:#fff;border:none;border-radius:10px;font-size:14px;font-weight:600;cursor:pointer;font-family:inherit;transition:all .2s;box-shadow:0 2px 8px rgba(79,70,229,.25)}.btn-p:hover{background:#4338ca;transform:translateY(-1px);box-shadow:0 4px 16px rgba(79,70,229,.3)}
+  useEffect(() => {
+    const timer = setInterval(() => setActiveStep((s) => (s + 1) % 4), 4000);
+    return () => clearInterval(timer);
+  }, []);
 
-/* HERO */
-.hero{position:relative;padding:100px 24px 60px;overflow:hidden;background:#f5f3ff}
-.hero-art{position:absolute;inset:0;overflow:hidden;pointer-events:none}
-.ha-circle{position:absolute;border-radius:50%;opacity:.15}
-.ha-c1{width:500px;height:500px;top:-120px;right:-100px;background:radial-gradient(circle,#818cf8,transparent 70%)}
-.ha-c2{width:400px;height:400px;bottom:-80px;left:-60px;background:radial-gradient(circle,#c084fc,transparent 70%)}
-.ha-c3{width:300px;height:300px;top:40%;left:40%;background:radial-gradient(circle,#f472b6,transparent 70%);opacity:.08}
-.ha-dots{position:absolute;inset:0;background-image:radial-gradient(#4f46e5 .8px,transparent .8px);background-size:24px 24px;opacity:.04}
-.hero-in{position:relative;z-index:1;max-width:1100px;margin:0 auto;display:grid;grid-template-columns:1fr 1fr;gap:48px;align-items:center}
-.hero-left{}
-.hero-tag{display:inline-block;padding:5px 14px;background:#ede9fe;border-radius:20px;font-size:12px;font-weight:600;color:#5b21b6;margin-bottom:18px}
-.hero-h1{font-size:clamp(28px,4.5vw,48px);font-weight:800;line-height:1.1;letter-spacing:-.04em;margin-bottom:16px;color:#1e1b4b}
-.hero-accent{color:#4f46e5}
-.hero-p{font-size:15px;color:#57534e;line-height:1.65;max-width:460px;margin-bottom:24px}
-.hero-cta{display:flex;gap:8px;margin-bottom:16px;flex-wrap:wrap}
-.hero-inp{padding:11px 16px;background:#fff;border:1px solid #d6d3d1;border-radius:10px;color:#1c1917;font-size:14px;width:230px;outline:none;font-family:inherit;transition:border .2s}.hero-inp:focus{border-color:#4f46e5}
-.hero-btn{padding:11px 22px;font-size:14px}
-.hero-ok{padding:11px 20px;background:#d1fae5;border-radius:10px;color:#065f46;font-weight:600;border:1px solid #a7f3d0}
-.trust-row{display:flex;gap:14px;flex-wrap:wrap}.trust-i{display:flex;align-items:center;gap:5px;font-size:12px;color:#78716c}
-.hero-right{display:flex;justify-content:center}
-.mockup{background:#0f172a;border-radius:14px;width:100%;max-width:440px;overflow:hidden;box-shadow:0 24px 64px rgba(15,23,42,.2),0 0 0 1px rgba(15,23,42,.1)}
-.mock-bar{display:flex;align-items:center;gap:6px;padding:10px 14px;background:#1e293b;border-bottom:1px solid #334155}
-.mock-bar i{width:8px;height:8px;border-radius:50%;display:block}.mock-bar i:nth-child(1){background:#ef4444}.mock-bar i:nth-child(2){background:#eab308}.mock-bar i:nth-child(3){background:#22c55e}
-.mock-url{margin-left:12px;font-size:10px;color:#64748b;font-family:monospace}
-.mock-kpis{display:grid;grid-template-columns:repeat(3,1fr);gap:6px;padding:12px}
-.mock-kpi{background:#1e293b;border-radius:8px;padding:10px;border-left:3px solid}
-.mk-l{font-size:9px;color:#94a3b8;text-transform:uppercase;letter-spacing:.05em}.mk-v{font-size:16px;font-weight:700;color:#f1f5f9;margin-top:2px}
-.mock-tbl{padding:0 12px 12px}
-.mock-tr{display:flex;justify-content:space-between;align-items:center;padding:8px 10px;border-bottom:1px solid #1e293b;font-size:12px;color:#e2e8f0}
-.mock-tn{font-weight:600}.mock-tb{font-family:monospace;font-size:11px;color:#94a3b8}.mock-ts{font-size:9px;font-weight:600;padding:2px 7px;border-radius:12px}
+  const handleSubmit = () => {
+    if (email.includes("@")) {
+      setSubmitted(true);
+      setTimeout(() => (window.location.href = "/dashboard"), 1500);
+    } else {
+      window.location.href = "/dashboard";
+    }
+  };
 
-/* SECTIONS */
-.sec{max-width:1100px;margin:0 auto;padding:52px 24px}
-.sh{text-align:center;margin-bottom:28px}
-.stag{display:inline-block;font-size:11px;font-weight:700;color:#4f46e5;text-transform:uppercase;letter-spacing:.1em;margin-bottom:4px}
-.sh2{font-size:clamp(22px,3vw,32px);font-weight:800;letter-spacing:-.03em}
-.sh-p{font-size:14px;color:#78716c;max-width:420px;margin:4px auto 0;line-height:1.55}
+  return (
+    <div className="min-h-screen bg-white text-slate-900 overflow-x-hidden">
+      {/* ═══ NAVIGATION ═══ */}
+      <nav
+        className={`fixed top-0 inset-x-0 z-50 transition-all duration-300 ${
+          scrolled
+            ? "bg-white/80 backdrop-blur-xl border-b border-slate-200/60 shadow-[0_1px_3px_rgba(0,0,0,0.04)]"
+            : "bg-transparent"
+        }`}
+      >
+        <div className="max-w-6xl mx-auto px-6 flex items-center justify-between h-16">
+          <a href="/" className="flex items-center gap-2.5">
+            <div className="w-8 h-8 rounded-lg bg-gradient-to-br from-brand-500 to-brand-700 shadow-lg shadow-brand-500/25" />
+            <span className="text-lg font-extrabold tracking-tight">RechnungsKI</span>
+          </a>
 
-/* BRANCHEN */
-.br-grid{display:grid;grid-template-columns:repeat(4,1fr);gap:10px}
-.br-card{border-radius:14px;padding:24px 16px;display:flex;flex-direction:column;align-items:center;gap:8px;cursor:pointer;transition:all .3s;border:1px solid transparent}
-.br-card:hover{transform:translateY(-3px);box-shadow:0 8px 24px rgba(0,0,0,.06);border-color:rgba(0,0,0,.05)}
-.br-symbol{font-size:32px;line-height:1}
-.br-name{font-size:13px;font-weight:700;text-align:center}
+          <div className="hidden md:flex items-center gap-8">
+            <a href="#how" className="text-sm font-medium text-slate-500 hover:text-slate-900 transition-colors">So geht&apos;s</a>
+            <a href="#branchen" className="text-sm font-medium text-slate-500 hover:text-slate-900 transition-colors">Branchen</a>
+            <a href="#features" className="text-sm font-medium text-slate-500 hover:text-slate-900 transition-colors">Features</a>
+            <a href="#preise" className="text-sm font-medium text-slate-500 hover:text-slate-900 transition-colors">Preise</a>
+          </div>
 
-/* HOW */
-.how-sec{background:#f5f5f4;border-radius:20px;padding:44px 28px}
-.how-grid{display:grid;grid-template-columns:1fr 1fr;gap:28px;align-items:start}
-.how-steps{display:flex;flex-direction:column;gap:4px}
-.how-step{display:flex;align-items:center;gap:12px;padding:14px;border-radius:12px;cursor:pointer;transition:all .2s;position:relative;overflow:hidden;border:1px solid transparent}
-.how-a{background:#fff;border-color:#e7e5e4;box-shadow:0 2px 8px rgba(0,0,0,.04)}
-.how-ico{width:36px;height:36px;border-radius:10px;display:flex;align-items:center;justify-content:center;font-size:14px;font-weight:700;flex-shrink:0;transition:all .2s}
-.how-t{font-weight:700;font-size:14px;margin-bottom:1px}.how-d{font-size:12px;color:#78716c;line-height:1.4}
-.how-bar{position:absolute;bottom:0;left:0;height:2px;animation:barF 3.5s linear}
-.how-vis{position:sticky;top:80px}
-.demo-scr{background:#0f172a;border-radius:14px;padding:22px;min-height:260px;box-shadow:0 16px 48px rgba(15,23,42,.12)}
-.dl{font-size:11px;font-weight:700;color:#818cf8;text-transform:uppercase;letter-spacing:.07em;margin-bottom:12px}
-.demo-br{display:grid;grid-template-columns:repeat(3,1fr);gap:6px}
-.demo-b{display:flex;flex-direction:column;align-items:center;gap:6px;padding:12px 6px;border-radius:10px;background:#1e293b;border:1px solid #334155;cursor:pointer;font-size:11px;color:#94a3b8;font-weight:500;transition:all .2s}
-.demo-ba{border-color:#4f46e5;color:#e0e7ff}
-.demo-pos{display:flex;flex-direction:column;gap:6px}
-.demo-pr{display:flex;justify-content:space-between;align-items:center;padding:10px 12px;background:#1e293b;border-radius:8px;border:1px solid #334155;font-size:13px;color:#e2e8f0;animation:slideR .4s ease both}
-.demo-pp{font-weight:700;font-family:monospace;font-size:12px;color:#a5b4fc}.demo-pa{font-size:10px;color:#818cf8;font-weight:600}
-.demo-prev{background:#1e293b;border-radius:10px;padding:16px;border:1px solid #334155}
-.dp-h{display:flex;justify-content:space-between;margin-bottom:10px}.dp-bar{height:7px;background:#334155;border-radius:3px}
-.dp-re{font-size:16px;font-weight:800;color:#818cf8}.dp-line{height:1px;background:#334155;margin:8px 0}
-.dp-row{display:flex;justify-content:space-between;padding:5px 0;font-size:12px;color:#94a3b8}.dp-desc{color:#e2e8f0}.dp-amt{font-weight:600;color:#f1f5f9}
-.dp-total{display:flex;justify-content:space-between;margin-top:10px;padding-top:8px;border-top:2px solid #334155;font-size:15px;font-weight:800;color:#818cf8}
-.demo-done{display:flex;flex-direction:column;align-items:center;gap:10px;margin-top:14px;color:#e2e8f0}
-.demo-di{width:48px;height:48px;border-radius:14px;background:#065f46;display:flex;align-items:center;justify-content:center}
-.demo-dt{font-weight:700;font-size:15px}
+          <div className="hidden md:flex items-center gap-3">
+            <a href="/dashboard" className="text-sm font-medium text-slate-600 hover:text-slate-900 transition-colors px-4 py-2">
+              Anmelden
+            </a>
+            <a
+              href="/dashboard"
+              className="inline-flex items-center gap-2 px-5 py-2.5 bg-brand-600 text-white text-sm font-semibold rounded-xl hover:bg-brand-700 transition-all duration-200 shadow-lg shadow-brand-600/25 hover:shadow-brand-600/40 hover:-translate-y-0.5"
+            >
+              Kostenlos starten
+            </a>
+          </div>
 
-/* FEATURES */
-.fh-grid{display:grid;grid-template-columns:1fr 1fr;gap:12px;margin-bottom:12px}
-.fh-card{border-radius:16px;overflow:hidden;background:#fff;border:1px solid #e7e5e4;transition:all .3s}.fh-card:hover{transform:translateY(-3px);box-shadow:0 8px 24px rgba(0,0,0,.06)}
-.fh-visual{height:180px;display:flex;align-items:center;justify-content:center}
-.fhv-mobile{background:linear-gradient(135deg,#ede9fe,#ddd6fe)}
-.fhv-ai{background:linear-gradient(135deg,#dbeafe,#bfdbfe);flex-direction:column;gap:6px;padding:24px}
-.fh-phone{width:80px;border-radius:14px;background:#0f172a;border:2px solid #334155;padding:10px 7px;display:flex;flex-direction:column;gap:5px;animation:float 4s ease infinite}
-.fhp-bar{height:4px;background:#334155;border-radius:2px}
-.fhp-kpis{display:flex;gap:4px}.fhp-kpi{flex:1;background:#1e293b;border-radius:5px;border-left:2px solid;padding:5px 3px;font-size:8px;font-weight:700;color:#e2e8f0}
-.fhp-row{height:5px;background:#1e293b;border-radius:2px}.w70{width:70%}.w60{width:60%}.w50{width:50%}
-.fhai-row{display:flex;align-items:center;gap:8px;padding:8px 12px;background:rgba(255,255,255,.7);border-radius:8px;font-size:12px;font-weight:500;backdrop-filter:blur(4px)}
-.fhai-dot{width:8px;height:8px;border-radius:50%;flex-shrink:0}.fhai-p{margin-left:auto;font-weight:700;font-family:monospace;font-size:11px;color:#4f46e5}
-.fh-c{padding:20px}.fh-c h3{font-size:17px;font-weight:700;margin-bottom:5px}.fh-c p{font-size:13px;color:#78716c;line-height:1.6}
-.f-grid{display:grid;grid-template-columns:repeat(3,1fr);gap:10px}
-.f-card{padding:18px;background:#fff;border:1px solid #e7e5e4;border-radius:12px;transition:all .3s}.f-card:hover{border-color:#c7d2fe;box-shadow:0 4px 16px rgba(79,70,229,.06)}
-.f-card h4{font-size:13.5px;font-weight:700;margin-bottom:3px}.f-card p{font-size:12px;color:#78716c;line-height:1.5}
+          {/* Mobile menu button */}
+          <button
+            onClick={() => setMobileMenuOpen(!mobileMenuOpen)}
+            className="md:hidden p-2 rounded-lg hover:bg-slate-100 transition-colors"
+            aria-label="Menu"
+          >
+            <svg className="w-6 h-6" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+              {mobileMenuOpen ? (
+                <>
+                  <line x1="18" y1="6" x2="6" y2="18" />
+                  <line x1="6" y1="6" x2="18" y2="18" />
+                </>
+              ) : (
+                <>
+                  <line x1="3" y1="6" x2="21" y2="6" />
+                  <line x1="3" y1="12" x2="21" y2="12" />
+                  <line x1="3" y1="18" x2="21" y2="18" />
+                </>
+              )}
+            </svg>
+          </button>
+        </div>
 
-/* BEFORE/AFTER */
-.ba-sec{background:#f5f5f4;border-radius:20px;padding:44px 28px}
-.ba-grid{display:grid;grid-template-columns:1fr auto 1fr;gap:16px;align-items:stretch}
-.ba-col{background:#fff;border-radius:14px;padding:22px;border:1px solid #e7e5e4;overflow:hidden}
-.ba-visual{height:120px;border-radius:10px;margin-bottom:14px;display:flex;align-items:center;justify-content:center;position:relative}
-.ba-vis-old{background:linear-gradient(135deg,#fef2f2,#fee2e2)}
-.bao-paper{width:50px;height:64px;background:#fff;border:1px solid #fca5a5;border-radius:4px;transform:rotate(-5deg);position:absolute}
-.bao-p2{transform:rotate(8deg);left:calc(50% + 10px);border-color:#fecaca}
-.bao-pen{position:absolute;bottom:12px;right:20px;font-size:20px}
-.ba-vis-new{background:linear-gradient(135deg,#ecfdf5,#d1fae5)}
-.ban-screen{width:70px;border-radius:10px;background:#0f172a;padding:8px 6px;display:flex;flex-direction:column;gap:4px;animation:float 4s ease infinite}
-.ban-bar{height:4px;background:#334155;border-radius:2px}.ban-row{height:5px;background:#1e293b;border-radius:2px}
-.ban-check{position:absolute;bottom:10px;right:16px;width:28px;height:28px;border-radius:50%;background:#059669;display:flex;align-items:center;justify-content:center}
-.ba-tit{font-size:15px;font-weight:700;margin-bottom:10px}.ba-tit-g{color:#059669}
-.ba-list{list-style:none;display:flex;flex-direction:column;gap:6px}
-.ba-list li{font-size:12.5px;color:#78716c;line-height:1.5;padding-left:18px;position:relative}
-.ba-list li::before{content:"✗";position:absolute;left:0;color:#ef4444;font-weight:700;font-size:11px}
-.ba-list-g li::before{content:"✓";color:#059669}.ba-list-g li{color:#1c1917;font-weight:500}
-.ba-div{display:flex;align-items:center;justify-content:center}
-.ba-arr{width:36px;height:36px;border-radius:50%;background:#4f46e5;color:#fff;display:flex;align-items:center;justify-content:center;font-size:16px;font-weight:700}
+        {/* Mobile menu */}
+        {mobileMenuOpen && (
+          <div className="md:hidden bg-white/95 backdrop-blur-xl border-b border-slate-200 px-6 py-4 space-y-3 animate-fade-in">
+            {["So geht's", "Branchen", "Features", "Preise"].map((item) => (
+              <a
+                key={item}
+                href={`#${item.toLowerCase().replace(/[^a-z]/g, "")}`}
+                className="block text-sm font-medium text-slate-600 py-2"
+                onClick={() => setMobileMenuOpen(false)}
+              >
+                {item}
+              </a>
+            ))}
+            <a href="/dashboard" className="block w-full text-center px-5 py-2.5 bg-brand-600 text-white text-sm font-semibold rounded-xl mt-2">
+              Kostenlos starten
+            </a>
+          </div>
+        )}
+      </nav>
 
-/* PRICING */
-.p-tog{display:inline-flex;background:#fff;border-radius:8px;padding:3px;margin-top:8px;border:1px solid #e7e5e4}
-.pt{padding:6px 14px;border-radius:6px;border:none;font-size:12px;font-weight:600;cursor:pointer;background:transparent;color:#78716c;font-family:inherit}.pta{background:#4f46e5;color:#fff}.pts{color:#34d399;font-size:10px;margin-left:3px}
-.p-grid{display:grid;grid-template-columns:repeat(4,1fr);gap:10px;margin-top:20px}
-.pc{padding:22px;background:#fff;border:1px solid #e7e5e4;border-radius:14px;display:flex;flex-direction:column;position:relative;transition:all .3s}.pc:hover{box-shadow:0 8px 24px rgba(0,0,0,.05);transform:translateY(-2px)}
-.pc-pop{border:2px solid #4f46e5;box-shadow:0 4px 16px rgba(79,70,229,.08)}
-.pc-badge{position:absolute;top:-9px;left:50%;transform:translateX(-50%);background:#4f46e5;color:#fff;font-size:9px;font-weight:700;padding:2px 12px;border-radius:12px}
-.pc-name{font-size:12px;font-weight:700;color:#4f46e5}.pc-pr{display:flex;align-items:baseline;gap:2px;margin:4px 0 2px}
-.pc-num{font-size:28px;font-weight:800;letter-spacing:-.03em}.pc-per{font-size:11px;color:#78716c}.pc-sub{font-size:11px;color:#78716c;margin-bottom:12px}
-.pc-feats{flex:1;display:flex;flex-direction:column;gap:5px;margin-bottom:14px}.pc-f{display:flex;align-items:center;gap:5px;font-size:12px;color:#44403c}
-.pc-btn{width:100%;padding:9px;font-size:13px}.pc-btn-o{width:100%;padding:9px;border-radius:10px;border:1px solid #e7e5e4;background:#fafaf9;color:#1c1917;font-size:13px;font-weight:600;cursor:pointer;font-family:inherit;transition:all .2s}.pc-btn-o:hover{border-color:#4f46e5;background:#f5f3ff}
+      {/* ═══ HERO ═══ */}
+      <section className="relative pt-32 pb-20 md:pt-40 md:pb-28 overflow-hidden">
+        {/* Background art */}
+        <div className="absolute inset-0 pointer-events-none overflow-hidden">
+          <div className="absolute -top-32 -right-32 w-[600px] h-[600px] rounded-full bg-brand-400/10 blur-3xl animate-pulse-soft" />
+          <div className="absolute -bottom-24 -left-24 w-[500px] h-[500px] rounded-full bg-violet-400/10 blur-3xl animate-pulse-soft [animation-delay:1.5s]" />
+          <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[400px] h-[400px] rounded-full bg-pink-300/5 blur-3xl" />
+          <div
+            className="absolute inset-0 opacity-[0.03]"
+            style={{
+              backgroundImage: "radial-gradient(circle, #6366f1 1px, transparent 1px)",
+              backgroundSize: "32px 32px",
+            }}
+          />
+        </div>
 
-/* FAQ */
-.faq-sec{max-width:620px}.faq-l{display:flex;flex-direction:column}.faq-i{border-bottom:1px solid #e7e5e4}
-.faq-q{width:100%;padding:14px 0;background:none;border:none;color:#1c1917;display:flex;justify-content:space-between;align-items:center;cursor:pointer;font-size:14px;font-weight:600;text-align:left;font-family:inherit;transition:color .2s}.faq-q:hover{color:#4f46e5}
-.faq-arr{transition:transform .25s;color:#a8a29e;font-size:12px}.faq-o{transform:rotate(180deg)}
-.faq-a{max-height:0;overflow:hidden;transition:max-height .3s,padding .3s}.faq-ao{max-height:200px;padding:0 0 14px}.faq-a p{font-size:13px;color:#78716c;line-height:1.6}
+        <div className="relative z-10 max-w-6xl mx-auto px-6 grid lg:grid-cols-2 gap-16 items-center">
+          {/* Left — Copy */}
+          <div className="max-w-xl">
+            <div className="inline-flex items-center gap-2 px-4 py-1.5 bg-brand-50 border border-brand-200/60 rounded-full mb-6">
+              <span className="w-1.5 h-1.5 rounded-full bg-brand-500 animate-pulse" />
+              <span className="text-xs font-semibold text-brand-700 tracking-wide">
+                Für Dienstleister · Handwerker · Freelancer
+              </span>
+            </div>
 
-/* CTA */
-.cta-sec{position:relative;padding:64px 24px;text-align:center;overflow:hidden;background:#1e1b4b}
-.cta-art{position:absolute;inset:0;overflow:hidden;pointer-events:none;opacity:.3}
-.cta-in{position:relative;z-index:1}.cta-h{color:#fff!important;margin-bottom:8px}.cta-p{color:#a5b4fc;font-size:15px;margin-bottom:22px}.cta-btn{font-size:16px;padding:13px 30px;background:#fff;color:#4f46e5}.cta-btn:hover{background:#f5f3ff;box-shadow:0 4px 16px rgba(255,255,255,.2)}
+            <h1 className="text-4xl sm:text-5xl lg:text-[3.5rem] font-black leading-[1.08] tracking-[-0.04em] text-slate-950">
+              Professionelle
+              <br />
+              Rechnungen.
+              <br />
+              <span className="bg-gradient-to-r from-brand-600 to-violet-500 bg-clip-text text-transparent">
+                In unter 2 Minuten.
+              </span>
+            </h1>
 
-/* FOOTER */
-.foot{padding:28px 24px 18px;border-top:1px solid #e7e5e4}.foot-in{max-width:1100px;margin:0 auto;display:flex;justify-content:space-between;flex-wrap:wrap;gap:20px}
-.foot-left{max-width:220px}.foot-desc{font-size:11px;color:#a8a29e;margin-top:4px}.foot-cols{display:flex;gap:36px}
-.fct{font-size:10px;font-weight:700;color:#78716c;text-transform:uppercase;letter-spacing:.06em;margin-bottom:7px}
-.fcl{display:block;font-size:12px;color:#a8a29e;margin-bottom:5px;cursor:pointer;text-decoration:none;transition:color .2s}.fcl:hover{color:#1c1917}
-.foot-bot{max-width:1100px;margin:18px auto 0;padding-top:14px;border-top:1px solid #e7e5e4;text-align:center;font-size:10px;color:#d6d3d1}
+            <p className="mt-6 text-lg text-slate-500 leading-relaxed max-w-md">
+              Die Rechnungssoftware mit KI-Vorschlägen für 30+ Branchen. §14-konform, PDF-Export, DATEV-ready. Schluss mit Papierkram.
+            </p>
 
-@media(max-width:900px){.hero-in{grid-template-columns:1fr;text-align:center}.hero-left{display:flex;flex-direction:column;align-items:center}.hero-right{margin-top:20px}.br-grid{grid-template-columns:repeat(3,1fr)}}
-@media(max-width:768px){.hero-h1{font-size:28px}.how-grid{grid-template-columns:1fr}.how-vis{position:static;margin-top:16px}.fh-grid,.ba-grid{grid-template-columns:1fr}.ba-div{transform:rotate(90deg)}.f-grid{grid-template-columns:1fr 1fr}.p-grid{grid-template-columns:1fr 1fr}.br-grid{grid-template-columns:repeat(3,1fr)}.foot-cols{gap:14px}.nav-l{display:none}}
-@media(max-width:480px){.p-grid,.f-grid{grid-template-columns:1fr}.br-grid{grid-template-columns:repeat(2,1fr)}}
-`;
+            {/* CTA */}
+            <div className="mt-8 flex flex-col sm:flex-row gap-3">
+              {!submitted ? (
+                <>
+                  <input
+                    type="email"
+                    placeholder="deine@email.de"
+                    value={email}
+                    onChange={(e) => setEmail(e.target.value)}
+                    onKeyDown={(e) => e.key === "Enter" && handleSubmit()}
+                    className="px-5 py-3.5 bg-slate-50 border border-slate-200 rounded-xl text-sm text-slate-900 placeholder:text-slate-400 outline-none focus:border-brand-400 focus:ring-4 focus:ring-brand-100 transition-all w-full sm:w-64"
+                  />
+                  <button
+                    onClick={handleSubmit}
+                    className="inline-flex items-center justify-center gap-2 px-7 py-3.5 bg-brand-600 text-white text-sm font-semibold rounded-xl hover:bg-brand-700 transition-all duration-200 shadow-lg shadow-brand-600/25 hover:shadow-xl hover:shadow-brand-600/30 hover:-translate-y-0.5 active:translate-y-0"
+                  >
+                    Kostenlos starten
+                    <ArrowIcon />
+                  </button>
+                </>
+              ) : (
+                <div className="flex items-center gap-3 px-5 py-3.5 bg-success-50 border border-emerald-200 rounded-xl text-success-700 font-semibold text-sm animate-fade-up">
+                  <CheckIcon className="w-5 h-5 text-success-600" />
+                  Perfekt — check dein Postfach!
+                </div>
+              )}
+            </div>
+
+            {/* Trust signals */}
+            <div className="mt-6 flex flex-wrap gap-x-5 gap-y-2">
+              {["Keine Kreditkarte", "5 Rechnungen gratis", "DSGVO-konform"].map((text) => (
+                <span key={text} className="flex items-center gap-1.5 text-xs text-slate-400 font-medium">
+                  <CheckIcon className="w-3.5 h-3.5 text-success-500" />
+                  {text}
+                </span>
+              ))}
+            </div>
+          </div>
+
+          {/* Right — App Mockup */}
+          <div className="hidden lg:flex justify-center">
+            <div className="relative">
+              {/* Glow behind */}
+              <div className="absolute -inset-8 bg-gradient-to-br from-brand-400/20 via-violet-400/10 to-transparent rounded-3xl blur-2xl" />
+
+              <div className="relative bg-slate-950 rounded-2xl overflow-hidden shadow-2xl shadow-slate-950/40 w-full max-w-[460px] border border-slate-800/50">
+                {/* Window bar */}
+                <div className="flex items-center gap-2 px-4 py-3 bg-slate-900 border-b border-slate-800">
+                  <div className="flex gap-1.5">
+                    <div className="w-2.5 h-2.5 rounded-full bg-red-500/80" />
+                    <div className="w-2.5 h-2.5 rounded-full bg-yellow-500/80" />
+                    <div className="w-2.5 h-2.5 rounded-full bg-green-500/80" />
+                  </div>
+                  <div className="ml-3 px-3 py-1 bg-slate-800 rounded-md">
+                    <span className="text-[10px] text-slate-500 font-mono">app.rechnungski.de</span>
+                  </div>
+                </div>
+
+                {/* KPI Cards */}
+                <div className="grid grid-cols-3 gap-2 p-3">
+                  {[
+                    { label: "Umsatz", value: "€ 47.380", color: "border-l-emerald-500" },
+                    { label: "Offen", value: "€ 5.240", color: "border-l-amber-500" },
+                    { label: "Kunden", value: "23", color: "border-l-brand-500" },
+                  ].map((kpi) => (
+                    <div key={kpi.label} className={`bg-slate-900/80 rounded-lg p-3 border-l-[3px] ${kpi.color}`}>
+                      <div className="text-[9px] text-slate-500 uppercase tracking-wider font-medium">{kpi.label}</div>
+                      <div className="text-base font-bold text-slate-100 mt-0.5">{kpi.value}</div>
+                    </div>
+                  ))}
+                </div>
+
+                {/* Table rows */}
+                <div className="px-3 pb-3 space-y-0.5">
+                  {[
+                    { name: "Müller Bau GmbH", amount: "€ 3.480", status: "Bezahlt", statusColor: "bg-emerald-500/10 text-emerald-400" },
+                    { name: "Lisa Weber Design", amount: "€ 1.250", status: "Offen", statusColor: "bg-amber-500/10 text-amber-400" },
+                    { name: "Schmidt IT", amount: "€ 4.200", status: "Bezahlt", statusColor: "bg-emerald-500/10 text-emerald-400" },
+                    { name: "Berger Events", amount: "€ 890", status: "Überfällig", statusColor: "bg-red-500/10 text-red-400" },
+                  ].map((row) => (
+                    <div key={row.name} className="flex items-center justify-between py-2.5 px-3 rounded-lg hover:bg-slate-800/50 transition-colors group">
+                      <span className="text-xs font-semibold text-slate-200 group-hover:text-white transition-colors">{row.name}</span>
+                      <div className="flex items-center gap-3">
+                        <span className="text-xs font-mono text-slate-500">{row.amount}</span>
+                        <span className={`text-[10px] font-semibold px-2.5 py-0.5 rounded-full ${row.statusColor}`}>
+                          {row.status}
+                        </span>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      {/* ═══ SOCIAL PROOF BAR ═══ */}
+      <FadeIn>
+        <div className="border-y border-slate-100 bg-slate-50/50 py-8">
+          <div className="max-w-6xl mx-auto px-6">
+            <div className="flex flex-wrap justify-center gap-x-12 gap-y-4 items-center">
+              {[
+                { value: "30+", label: "Branchen" },
+                { value: "§14", label: "UStG-konform" },
+                { value: "2 Min", label: "zur Rechnung" },
+                { value: "DATEV", label: "Export-ready" },
+                { value: "100%", label: "DSGVO-konform" },
+              ].map((stat) => (
+                <div key={stat.label} className="flex items-center gap-2.5 text-center">
+                  <span className="text-xl font-extrabold text-brand-600">{stat.value}</span>
+                  <span className="text-xs font-medium text-slate-400">{stat.label}</span>
+                </div>
+              ))}
+            </div>
+          </div>
+        </div>
+      </FadeIn>
+
+      {/* ═══ BRANCHEN ═══ */}
+      <FadeIn id="branchen" className="py-20 md:py-28">
+        <div className="max-w-6xl mx-auto px-6">
+          <div className="text-center mb-12">
+            <span className="inline-block text-[11px] font-bold text-brand-600 uppercase tracking-[0.12em] mb-2">30+ Branchen</span>
+            <h2 className="text-3xl md:text-4xl font-extrabold tracking-tight">Eine App. Jede Branche.</h2>
+            <p className="mt-3 text-slate-500 max-w-md mx-auto">
+              Handwerk, IT, Kreativ, Gesundheit, Events — RechnungsKI kennt deine Preise.
+            </p>
+          </div>
+          <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 gap-3">
+            {BRANCHES.map((branch) => (
+              <div
+                key={branch.name}
+                className={`group relative bg-gradient-to-br ${branch.gradient} rounded-2xl p-6 flex flex-col items-center gap-3 cursor-pointer border border-transparent hover:border-white/60 hover:shadow-lg hover:shadow-slate-200/50 hover:-translate-y-1 transition-all duration-300`}
+              >
+                <span className="text-3xl group-hover:scale-110 transition-transform duration-300">{branch.icon}</span>
+                <span className="text-sm font-bold text-slate-700">{branch.name}</span>
+              </div>
+            ))}
+          </div>
+        </div>
+      </FadeIn>
+
+      {/* ═══ HOW IT WORKS ═══ */}
+      <FadeIn id="how" className="py-20 md:py-28">
+        <div className="max-w-6xl mx-auto px-6">
+          <div className="bg-slate-50 rounded-3xl p-8 md:p-12 border border-slate-100">
+            <div className="text-center mb-10">
+              <span className="inline-block text-[11px] font-bold text-brand-600 uppercase tracking-[0.12em] mb-2">So funktioniert&apos;s</span>
+              <h2 className="text-3xl md:text-4xl font-extrabold tracking-tight">4 Schritte. 2 Minuten. Fertig.</h2>
+            </div>
+            <div className="grid lg:grid-cols-2 gap-8 items-start">
+              {/* Steps */}
+              <div className="space-y-2">
+                {STEPS.map((step, i) => (
+                  <button
+                    key={step.title}
+                    onClick={() => setActiveStep(i)}
+                    className={`w-full flex items-center gap-4 p-4 rounded-xl text-left transition-all duration-200 relative overflow-hidden ${
+                      activeStep === i
+                        ? "bg-white shadow-md shadow-slate-200/50 border border-slate-200/80"
+                        : "hover:bg-white/60 border border-transparent"
+                    }`}
+                  >
+                    <div
+                      className={`w-10 h-10 rounded-xl flex items-center justify-center text-sm font-bold flex-shrink-0 transition-all duration-200 ${
+                        activeStep === i ? `${step.color} text-white shadow-lg` : "bg-slate-200 text-slate-500"
+                      }`}
+                    >
+                      {activeStep === i ? step.icon : i + 1}
+                    </div>
+                    <div>
+                      <div className="font-bold text-sm">{step.title}</div>
+                      <div className="text-xs text-slate-500 leading-relaxed">{step.desc}</div>
+                    </div>
+                    {activeStep === i && (
+                      <div className={`absolute bottom-0 left-0 h-0.5 ${step.color} animate-bar-fill`} />
+                    )}
+                  </button>
+                ))}
+              </div>
+
+              {/* Demo Preview */}
+              <div className="lg:sticky lg:top-24">
+                <div className="bg-slate-950 rounded-2xl p-6 min-h-[280px] shadow-xl shadow-slate-950/10 border border-slate-800/50">
+                  {activeStep === 0 && (
+                    <div className="animate-fade-in">
+                      <div className="text-[11px] font-bold text-brand-400 uppercase tracking-widest mb-4">Branche wählen</div>
+                      <div className="grid grid-cols-3 gap-2">
+                        {BRANCHES.slice(0, 6).map((b, i) => (
+                          <div
+                            key={b.name}
+                            className={`flex flex-col items-center gap-2 p-3 rounded-xl border transition-all ${
+                              i === 0
+                                ? "border-brand-500 bg-brand-500/10 text-brand-200"
+                                : "border-slate-800 bg-slate-900 text-slate-500 hover:border-slate-700"
+                            }`}
+                          >
+                            <span className="text-xl">{b.icon}</span>
+                            <span className="text-[11px] font-medium">{b.name}</span>
+                          </div>
+                        ))}
+                      </div>
+                    </div>
+                  )}
+                  {activeStep === 1 && (
+                    <div className="animate-fade-in">
+                      <div className="text-[11px] font-bold text-brand-400 uppercase tracking-widest mb-4">KI-Vorschläge: Webdesign</div>
+                      <div className="space-y-2">
+                        {[
+                          ["Website (One-Pager)", "1.500 €"],
+                          ["WordPress Setup", "800 €"],
+                          ["Wartung/Monat", "120 €"],
+                        ].map(([name, price], i) => (
+                          <div
+                            key={name}
+                            className="flex items-center justify-between p-3 bg-slate-900 rounded-xl border border-slate-800 text-sm text-slate-200 animate-slide-right"
+                            style={{ animationDelay: `${i * 100}ms` }}
+                          >
+                            <span>{name}</span>
+                            <div className="flex items-center gap-3">
+                              <span className="font-bold font-mono text-xs text-brand-300">{price}</span>
+                              <span className="text-[10px] text-brand-400 font-semibold">+ Hinzufügen</span>
+                            </div>
+                          </div>
+                        ))}
+                      </div>
+                    </div>
+                  )}
+                  {activeStep === 2 && (
+                    <div className="animate-fade-in">
+                      <div className="text-[11px] font-bold text-brand-400 uppercase tracking-widest mb-4">Rechnungsvorschau</div>
+                      <div className="bg-slate-900 rounded-xl p-4 border border-slate-800">
+                        <div className="flex justify-between items-start mb-3">
+                          <div>
+                            <div className="h-2 w-16 bg-slate-700 rounded" />
+                            <div className="h-2 w-24 bg-slate-800 rounded mt-1.5" />
+                          </div>
+                          <span className="text-base font-extrabold text-brand-400">RECHNUNG</span>
+                        </div>
+                        <div className="h-px bg-slate-800 my-3" />
+                        {[
+                          ["Website erstellen", "1.500,00 €"],
+                          ["WordPress Setup", "800,00 €"],
+                          ["Wartung (1 Mo.)", "120,00 €"],
+                        ].map(([desc, amount]) => (
+                          <div key={desc} className="flex justify-between py-1.5 text-xs">
+                            <span className="text-slate-300">{desc}</span>
+                            <span className="font-semibold text-slate-200">{amount}</span>
+                          </div>
+                        ))}
+                        <div className="flex justify-between mt-3 pt-3 border-t-2 border-slate-700 text-sm font-extrabold text-brand-400">
+                          <span>Gesamt (brutto)</span>
+                          <span>2.879,80 €</span>
+                        </div>
+                      </div>
+                    </div>
+                  )}
+                  {activeStep === 3 && (
+                    <div className="animate-fade-in flex flex-col items-center justify-center py-8 gap-4">
+                      <div className="w-14 h-14 rounded-2xl bg-success-600 flex items-center justify-center shadow-lg shadow-emerald-500/20">
+                        <CheckIcon className="w-7 h-7 text-white" />
+                      </div>
+                      <span className="font-bold text-lg text-slate-100">PDF bereit zum Download</span>
+                      <button className="px-6 py-2.5 bg-brand-600 text-white text-sm font-semibold rounded-xl hover:bg-brand-700 transition-colors shadow-lg shadow-brand-600/25">
+                        Herunterladen
+                      </button>
+                    </div>
+                  )}
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+      </FadeIn>
+
+      {/* ═══ FEATURES ═══ */}
+      <FadeIn id="features" className="py-20 md:py-28">
+        <div className="max-w-6xl mx-auto px-6">
+          <div className="text-center mb-12">
+            <span className="inline-block text-[11px] font-bold text-brand-600 uppercase tracking-[0.12em] mb-2">Features</span>
+            <h2 className="text-3xl md:text-4xl font-extrabold tracking-tight">Alles was du brauchst</h2>
+          </div>
+
+          {/* Hero Features */}
+          <div className="grid md:grid-cols-2 gap-4 mb-4">
+            {/* Mobile Feature */}
+            <div className="group bg-white rounded-2xl border border-slate-200/80 overflow-hidden hover:shadow-xl hover:shadow-slate-200/40 hover:-translate-y-1 transition-all duration-300">
+              <div className="h-48 bg-gradient-to-br from-brand-50 via-violet-50 to-brand-100 flex items-center justify-center relative overflow-hidden">
+                <div className="relative animate-float">
+                  <div className="w-20 bg-slate-950 rounded-2xl border-2 border-slate-800 p-2.5 space-y-1.5">
+                    <div className="h-1.5 bg-slate-700 rounded-full" />
+                    <div className="flex gap-1">
+                      <div className="flex-1 bg-slate-900 rounded border-l-2 border-emerald-500 p-1.5">
+                        <span className="text-[7px] font-bold text-slate-200">€12k</span>
+                      </div>
+                      <div className="flex-1 bg-slate-900 rounded border-l-2 border-amber-500 p-1.5">
+                        <span className="text-[7px] font-bold text-slate-200">€2k</span>
+                      </div>
+                    </div>
+                    <div className="h-1.5 bg-slate-900 rounded-full" />
+                    <div className="h-1.5 bg-slate-900 rounded-full w-3/4" />
+                    <div className="h-1.5 bg-slate-900 rounded-full w-1/2" />
+                  </div>
+                </div>
+              </div>
+              <div className="p-6">
+                <h3 className="text-lg font-bold mb-1.5">Mobil-optimiert</h3>
+                <p className="text-sm text-slate-500 leading-relaxed">
+                  Erstelle Rechnungen auf der Baustelle, im Café oder zwischen zwei Terminen. Jedes Gerät, jede Größe.
+                </p>
+              </div>
+            </div>
+
+            {/* AI Feature */}
+            <div className="group bg-white rounded-2xl border border-slate-200/80 overflow-hidden hover:shadow-xl hover:shadow-slate-200/40 hover:-translate-y-1 transition-all duration-300">
+              <div className="h-48 bg-gradient-to-br from-blue-50 via-cyan-50 to-blue-100 flex flex-col items-center justify-center gap-2 px-8">
+                {[
+                  { dot: "bg-emerald-500", name: "Website erstellen", price: "1.500 €" },
+                  { dot: "bg-brand-500", name: "Logo-Design", price: "500 €" },
+                  { dot: "bg-amber-500", name: "Wartung/Monat", price: "120 €" },
+                ].map((item) => (
+                  <div key={item.name} className="flex items-center gap-3 w-full px-4 py-2.5 bg-white/70 backdrop-blur-sm rounded-xl text-xs font-medium">
+                    <div className={`w-2 h-2 rounded-full ${item.dot}`} />
+                    <span className="text-slate-700">{item.name}</span>
+                    <span className="ml-auto font-bold font-mono text-brand-600">{item.price}</span>
+                  </div>
+                ))}
+              </div>
+              <div className="p-6">
+                <h3 className="text-lg font-bold mb-1.5">KI-Preisvorschläge</h3>
+                <p className="text-sm text-slate-500 leading-relaxed">
+                  Wähle deine Branche — die KI kennt Preise, Einheiten und Positionen. Ein Klick, fertig.
+                </p>
+              </div>
+            </div>
+          </div>
+
+          {/* Feature Grid */}
+          <div className="grid sm:grid-cols-2 lg:grid-cols-3 gap-3">
+            {FEATURES.map((feature) => (
+              <div
+                key={feature.title}
+                className="group p-5 bg-white rounded-2xl border border-slate-200/80 hover:border-brand-200 hover:shadow-lg hover:shadow-brand-100/30 transition-all duration-300"
+              >
+                <h4 className="font-bold text-sm mb-1 group-hover:text-brand-600 transition-colors">{feature.title}</h4>
+                <p className="text-xs text-slate-500 leading-relaxed">{feature.desc}</p>
+              </div>
+            ))}
+          </div>
+        </div>
+      </FadeIn>
+
+      {/* ═══ BEFORE / AFTER ═══ */}
+      <FadeIn className="py-20 md:py-28">
+        <div className="max-w-6xl mx-auto px-6">
+          <div className="bg-slate-50 rounded-3xl p-8 md:p-12 border border-slate-100">
+            <div className="text-center mb-10">
+              <span className="inline-block text-[11px] font-bold text-brand-600 uppercase tracking-[0.12em] mb-2">Warum wechseln?</span>
+              <h2 className="text-3xl md:text-4xl font-extrabold tracking-tight">Vorher vs. Nachher</h2>
+            </div>
+            <div className="grid md:grid-cols-[1fr_auto_1fr] gap-6 items-stretch">
+              {/* Before */}
+              <div className="bg-white rounded-2xl p-6 border border-slate-200/80 shadow-sm">
+                <div className="h-28 rounded-xl bg-gradient-to-br from-red-50 to-red-100 flex items-center justify-center relative mb-5">
+                  <div className="w-12 h-16 bg-white border border-red-200 rounded shadow-sm absolute -rotate-3" />
+                  <div className="w-12 h-16 bg-white border border-red-200 rounded shadow-sm absolute rotate-6 left-1/2 ml-2" />
+                  <span className="absolute bottom-2 right-4 text-xl">✏️</span>
+                </div>
+                <h3 className="font-bold text-base mb-3">Ohne RechnungsKI</h3>
+                <ul className="space-y-2">
+                  {["Samstags 2-3 Stunden Rechnungen", "Word-Vorlage, manuell tippen", "MwSt von Hand ausrechnen", "Excel für alles", "Unsicher ob §14-konform"].map((text) => (
+                    <li key={text} className="flex items-start gap-2 text-sm text-slate-500">
+                      <span className="text-red-500 font-bold mt-0.5 text-xs shrink-0">✗</span>
+                      {text}
+                    </li>
+                  ))}
+                </ul>
+              </div>
+
+              {/* Arrow */}
+              <div className="hidden md:flex items-center justify-center">
+                <div className="w-10 h-10 rounded-full bg-brand-600 text-white flex items-center justify-center shadow-lg shadow-brand-600/25">
+                  <ArrowIcon />
+                </div>
+              </div>
+              <div className="flex md:hidden items-center justify-center py-1">
+                <div className="w-10 h-10 rounded-full bg-brand-600 text-white flex items-center justify-center shadow-lg shadow-brand-600/25 rotate-90">
+                  <ArrowIcon />
+                </div>
+              </div>
+
+              {/* After */}
+              <div className="bg-white rounded-2xl p-6 border border-emerald-200/60 shadow-sm ring-1 ring-emerald-100/50">
+                <div className="h-28 rounded-xl bg-gradient-to-br from-emerald-50 to-emerald-100 flex items-center justify-center relative mb-5">
+                  <div className="animate-float">
+                    <div className="w-16 bg-slate-950 rounded-xl p-2 space-y-1">
+                      <div className="h-1 bg-slate-700 rounded-full" />
+                      <div className="h-1.5 bg-slate-900 rounded-full" />
+                      <div className="h-1.5 bg-slate-900 rounded-full w-3/4" />
+                    </div>
+                  </div>
+                  <div className="absolute bottom-2 right-4 w-7 h-7 rounded-full bg-success-600 flex items-center justify-center">
+                    <CheckIcon className="w-4 h-4 text-white" />
+                  </div>
+                </div>
+                <h3 className="font-bold text-base mb-3 text-success-700">Mit RechnungsKI</h3>
+                <ul className="space-y-2">
+                  {["2 Minuten, fertig", "KI schlägt Positionen vor", "MwSt automatisch", "Ein Dashboard für alles", "§14-Validierung warnt"].map((text) => (
+                    <li key={text} className="flex items-start gap-2 text-sm text-slate-900 font-medium">
+                      <span className="text-success-600 mt-0.5 shrink-0">
+                        <CheckIcon className="w-3.5 h-3.5" />
+                      </span>
+                      {text}
+                    </li>
+                  ))}
+                </ul>
+              </div>
+            </div>
+          </div>
+        </div>
+      </FadeIn>
+
+      {/* ═══ PRICING ═══ */}
+      <FadeIn id="preise" className="py-20 md:py-28">
+        <div className="max-w-6xl mx-auto px-6">
+          <div className="text-center mb-10">
+            <span className="inline-block text-[11px] font-bold text-brand-600 uppercase tracking-[0.12em] mb-2">Preise</span>
+            <h2 className="text-3xl md:text-4xl font-extrabold tracking-tight">Einfach. Fair. Transparent.</h2>
+
+            {/* Billing Toggle */}
+            <div className="inline-flex items-center bg-slate-100 rounded-xl p-1 mt-6 border border-slate-200/60">
+              <button
+                onClick={() => setBilling("monthly")}
+                className={`px-5 py-2 rounded-lg text-sm font-semibold transition-all duration-200 ${
+                  billing === "monthly" ? "bg-brand-600 text-white shadow-md" : "text-slate-500 hover:text-slate-700"
+                }`}
+              >
+                Monatlich
+              </button>
+              <button
+                onClick={() => setBilling("yearly")}
+                className={`px-5 py-2 rounded-lg text-sm font-semibold transition-all duration-200 ${
+                  billing === "yearly" ? "bg-brand-600 text-white shadow-md" : "text-slate-500 hover:text-slate-700"
+                }`}
+              >
+                Jährlich
+                <span className="ml-1.5 text-[10px] font-bold text-emerald-500">-20%</span>
+              </button>
+            </div>
+          </div>
+
+          <div className="grid sm:grid-cols-2 lg:grid-cols-4 gap-4">
+            {PLANS.map((plan) => (
+              <div
+                key={plan.name}
+                className={`relative flex flex-col p-6 rounded-2xl transition-all duration-300 hover:-translate-y-1 ${
+                  plan.popular
+                    ? "bg-white border-2 border-brand-600 shadow-xl shadow-brand-100/50 ring-1 ring-brand-200/30"
+                    : "bg-white border border-slate-200/80 hover:shadow-lg hover:shadow-slate-200/40"
+                }`}
+              >
+                {plan.popular && (
+                  <div className="absolute -top-3 left-1/2 -translate-x-1/2 px-4 py-1 bg-brand-600 text-white text-[10px] font-bold uppercase tracking-wider rounded-full shadow-lg shadow-brand-600/25">
+                    Empfohlen
+                  </div>
+                )}
+                <div className="text-xs font-bold text-brand-600 uppercase tracking-wide">{plan.name}</div>
+                <div className="flex items-baseline gap-1 mt-2 mb-1">
+                  <span className="text-3xl font-extrabold tracking-tight">
+                    {billing === "yearly" ? plan.priceYearly : plan.price}€
+                  </span>
+                  <span className="text-xs text-slate-400 font-medium">/Mo</span>
+                </div>
+                <div className="text-xs text-slate-500 mb-5">{plan.desc}</div>
+
+                <div className="flex-1 space-y-2.5 mb-6">
+                  {plan.features.map((feature) => (
+                    <div key={feature} className="flex items-center gap-2 text-xs text-slate-600">
+                      <CheckIcon className="w-3.5 h-3.5 text-success-500 shrink-0" />
+                      {feature}
+                    </div>
+                  ))}
+                </div>
+
+                <a
+                  href="/dashboard"
+                  className={`block text-center py-2.5 rounded-xl text-sm font-semibold transition-all duration-200 ${
+                    plan.popular
+                      ? "bg-brand-600 text-white shadow-lg shadow-brand-600/25 hover:bg-brand-700 hover:shadow-brand-600/40"
+                      : "bg-slate-50 text-slate-700 border border-slate-200 hover:border-brand-300 hover:bg-brand-50 hover:text-brand-700"
+                  }`}
+                >
+                  {plan.price === 0 ? "Kostenlos starten" : "Auswählen"}
+                </a>
+              </div>
+            ))}
+          </div>
+        </div>
+      </FadeIn>
+
+      {/* ═══ FAQ ═══ */}
+      <FadeIn className="py-20 md:py-28">
+        <div className="max-w-2xl mx-auto px-6">
+          <div className="text-center mb-10">
+            <h2 className="text-3xl md:text-4xl font-extrabold tracking-tight">Häufige Fragen</h2>
+          </div>
+          <div className="divide-y divide-slate-200/80">
+            {FAQS.map((faq, i) => (
+              <div key={faq.q}>
+                <button
+                  onClick={() => setOpenFaq(openFaq === i ? null : i)}
+                  className="w-full flex items-center justify-between py-5 text-left group"
+                >
+                  <span className="text-sm font-semibold text-slate-900 group-hover:text-brand-600 transition-colors pr-4">
+                    {faq.q}
+                  </span>
+                  <ChevronDown open={openFaq === i} />
+                </button>
+                <div
+                  className={`overflow-hidden transition-all duration-300 ease-[cubic-bezier(0.16,1,0.3,1)] ${
+                    openFaq === i ? "max-h-40 pb-5" : "max-h-0"
+                  }`}
+                >
+                  <p className="text-sm text-slate-500 leading-relaxed">{faq.a}</p>
+                </div>
+              </div>
+            ))}
+          </div>
+        </div>
+      </FadeIn>
+
+      {/* ═══ FINAL CTA ═══ */}
+      <section className="relative py-20 md:py-28 overflow-hidden bg-brand-950">
+        <div className="absolute inset-0 pointer-events-none overflow-hidden">
+          <div className="absolute -top-32 -right-32 w-[500px] h-[500px] rounded-full bg-brand-600/20 blur-3xl" />
+          <div className="absolute -bottom-32 -left-32 w-[400px] h-[400px] rounded-full bg-violet-600/20 blur-3xl" />
+        </div>
+        <div className="relative z-10 text-center max-w-xl mx-auto px-6">
+          <h2 className="text-3xl md:text-4xl font-extrabold tracking-tight text-white mb-4">
+            Bereit loszulegen?
+          </h2>
+          <p className="text-brand-200 text-base mb-8">
+            Kostenlos starten. Keine Kreditkarte. 30 Sekunden Setup.
+          </p>
+          <a
+            href="/dashboard"
+            className="inline-flex items-center gap-2 px-8 py-4 bg-white text-brand-700 text-base font-bold rounded-2xl hover:bg-brand-50 transition-all duration-200 shadow-xl shadow-black/20 hover:shadow-2xl hover:-translate-y-0.5"
+          >
+            Jetzt kostenlos starten
+            <ArrowIcon />
+          </a>
+        </div>
+      </section>
+
+      {/* ═══ FOOTER ═══ */}
+      <footer className="border-t border-slate-200/60 bg-white">
+        <div className="max-w-6xl mx-auto px-6 py-12">
+          <div className="flex flex-col md:flex-row justify-between gap-10">
+            <div className="max-w-xs">
+              <div className="flex items-center gap-2.5 mb-3">
+                <div className="w-7 h-7 rounded-lg bg-gradient-to-br from-brand-500 to-brand-700" />
+                <span className="text-sm font-extrabold tracking-tight">RechnungsKI</span>
+              </div>
+              <p className="text-xs text-slate-400 leading-relaxed">
+                KI-Rechnungssoftware für Dienstleister, Handwerker und Freelancer im DACH-Raum.
+              </p>
+            </div>
+            <div className="flex gap-16">
+              {[
+                { title: "Produkt", links: ["Features", "Preise", "Changelog"] },
+                { title: "Rechtliches", links: ["Impressum", "Datenschutz", "AGB"] },
+                { title: "Support", links: ["Hilfe-Center", "Kontakt", "Status"] },
+              ].map((col) => (
+                <div key={col.title}>
+                  <div className="text-[10px] font-bold text-slate-400 uppercase tracking-[0.08em] mb-3">
+                    {col.title}
+                  </div>
+                  <div className="space-y-2">
+                    {col.links.map((link) => (
+                      <a key={link} className="block text-xs text-slate-400 hover:text-slate-900 transition-colors cursor-pointer">
+                        {link}
+                      </a>
+                    ))}
+                  </div>
+                </div>
+              ))}
+            </div>
+          </div>
+        </div>
+        <div className="border-t border-slate-100 py-6">
+          <p className="text-center text-[11px] text-slate-300">
+            © 2026 RechnungsKI · Made in Deutschland
+          </p>
+        </div>
+      </footer>
+    </div>
+  );
+}
