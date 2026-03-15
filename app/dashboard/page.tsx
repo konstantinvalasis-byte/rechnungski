@@ -788,7 +788,7 @@ function App() {
         <div style={{ borderTop: "1px solid #1e293b", paddingTop: 12 }}><div className="usage-bar"><div className="usage-fill" style={{ width: `${Math.min(rechnungen.length / lim.re * 100, 100)}%` }} /></div><span style={{ fontSize: 10, color: "#475569", padding: "0 8px", display: "block", marginTop: 4 }}>{rechnungen.length}/{lim.re === 99999 ? "∞" : lim.re}</span></div>
       </nav>
       <main className="main-content">
-        {pg === "dashboard" && <Dashboard {...{ rechnungen, kunden, firma, nav, updRe, plan, lim }} />}
+        {pg === "dashboard" && <Dashboard {...{ rechnungen, kunden, firma, nav, updRe, addRe, addKu, plan, lim }} />}
         {pg === "neue-rechnung" && <NeueRechnung {...{ firma, kunden, addKu, addRe, updRe, nextNr: nxtNr(), nav, plan, lim, canCreate: rechnungen.length < lim.re, editRechnung: editRe, onEditDone: () => setEditRe(null), favoriten, addFav, delFav }} />}
         {pg === "rechnungen" && <RechnungenListe {...{ rechnungen, updRe, nav, dupRe, firma, onEdit: r => { setEditRe(r); setPg("neue-rechnung"); } }} />}
         {pg === "kunden" && <KundenListe {...{ kunden, rechnungen, updKu, delKu }} />}
@@ -1003,7 +1003,7 @@ function OnboardingWizard({ onComplete }) {
 }
 
 // ═══ DASHBOARD ═══
-function Dashboard({ rechnungen, kunden, firma, nav, updRe, plan, lim }) {
+function Dashboard({ rechnungen, kunden, firma, nav, updRe, addRe, addKu, plan, lim }) {
   const paid = rechnungen.filter(r => r.status === "bezahlt");
   const offen = rechnungen.filter(r => r.status === "offen");
   const ueber = offen.filter(r => new Date(r.faelligDatum) < new Date());
@@ -1020,6 +1020,32 @@ function Dashboard({ rechnungen, kunden, firma, nav, updRe, plan, lim }) {
   const alteAngebote = rechnungen.filter(r => r.status === "angebot" && new Date(r.datum) < new Date(Date.now() - 7 * 24 * 60 * 60 * 1000));
   // Leer-Zustand
   const isEmpty = rechnungen.length === 0 && kunden.length === 0;
+
+  // Musterrechnung
+  const loadMuster = async () => {
+    const musterKunde = await addKu({ name: "Müller Haustechnik GmbH", strasse: "Industriestr. 42", plz: "70563", ort: "Stuttgart", email: "info@mueller-haustechnik.de", telefon: "0711 987654" });
+    const heute = new Date().toISOString().split("T")[0];
+    const faellig = new Date(); faellig.setDate(faellig.getDate() + 14);
+    const mwstSatz = firma?.kleinunternehmer ? 0 : 19;
+    const positionen = [
+      { beschreibung: "Elektroinstallation Büro EG – 12 Doppelsteckdosen setzen, Kabel verlegen, Sicherungskasten anpassen", einheit: "Pauschal", menge: 1, preis: 1850, mwst: mwstSatz, typ: "arbeit" },
+      { beschreibung: "Netzwerkverkabelung Cat7 inkl. Patchpanel", einheit: "Stk", menge: 12, preis: 45, mwst: mwstSatz, typ: "arbeit" },
+      { beschreibung: "LED-Deckenleuchten (Philips CoreLine)", einheit: "Stk", menge: 8, preis: 89, mwst: mwstSatz, typ: "material" },
+      { beschreibung: "Kabelkanäle weiss 60x40mm", einheit: "m", menge: 35, preis: 8.50, mwst: mwstSatz, typ: "material" },
+      { beschreibung: "Kleinmaterial (Dübel, Schrauben, Klemmen)", einheit: "Pauschal", menge: 1, preis: 95, mwst: mwstSatz, typ: "material" },
+      { beschreibung: "Anfahrt und Entsorgung", einheit: "Pauschal", menge: 1, preis: 65, mwst: mwstSatz, typ: "arbeit" },
+    ];
+    const netto = positionen.reduce((s, p) => s + p.menge * p.preis, 0);
+    const mwst = positionen.reduce((s, p) => s + p.menge * p.preis * p.mwst / 100, 0);
+    const y = now.getFullYear();
+    const prefix = `RE-${y}-`;
+    const maxNr = rechnungen.filter(r => r.nummer?.startsWith(prefix)).reduce((mx, r) => { const n = parseInt(r.nummer.slice(prefix.length), 10); return isNaN(n) ? mx : Math.max(mx, n); }, 0);
+    await addRe({
+      id: uid(), nummer: `${prefix}${String(maxNr + 1).padStart(4, "0")}`, datum: heute, faelligDatum: faellig.toISOString().split("T")[0],
+      kundeId: musterKunde.id, kundeName: musterKunde.name, kundeAdresse: `${musterKunde.strasse}, ${musterKunde.plz} ${musterKunde.ort}`, kundeEmail: musterKunde.email,
+      positionen, netto, mwst, gesamt: netto + mwst, zahlungsziel: 14, notiz: "Leistungszeitraum: siehe Auftragsbestätigung AB-2026-003.\nZahlbar innerhalb 14 Tagen ohne Abzug.", status: "offen", gewerk: firma?.gewerk || "", rabatt: 0, zeitraumVon: "", zeitraumBis: "", typ: "rechnung",
+    });
+  };
 
   return (
     <div className="page">
@@ -1055,6 +1081,11 @@ function Dashboard({ rechnungen, kunden, firma, nav, updRe, plan, lim }) {
                   <span style={{ opacity: .6, display: "flex" }}>{a.ico}</span>{a.l}
                 </button>
               ))}
+            </div>
+            <div style={{ marginTop: 16, paddingTop: 16, borderTop: "1px solid #334155" }}>
+              <button onClick={loadMuster} style={{ display: "flex", alignItems: "center", gap: 6, padding: "9px 16px", background: "transparent", border: "1px dashed #4338ca", borderRadius: 8, color: "#a5b4fc", fontSize: 12, fontWeight: 500, cursor: "pointer", margin: "0 auto" }}>
+                {IC.eye} Musterrechnung laden – so sieht eine fertige Rechnung aus
+              </button>
             </div>
           </div>
         </div>
