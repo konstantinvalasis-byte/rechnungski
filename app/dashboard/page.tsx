@@ -1,6 +1,23 @@
 // @ts-nocheck
 "use client";
-import { useState, useEffect, useRef, useCallback } from "react";
+import { useState, useEffect, useRef, useCallback, Component } from "react";
+
+class ErrorBoundary extends Component {
+  state = { hasError: false };
+  static getDerivedStateFromError() { return { hasError: true }; }
+  componentDidCatch(e, i) { console.error("RechnungsKI:", e, i); }
+  render() {
+    if (this.state.hasError) return (
+      <div style={{ display:"flex", flexDirection:"column", alignItems:"center", justifyContent:"center", height:"100vh", background:"#0b1120", color:"#e2e8f0", gap:16, padding:24, fontFamily:"sans-serif" }}>
+        <div style={{ fontSize:40 }}>⚠️</div>
+        <h2 style={{ fontSize:20, fontWeight:700 }}>Unerwarteter Fehler</h2>
+        <p style={{ fontSize:13, color:"#64748b", textAlign:"center", maxWidth:380 }}>Die App hat einen Fehler. Deine Daten sind sicher – bitte lade die Seite neu.</p>
+        <button style={{ padding:"9px 22px", background:"#4f46e5", color:"#fff", border:"none", borderRadius:8, cursor:"pointer", fontSize:14, fontWeight:600 }} onClick={() => window.location.reload()}>Neu laden</button>
+      </div>
+    );
+    return this.props.children;
+  }
+}
 
 // ═══════════════════════════════════════════════════════════
 // GEWERK DATA
@@ -438,6 +455,28 @@ function generatePdfHtml(rechnung, firma) {
   </body></html>`;
 }
 
+function generateMahnungPdfHtml(rechnung, firma, stufe) {
+  const text = mahnung(rechnung, firma, stufe);
+  const stufenLabel = { 1: "Zahlungserinnerung", 2: "Zweite Mahnung", 3: "Letzte Mahnung" }[stufe] || "Mahnung";
+  return `<!DOCTYPE html><html><head><meta charset="utf-8"><style>
+    @import url('https://fonts.googleapis.com/css2?family=DM+Sans:wght@400;500;600;700&display=swap');
+    *{margin:0;padding:0;box-sizing:border-box}
+    body{font-family:'DM Sans',Helvetica,Arial,sans-serif;color:#111;padding:40px 48px;font-size:13px;line-height:1.6}
+    @media print{body{padding:30px 36px}@page{margin:15mm 12mm;size:A4}}
+  </style></head><body>
+    <div style="display:flex;justify-content:space-between;margin-bottom:40px;align-items:flex-start">
+      <div>${firma.logo ? `<img src="${firma.logo}" style="max-height:50px;max-width:160px;object-fit:contain;margin-bottom:6px;" />` : ""}<div style="font-size:16px;font-weight:700">${firma.name}</div><div style="font-size:11px;color:#666">${firma.strasse || ""}, ${firma.plz || ""} ${firma.ort || ""}</div></div>
+      <div style="text-align:right"><div style="font-size:20px;font-weight:800;color:#ef4444;text-transform:uppercase">${stufenLabel}</div><div style="font-size:12px;color:#666;margin-top:4px">Datum: ${fd(new Date().toISOString())}</div><div style="font-size:12px;color:#666">Zu Rechnung: ${rechnung.nummer}</div></div>
+    </div>
+    <div style="margin-bottom:24px"><div style="font-size:10px;color:#999;text-transform:uppercase;letter-spacing:1px;margin-bottom:4px">An</div><div style="font-weight:600">${rechnung.kundeName}</div><div style="font-size:12px;color:#666">${rechnung.kundeAdresse || ""}</div></div>
+    <div style="white-space:pre-line;font-size:13px;line-height:1.8;margin-bottom:32px">${text}</div>
+    <div style="margin-top:32px;padding-top:14px;border-top:1px solid #e5e7eb;font-size:10px;color:#999;display:flex;justify-content:space-between">
+      <span>${firma.bankName ? firma.bankName + " · " : ""}${firma.iban ? "IBAN: " + firma.iban : ""}</span>
+      <span>${firma.steuernr ? "St.Nr: " + firma.steuernr : ""}${firma.ustid ? " · USt-ID: " + firma.ustid : ""}</span>
+    </div>
+  </body></html>`;
+}
+
 function downloadPdf(rechnung, firma) {
   const html = generatePdfHtml(rechnung, firma);
   const iframe = document.createElement("iframe");
@@ -648,7 +687,7 @@ const SUPABASE_JS_CODE = [
 // ═══════════════════════════════════════════════════════════
 // MAIN APP
 // ═══════════════════════════════════════════════════════════
-export default function App() {
+function App() {
   const [pg, setPg] = useState("dashboard");
   const [firma, setFirma] = useState(null);
   const [kunden, setKunden] = useState([]);
@@ -658,11 +697,29 @@ export default function App() {
   const [toast, setToast] = useState(null);
   const [mobNav, setMobNav] = useState(false);
   const [editRe, setEditRe] = useState(null);
+  const [favoriten, setFavoriten] = useState([]);
 
   useEffect(() => {
-    const f = ld("inv-firma", null), k = ld("inv-kunden", []), r = ld("inv-rechnungen", []), p = ld("inv-plan", "free"), ob = ld("inv-onboarded", false);
-    setFirma(f); setKunden(k); setRechnungen(r); setPlan(p); setLoaded(true);
+    const f = ld("inv-firma", null), k = ld("inv-kunden", []), r = ld("inv-rechnungen", []), p = ld("inv-plan", "free"), ob = ld("inv-onboarded", false), fav = ld("inv-favoriten", []), wdk = ld("inv-wdk", []);
+    setFirma(f); setKunden(k); setRechnungen(r); setPlan(p); setFavoriten(fav); setWdk(wdk); setLoaded(true);
     if (!ob || !f) setPg("onboarding");
+    // Auto-create due recurring invoices
+    const today = new Date().toISOString().split("T")[0];
+    const due = wdk.filter(w => w.aktiv && w.nextDue <= today);
+    if (due.length > 0) {
+      const y = new Date().getFullYear();
+      const allRe = [...r];
+      const updWdkList = [...wdk];
+      due.forEach(w => {
+        const nr = `RE-${y}-${String(allRe.filter(re => re.nummer?.startsWith(`RE-${y}`)).length + 1).padStart(4,"0")}`;
+        const fdt = new Date(); fdt.setDate(fdt.getDate() + (w.zahlungsziel || 14));
+        allRe.push({ id: uid(), nummer: nr, datum: today, faelligDatum: fdt.toISOString().split("T")[0], kundeId: w.kundeId, kundeName: w.kundeName, kundeAdresse: w.kundeAdresse || "", kundeEmail: w.kundeEmail || "", positionen: w.positionen || [], netto: w.netto || 0, mwst: w.mwst || 0, gesamt: w.gesamt || 0, zahlungsziel: w.zahlungsziel || 14, notiz: w.notiz || "", status: "offen", gewerk: w.gewerk || "", rabatt: w.rabatt || 0, zeitraumVon: "", zeitraumBis: "" });
+        const idx = updWdkList.findIndex(x => x.id === w.id);
+        if (idx >= 0) updWdkList[idx] = { ...w, nextDue: (() => { const d = new Date(w.nextDue); if (w.interval === "monatlich") d.setMonth(d.getMonth()+1); else if (w.interval === "quartal") d.setMonth(d.getMonth()+3); else d.setFullYear(d.getFullYear()+1); return d.toISOString().split("T")[0]; })() };
+      });
+      sv("inv-rechnungen", allRe); sv("inv-wdk", updWdkList);
+      setRechnungen(allRe); setWdk(updWdkList);
+    }
   }, []);
 
   const sf = f => { setFirma(f); sv("inv-firma", f); showT("Gespeichert!"); };
@@ -674,6 +731,15 @@ export default function App() {
   const addRe = async r => { await sre([...rechnungen, r]); showT("Erstellt!"); };
   const delKu = kid => skn(kunden.filter(k => k.id !== kid));
   const updKu = (kid, up) => skn(kunden.map(k => k.id === kid ? { ...k, ...up } : k));
+  const addFav = pos => { const exists = favoriten.find(f => f.beschreibung === pos.beschreibung); if (exists) return; const nf = [...favoriten, { ...pos, id: uid() }]; setFavoriten(nf); sv("inv-favoriten", nf); showT("Favorit gespeichert!"); };
+  const delFav = fid => { const nf = favoriten.filter(f => f.id !== fid); setFavoriten(nf); sv("inv-favoriten", nf); };
+
+  const [wiederkehrend, setWdk] = useState([]);
+  const saveWdk = w => { setWdk(w); sv("inv-wdk", w); };
+  const addWdk = w => saveWdk([...wiederkehrend, { ...w, id: uid() }]);
+  const updWdk = (id, up) => saveWdk(wiederkehrend.map(w => w.id === id ? { ...w, ...up } : w));
+  const delWdk = id => saveWdk(wiederkehrend.filter(w => w.id !== id));
+  const calcNextDue = (dateStr, interval) => { const d = new Date(dateStr); if (interval === "monatlich") d.setMonth(d.getMonth() + 1); else if (interval === "quartal") d.setMonth(d.getMonth() + 3); else d.setFullYear(d.getFullYear() + 1); return d.toISOString().split("T")[0]; };
   const updRe = async (rid, up) => { await sre(rechnungen.map(r => r.id === rid ? { ...r, ...up } : r)); };
   const addKu = async k => { const ex = kunden.find(x => x.name === k.name && x.strasse === k.strasse); if (ex) return ex; const nk = { ...k, id: uid() }; await skn([...kunden, nk]); return nk; };
   const dupRe = async o => { const nr = nxtNr(); const d = new Date().toISOString().split("T")[0]; const fdt = new Date(); fdt.setDate(fdt.getDate() + (o.zahlungsziel || 14)); await addRe({ ...o, id: uid(), nummer: nr, datum: d, faelligDatum: fdt.toISOString().split("T")[0], status: "offen" }); };
@@ -696,6 +762,7 @@ export default function App() {
   const navItems = [
     { id: "dashboard", icon: IC.dash, l: "Dashboard" }, { id: "neue-rechnung", icon: IC.doc, l: "Neue Rechnung" },
     { id: "rechnungen", icon: IC.euro, l: "Rechnungen" }, { id: "kunden", icon: IC.users, l: "Kunden" },
+    { id: "wiederkehrend", icon: <svg width="19" height="19" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8"><path d="M3 12a9 9 0 1 0 9-9 9.75 9.75 0 0 0-6.74 2.74L3 8"/><path d="M3 3v5h5"/></svg>, l: "Wiederkehrend" },
     { id: "abo", icon: IC.crown, l: "Abo & Preise" },
     { id: "settings", icon: IC.gear, l: "Einstellungen" },
   ];
@@ -711,9 +778,10 @@ export default function App() {
       </nav>
       <main className="main-content">
         {pg === "dashboard" && <Dashboard {...{ rechnungen, kunden, firma, nav, updRe, plan, lim }} />}
-        {pg === "neue-rechnung" && <NeueRechnung {...{ firma, kunden, addKu, addRe, updRe, nextNr: nxtNr(), nav, plan, lim, canCreate: rechnungen.length < lim.re, editRechnung: editRe, onEditDone: () => setEditRe(null) }} />}
+        {pg === "neue-rechnung" && <NeueRechnung {...{ firma, kunden, addKu, addRe, updRe, nextNr: nxtNr(), nav, plan, lim, canCreate: rechnungen.length < lim.re, editRechnung: editRe, onEditDone: () => setEditRe(null), favoriten, addFav, delFav }} />}
         {pg === "rechnungen" && <RechnungenListe {...{ rechnungen, updRe, nav, dupRe, firma, onEdit: r => { setEditRe(r); setPg("neue-rechnung"); } }} />}
         {pg === "kunden" && <KundenListe {...{ kunden, rechnungen, updKu, delKu }} />}
+        {pg === "wiederkehrend" && <WiederkehrendPage {...{ wiederkehrend, addWdk, updWdk, delWdk, kunden, rechnungen, firma }} />}
         {pg === "abo" && <AboPage {...{ plan, spl }} />}
         {pg === "supabase" && <SupabasePage />}
         {pg === "settings" && <SettingsPage {...{ firma, sf, rechnungen, kunden, sre, skn }} />}
@@ -723,6 +791,8 @@ export default function App() {
     </div>
   );
 }
+
+export default function AppWrapper() { return <ErrorBoundary><App /></ErrorBoundary>; }
 
 // ═══ ONBOARDING WIZARD ═══
 function OnboardingWizard({ onComplete }) {
@@ -929,6 +999,12 @@ function Dashboard({ rechnungen, kunden, firma, nav, updRe, plan, lim }) {
   const fE = validateFirma(firma);
   const months = []; for (let i = 5; i >= 0; i--) { const d = new Date(); d.setMonth(d.getMonth() - i); months.push({ l: d.toLocaleDateString("de-DE", { month: "short" }), s: paid.filter(r => { const rd = new Date(r.datum); return rd.getMonth() === d.getMonth() && rd.getFullYear() === d.getFullYear(); }).reduce((s, r) => s + r.gesamt, 0), k: `${d.getFullYear()}-${d.getMonth()}` }); }
   const mx = Math.max(...months.map(m => m.s), 1);
+  // Quartals-MwSt
+  const now = new Date(); const q = Math.floor(now.getMonth() / 3); const qStart = new Date(now.getFullYear(), q * 3, 1); const qEnd = new Date(now.getFullYear(), q * 3 + 3, 0);
+  const qPaid = paid.filter(r => { const d = new Date(r.datum); return d >= qStart && d <= qEnd; });
+  const qNetto = qPaid.reduce((s, r) => s + (r.netto || 0), 0); const qMwst = qPaid.reduce((s, r) => s + (r.mwst || 0), 0);
+  // Angebots-Follow-up
+  const alteAngebote = rechnungen.filter(r => r.status === "angebot" && new Date(r.datum) < new Date(Date.now() - 7 * 24 * 60 * 60 * 1000));
 
   return (
     <div className="page">
@@ -941,6 +1017,10 @@ function Dashboard({ rechnungen, kunden, firma, nav, updRe, plan, lim }) {
         <div className="card"><h3 className="card-t">Letzte Rechnungen</h3>{rechnungen.length === 0 ? <p className="sub">Keine.</p> : [...rechnungen].reverse().slice(0, 5).map(r => <div key={r.id} className="recent-item"><div><div style={{ fontWeight: 600, fontSize: 13 }}>{r.kundeName}</div><div className="sub">{r.nummer}</div></div><div style={{ textAlign: "right" }}><div style={{ fontWeight: 600, fontSize: 13 }}>{fc(r.gesamt)}</div><SB s={r.status} /></div></div>)}</div>
       </div>
       {ueber.length > 0 && <div className="warn-card"><div style={{ display: "flex", alignItems: "center", gap: 8, marginBottom: 8, fontWeight: 600 }}><span style={{ color: "#f87171", display: "flex" }}>{IC.alert}</span>Überfällig</div>{ueber.map(r => <div key={r.id} style={{ display: "flex", alignItems: "center", gap: 10, padding: "6px 0", fontSize: 12, flexWrap: "wrap", borderBottom: "1px solid #33251a" }}><span style={{ fontWeight: 600 }}>{r.nummer}</span><span>{r.kundeName}</span><span style={{ fontWeight: 600 }}>{fc(r.gesamt)}</span><button className="s-btn" onClick={() => updRe(r.id, { status: "gemahnt" })}>Mahnen</button></div>)}</div>}
+
+      {alteAngebote.length > 0 && <div className="warn-card" style={{ borderColor: "#1e3a5f" }}><div style={{ display: "flex", alignItems: "center", gap: 8, marginBottom: 8, fontWeight: 600 }}><span style={{ fontSize: 16 }}>📋</span>Angebote ohne Antwort ({alteAngebote.length})</div>{alteAngebote.map(r => <div key={r.id} style={{ display: "flex", alignItems: "center", gap: 10, padding: "6px 0", fontSize: 12, flexWrap: "wrap", borderBottom: "1px solid #1e2d3f" }}><span style={{ fontWeight: 600 }}>{r.nummer}</span><span>{r.kundeName}</span><span style={{ fontWeight: 600 }}>{fc(r.gesamt)}</span><span style={{ opacity: .6 }}>{Math.floor((Date.now() - new Date(r.datum)) / 86400000)}d offen</span><button className="s-btn-g" onClick={() => updRe(r.id, { status: "offen", typ: "rechnung" })}>Annehmen</button><button className="s-btn" onClick={() => updRe(r.id, { status: "storniert" })}>Ablehnen</button></div>)}</div>}
+
+      {!firma?.kleinunternehmer && (qNetto > 0 || qMwst > 0) && <div className="card" style={{ marginTop: 16 }}><h3 className="card-t">Quartal {q + 1}/{now.getFullYear()} – Steuerübersicht</h3><div style={{ display: "flex", gap: 16, flexWrap: "wrap", marginTop: 8 }}><div style={{ flex: 1, minWidth: 120, padding: "10px 14px", background: "#111827", borderRadius: 8, border: "1px solid #1e293b" }}><div style={{ fontSize: 10, color: "#64748b", textTransform: "uppercase", letterSpacing: ".05em" }}>Nettoumsatz</div><div style={{ fontSize: 20, fontWeight: 700, marginTop: 2 }}>{fc(qNetto)}</div></div><div style={{ flex: 1, minWidth: 120, padding: "10px 14px", background: "#111827", borderRadius: 8, border: "1px solid #1e293b" }}><div style={{ fontSize: 10, color: "#64748b", textTransform: "uppercase", letterSpacing: ".05em" }}>MwSt-Schuld</div><div style={{ fontSize: 20, fontWeight: 700, marginTop: 2, color: "#f87171" }}>{fc(qMwst)}</div></div><div style={{ flex: 1, minWidth: 120, padding: "10px 14px", background: "#111827", borderRadius: 8, border: "1px solid #1e293b" }}><div style={{ fontSize: 10, color: "#64748b", textTransform: "uppercase", letterSpacing: ".05em" }}>Bruttoeinnahmen</div><div style={{ fontSize: 20, fontWeight: 700, marginTop: 2, color: "#34d399" }}>{fc(qNetto + qMwst)}</div></div></div><p style={{ fontSize: 11, color: "#475569", marginTop: 8 }}>Nur bezahlte Rechnungen · {qStart.toLocaleDateString("de-DE")} – {qEnd.toLocaleDateString("de-DE")}</p></div>}
     </div>
   );
 }
@@ -948,7 +1028,7 @@ function Dashboard({ rechnungen, kunden, firma, nav, updRe, plan, lim }) {
 function SB({ s }) { const m = { offen: { b: "#fef3c7", c: "#92400e", l: "Offen" }, bezahlt: { b: "#d1fae5", c: "#065f46", l: "Bezahlt" }, gemahnt: { b: "#fee2e2", c: "#991b1b", l: "Gemahnt" }, storniert: { b: "#e5e7eb", c: "#374151", l: "Storniert" }, angebot: { b: "#e0e7ff", c: "#3730a3", l: "Angebot" } }; const v = m[s] || m.offen; return <span className="status-badge" style={{ background: v.b, color: v.c }}>{v.l}</span>; }
 
 // ═══ NEUE RECHNUNG (compact – same logic as v3) ═══
-function NeueRechnung({ firma, kunden, addKu, addRe, updRe, nextNr, nav, plan, lim, canCreate, editRechnung, onEditDone }) {
+function NeueRechnung({ firma, kunden, addKu, addRe, updRe, nextNr, nav, plan, lim, canCreate, editRechnung, onEditDone, favoriten = [], addFav, delFav }) {
   const [gw, setGw] = useState(firma?.gewerk || ""); const [kS, setKS] = useState(""); const [selK, setSelK] = useState(null);
   const [neuK, setNeuK] = useState({ name: "", strasse: "", plz: "", ort: "", email: "" }); const [showN, setShowN] = useState(false);
   const [pos, setPos] = useState([]); const [ziel, setZiel] = useState(14); const [notiz, setNotiz] = useState("");
@@ -1027,7 +1107,8 @@ function NeueRechnung({ firma, kunden, addKu, addRe, updRe, nextNr, nav, plan, l
               <label className="lbl" style={{ marginBottom: 0 }}>Positionen</label>
               <div style={{ display: "flex", gap: 6 }}>{pos.length > 0 && <div style={{ fontSize: 10, color: "#64748b", display: "flex", gap: 8 }}><span>Arb: {fc(arbS)}</span><span>Mat: {fc(matS)}</span></div>}{gw && <button className="ai-btn" onClick={() => setShowV(!showV)}>{IC.star} KI</button>}</div>
             </div>
-            {showV && gw && <div className="vor-wrap"><div style={{ display: "flex", flexWrap: "wrap", gap: 4 }}>{(GV[gw] || []).map((v, i) => <button key={i} className="vor-chip" onClick={() => addP(v)}><span style={{ fontSize: 12 }}>{v.beschreibung}</span><span style={{ opacity: .5, fontSize: 10 }}>{fc(v.preis)}/{v.einheit}</span></button>)}</div></div>}
+            {favoriten.length > 0 && <div className="vor-wrap" style={{ marginBottom: 6 }}><div style={{ fontSize: 10, color: "#fbbf24", fontWeight: 700, textTransform: "uppercase", letterSpacing: ".05em", marginBottom: 4 }}>★ Favoriten</div><div style={{ display: "flex", flexWrap: "wrap", gap: 4 }}>{favoriten.map((v, i) => <button key={i} className="vor-chip" style={{ borderColor: "#854d0e44" }} onClick={() => addP(v)}><span style={{ fontSize: 12 }}>{v.beschreibung}</span><span style={{ opacity: .5, fontSize: 10 }}>{fc(v.preis)}/{v.einheit}</span><span style={{ marginLeft: 4, fontSize: 10, color: "#fbbf24" }} onClick={e => { e.stopPropagation(); delFav(v.id); }} title="Entfernen">✕</span></button>)}</div></div>}
+            {showV && gw && <div className="vor-wrap"><div style={{ display: "flex", flexWrap: "wrap", gap: 4 }}>{(GV[gw] || []).map((v, i) => <button key={i} className="vor-chip" onClick={() => addP(v)}><span style={{ fontSize: 12 }}>{v.beschreibung}</span><span style={{ opacity: .5, fontSize: 10 }}>{fc(v.preis)}/{v.einheit}</span><span style={{ marginLeft: 4, fontSize: 10, color: "#64748b" }} onClick={e => { e.stopPropagation(); addFav(v); }} title="Als Favorit speichern">★</span></button>)}</div></div>}
             {pos.length > 0 && <div className="pos-table"><div className="pos-h"><span style={{ flex: 2.5 }}>Beschr.</span><span style={{ flex: .6 }}>Typ</span><span style={{ flex: .6 }}>Menge</span><span style={{ flex: .6 }}>Einh.</span><span style={{ flex: .7, textAlign: "right" }}>Preis</span><span style={{ flex: .5 }}>MwSt</span><span style={{ flex: .7, textAlign: "right" }}>Sum.</span><span style={{ width: 24 }} /></div>
               {pos.map(p => <div key={p.id} className="pos-r"><input className="pos-i" style={{ flex: 2.5 }} value={p.beschreibung} onChange={e => updP(p.id, "beschreibung", e.target.value)} /><select className="pos-i" style={{ flex: .6 }} value={p.typ} onChange={e => updP(p.id, "typ", e.target.value)}><option value="arbeit">Arb</option><option value="material">Mat</option></select><input className="pos-i" style={{ flex: .6, textAlign: "center" }} type="number" min=".01" step=".01" value={p.menge} onChange={e => updP(p.id, "menge", parseFloat(e.target.value) || 0)} /><input className="pos-i" style={{ flex: .6, textAlign: "center" }} value={p.einheit} onChange={e => updP(p.id, "einheit", e.target.value)} /><input className="pos-i" style={{ flex: .7, textAlign: "right" }} type="number" min="0" step=".01" value={p.preis} onChange={e => updP(p.id, "preis", parseFloat(e.target.value) || 0)} /><select className="pos-i" style={{ flex: .5 }} value={p.mwst} onChange={e => updP(p.id, "mwst", parseInt(e.target.value))}><option value={19}>19</option><option value={7}>7</option><option value={0}>0</option></select><span style={{ flex: .7, textAlign: "right", fontWeight: 600, fontSize: 11 }}>{fc(p.menge * p.preis)}</span><button className="i-btn" onClick={() => rmP(p.id)}>{IC.trash}</button></div>)}
             </div>}
@@ -1086,7 +1167,7 @@ function RechnungenListe({ rechnungen, updRe, nav, dupRe, firma, onEdit }) {
             </span>
           </div>)}</div>}
 
-      {mahnM && firma && <div className="modal-overlay" onClick={() => setMahnM(null)}><div className="modal-box" style={{ maxWidth: 560 }} onClick={e => e.stopPropagation()}><div style={{ padding: 24 }}><h2 style={{ fontSize: 16, fontWeight: 700, marginBottom: 10, color: "#111" }}>Zahlungserinnerung</h2><div style={{ display: "flex", gap: 4, marginBottom: 12 }}>{[1, 2, 3].map(s => <button key={s} className={`tab ${mahnS === s ? "active" : ""}`} onClick={() => setMahnS(s)}>{s}. Mahnung</button>)}</div><textarea style={{ width: "100%", minHeight: 180, padding: 12, border: "1px solid #d1d5db", borderRadius: 7, fontSize: 12, fontFamily: "'DM Sans',sans-serif", color: "#111", resize: "vertical" }} value={mahnung(mahnM, firma, mahnS)} readOnly /><div style={{ display: "flex", gap: 6, marginTop: 12, justifyContent: "flex-end" }}><button className="p-btn" onClick={() => { navigator.clipboard.writeText(mahnung(mahnM, firma, mahnS)); setMahnM(null); updRe(mahnM.id, { status: "gemahnt" }); }}>Kopieren</button><button className="s-btn" onClick={() => setMahnM(null)}>Schließen</button></div></div></div></div>}
+      {mahnM && firma && <div className="modal-overlay" onClick={() => setMahnM(null)}><div className="modal-box" style={{ maxWidth: 560 }} onClick={e => e.stopPropagation()}><div style={{ padding: 24 }}><h2 style={{ fontSize: 16, fontWeight: 700, marginBottom: 10, color: "#111" }}>Zahlungserinnerung</h2><div style={{ display: "flex", gap: 4, marginBottom: 12 }}>{[1, 2, 3].map(s => <button key={s} className={`tab ${mahnS === s ? "active" : ""}`} onClick={() => setMahnS(s)}>{s}. Mahnung</button>)}</div><textarea style={{ width: "100%", minHeight: 180, padding: 12, border: "1px solid #d1d5db", borderRadius: 7, fontSize: 12, fontFamily: "'DM Sans',sans-serif", color: "#111", resize: "vertical" }} value={mahnung(mahnM, firma, mahnS)} readOnly /><div style={{ display: "flex", gap: 6, marginTop: 12, justifyContent: "flex-end" }}><button className="s-btn pdf-btn" onClick={() => { const html = generateMahnungPdfHtml(mahnM, firma, mahnS); const iframe = document.createElement("iframe"); Object.assign(iframe.style, { position:"fixed", top:"-9999px", left:"-9999px", width:"800px", height:"1100px", border:"none" }); document.body.appendChild(iframe); iframe.contentDocument.write(html); iframe.contentDocument.close(); iframe.contentWindow.focus(); setTimeout(() => { iframe.contentWindow.print(); setTimeout(() => { if(document.body.contains(iframe)) document.body.removeChild(iframe); }, 1500); }, 600); }}>{IC.pdf} PDF</button><button className="p-btn" onClick={() => { navigator.clipboard.writeText(mahnung(mahnM, firma, mahnS)); setMahnM(null); updRe(mahnM.id, { status: "gemahnt" }); }}>Kopieren</button><button className="s-btn" onClick={() => setMahnM(null)}>Schließen</button></div></div></div></div>}
 
       {stornierConfirm && <div className="modal-overlay" onClick={() => setStornierConfirm(null)}><div className="modal-box" style={{ maxWidth: 380 }} onClick={e => e.stopPropagation()}><div style={{ padding: 24 }}><h2 style={{ fontSize: 16, fontWeight: 700, marginBottom: 8, color: "#111" }}>Rechnung stornieren?</h2><p style={{ fontSize: 13, color: "#555", marginBottom: 16, lineHeight: 1.5 }}><strong>{stornierConfirm.nummer}</strong> – {stornierConfirm.kundeName}<br />Betrag: {fc(stornierConfirm.gesamt)}<br /><br />Die Rechnung wird als storniert markiert und aus allen Auswertungen ausgeschlossen.</p><div style={{ display: "flex", gap: 8, justifyContent: "flex-end" }}><button className="d-btn" onClick={() => { updRe(stornierConfirm.id, { status: "storniert" }); setStornierConfirm(null); }}>Ja, stornieren</button><button className="s-btn" onClick={() => setStornierConfirm(null)}>Abbrechen</button></div></div></div></div>}
     </div>
@@ -1130,6 +1211,66 @@ function KundenListe({ kunden, rechnungen, updKu, delKu }) {
       {editK && <div className="modal-overlay" onClick={() => setEditK(null)}><div className="modal-box" style={{ maxWidth: 420 }} onClick={e => e.stopPropagation()}><div style={{ padding: 24 }}><h2 style={{ fontSize: 16, fontWeight: 700, marginBottom: 16, color: "#111" }}>Kunde bearbeiten</h2><div style={{ display: "flex", flexDirection: "column", gap: 8 }}><input className="inp" style={{ color: "#111" }} placeholder="Name *" value={editForm.name} onChange={e => setEditForm({ ...editForm, name: e.target.value })} /><input className="inp" style={{ color: "#111" }} placeholder="Straße" value={editForm.strasse} onChange={e => setEditForm({ ...editForm, strasse: e.target.value })} /><div style={{ display: "flex", gap: 8 }}><input className="inp" style={{ width: 90, color: "#111" }} placeholder="PLZ" value={editForm.plz} onChange={e => setEditForm({ ...editForm, plz: e.target.value })} /><input className="inp" style={{ flex: 1, color: "#111" }} placeholder="Ort" value={editForm.ort} onChange={e => setEditForm({ ...editForm, ort: e.target.value })} /></div><input className="inp" style={{ color: "#111" }} placeholder="E-Mail" value={editForm.email} onChange={e => setEditForm({ ...editForm, email: e.target.value })} /><input className="inp" style={{ color: "#111" }} placeholder="Telefon" value={editForm.telefon} onChange={e => setEditForm({ ...editForm, telefon: e.target.value })} /></div><div style={{ display: "flex", gap: 8, marginTop: 16, justifyContent: "flex-end" }}><button className="p-btn" onClick={() => { if (!editForm.name) return; updKu(editK.id, editForm); setEditK(null); }}>Speichern</button><button className="s-btn" onClick={() => setEditK(null)}>Abbrechen</button></div></div></div></div>}
 
       {delConfirm && <div className="modal-overlay" onClick={() => setDelConfirm(null)}><div className="modal-box" style={{ maxWidth: 360 }} onClick={e => e.stopPropagation()}><div style={{ padding: 24 }}><h2 style={{ fontSize: 16, fontWeight: 700, marginBottom: 8, color: "#111" }}>Kunde löschen?</h2><p style={{ fontSize: 13, color: "#555", marginBottom: 16, lineHeight: 1.5 }}><strong>{delConfirm.name}</strong>{hasOpenRE(delConfirm.id) ? <><br /><span style={{ color: "#ef4444" }}>⚠ Dieser Kunde hat noch offene Rechnungen!</span></> : ""}<br /><br />Alle Kundendaten werden gelöscht. Rechnungen bleiben erhalten.</p><div style={{ display: "flex", gap: 8, justifyContent: "flex-end" }}><button className="d-btn" onClick={() => { delKu(delConfirm.id); setDelConfirm(null); }}>Löschen</button><button className="s-btn" onClick={() => setDelConfirm(null)}>Abbrechen</button></div></div></div></div>}
+    </div>
+  );
+}
+
+// ═══ WIEDERKEHREND ═══
+function WiederkehrendPage({ wiederkehrend, addWdk, updWdk, delWdk, kunden, rechnungen, firma }) {
+  const [showForm, setShowForm] = useState(false);
+  const [form, setForm] = useState({ name: "", kundeId: "", kundeName: "", kundeAdresse: "", kundeEmail: "", positionen: [], zahlungsziel: 14, notiz: "", gewerk: "", rabatt: 0, netto: 0, mwst: 0, gesamt: 0, interval: "monatlich", nextDue: new Date(new Date().setMonth(new Date().getMonth()+1)).toISOString().split("T")[0], aktiv: true });
+  const [kS, setKS] = useState(""); const [selK, setSelK] = useState(null);
+  const fK = kunden.filter(k => k.name.toLowerCase().includes(kS.toLowerCase()));
+
+  const calcFromRe = reId => {
+    const re = rechnungen.find(r => r.id === reId);
+    if (!re) return;
+    const k = kunden.find(k => k.id === re.kundeId);
+    setForm(prev => ({ ...prev, kundeId: re.kundeId, kundeName: re.kundeName, kundeAdresse: re.kundeAdresse, kundeEmail: re.kundeEmail || "", positionen: re.positionen, zahlungsziel: re.zahlungsziel, notiz: re.notiz || "", gewerk: re.gewerk || "", rabatt: re.rabatt || 0, netto: re.netto, mwst: re.mwst, gesamt: re.gesamt, name: `${re.kundeName} – ${re.gewerk || "Wiederkehrend"}` }));
+    if (k) setSelK(k);
+  };
+
+  const doAdd = () => {
+    if (!form.name || !form.kundeName) return;
+    addWdk(form); setShowForm(false); setForm({ name: "", kundeId: "", kundeName: "", kundeAdresse: "", kundeEmail: "", positionen: [], zahlungsziel: 14, notiz: "", gewerk: "", rabatt: 0, netto: 0, mwst: 0, gesamt: 0, interval: "monatlich", nextDue: new Date(new Date().setMonth(new Date().getMonth()+1)).toISOString().split("T")[0], aktiv: true }); setSelK(null); setKS("");
+  };
+
+  const intervals = { monatlich: "Monatlich", quartal: "Quartal", jaehrlich: "Jährlich" };
+
+  return (
+    <div className="page">
+      <div className="page-head"><div><h1 className="h1">Wiederkehrende Rechnungen</h1><p className="sub">Automatisch erstellt wenn fällig</p></div><button className="p-btn" onClick={() => setShowForm(!showForm)}>{IC.plus} Neue Vorlage</button></div>
+
+      {showForm && <div className="card" style={{ marginBottom: 20 }}>
+        <h3 className="card-t">Neue Vorlage</h3>
+        <div style={{ display: "flex", flexDirection: "column", gap: 10, maxWidth: 500 }}>
+          <div><label className="lbl">Name der Vorlage *</label><input className="inp" placeholder="z.B. Müller GmbH – Wartung" value={form.name} onChange={e => setForm({...form, name: e.target.value})} /></div>
+          <div><label className="lbl">Aus vorhandener Rechnung übernehmen</label><select className="sel" onChange={e => e.target.value && calcFromRe(e.target.value)}><option value="">– Manuell eingeben –</option>{rechnungen.filter(r => r.status !== "storniert").map(r => <option key={r.id} value={r.id}>{r.nummer} – {r.kundeName} ({fc(r.gesamt)})</option>)}</select></div>
+          <div><label className="lbl">Kunde *</label>
+            {!selK ? <><div style={{ position: "relative" }}><span className="search-ico">{IC.search}</span><input className="inp search-inp" placeholder="Suchen..." value={kS} onChange={e => setKS(e.target.value)} /></div>
+              {kS && fK.length > 0 && <div className="dd">{fK.map(k => <button key={k.id} className="dd-item" onClick={() => { setSelK(k); setForm({...form, kundeId: k.id, kundeName: k.name, kundeAdresse: `${k.strasse || ""}, ${k.plz || ""} ${k.ort || ""}`, kundeEmail: k.email || ""}); setKS(""); }}><strong>{k.name}</strong></button>)}</div>}</>
+              : <div className="sel-kunde"><div><strong>{selK.name}</strong></div><button className="i-btn" onClick={() => { setSelK(null); setForm({...form, kundeId: "", kundeName: ""}); }}>✕</button></div>}
+          </div>
+          <div style={{ display: "flex", gap: 10 }}>
+            <div style={{ flex: 1 }}><label className="lbl">Intervall</label><select className="sel" value={form.interval} onChange={e => setForm({...form, interval: e.target.value})}><option value="monatlich">Monatlich</option><option value="quartal">Quartal</option><option value="jaehrlich">Jährlich</option></select></div>
+            <div style={{ flex: 1 }}><label className="lbl">Erste Fälligkeit</label><input type="date" className="inp" value={form.nextDue} onChange={e => setForm({...form, nextDue: e.target.value})} /></div>
+          </div>
+          {form.positionen.length > 0 && <div style={{ fontSize: 12, color: "#64748b", padding: "8px 12px", background: "#111827", borderRadius: 8, border: "1px solid #1e293b" }}>{form.positionen.length} Position(en) übernommen · {fc(form.gesamt)}</div>}
+          <div style={{ display: "flex", gap: 8 }}><button className="p-btn" onClick={doAdd}>Speichern</button><button className="s-btn" onClick={() => setShowForm(false)}>Abbrechen</button></div>
+        </div>
+      </div>}
+
+      {wiederkehrend.length === 0 && !showForm ? <div className="empty"><div className="empty-ico">🔄</div><h2>Noch keine Vorlagen</h2><p className="sub" style={{ marginTop: 6 }}>Erstelle Vorlagen für Wartungsverträge, monatliche Retainer oder Abonnements.</p></div> :
+        <div style={{ display: "flex", flexDirection: "column", gap: 10 }}>
+          {wiederkehrend.map(w => <div key={w.id} className="card" style={{ display: "flex", gap: 12, alignItems: "center", opacity: w.aktiv ? 1 : .5 }}>
+            <div style={{ flex: 1 }}><div style={{ fontWeight: 600, fontSize: 14 }}>{w.name}</div><div style={{ fontSize: 12, color: "#64748b", marginTop: 2 }}>{w.kundeName} · {intervals[w.interval]} · Nächste: {fd(w.nextDue)}</div></div>
+            <div style={{ fontWeight: 700, fontSize: 15, whiteSpace: "nowrap" }}>{fc(w.gesamt)}</div>
+            <div style={{ display: "flex", gap: 6 }}>
+              <button className="s-btn" style={{ fontSize: 11 }} onClick={() => updWdk(w.id, { aktiv: !w.aktiv })}>{w.aktiv ? "Pausieren" : "Aktivieren"}</button>
+              <button className="d-btn" style={{ padding: "4px 8px" }} onClick={() => delWdk(w.id)}>{IC.trash}</button>
+            </div>
+          </div>)}
+        </div>}
     </div>
   );
 }
