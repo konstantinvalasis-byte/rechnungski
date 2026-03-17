@@ -110,6 +110,103 @@ function FadeIn({ children, id, className = "" }: { children: ReactNode; id?: st
   );
 }
 
+// ─── Musterrechnung HTML ─────────────────────────────────
+function getMusterRechnungHtml(): string {
+  const he = (s: string) =>
+    String(s ?? "").replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;").replace(/"/g, "&quot;");
+  const fc = (n: number) =>
+    n.toLocaleString("de-DE", { minimumFractionDigits: 2, maximumFractionDigits: 2 }) + "\u00a0€";
+
+  const pos = [
+    { beschreibung: "Elektroinstallation – Stundenlohn", typ: "arbeit", menge: 8, einheit: "Std", preis: 85, mwst: 19 },
+    { beschreibung: "Wanddose & Schalterdose montieren", typ: "arbeit", menge: 3, einheit: "Stk", preis: 45, mwst: 19 },
+    { beschreibung: "LED-Einbaustrahler (dimmbar)", typ: "material", menge: 12, einheit: "Stk", preis: 28, mwst: 19 },
+    { beschreibung: "Installationskabel NYM-J 3\u00d71,5mm\u00b2", typ: "material", menge: 25, einheit: "m", preis: 3.2, mwst: 19 },
+    { beschreibung: "Sicherungsautomat B16", typ: "material", menge: 4, einheit: "Stk", preis: 22, mwst: 19 },
+  ];
+
+  const arbeit = pos.filter(p => p.typ === "arbeit").reduce((s, p) => s + p.menge * p.preis, 0);
+  const mat = pos.filter(p => p.typ === "material").reduce((s, p) => s + p.menge * p.preis, 0);
+  const netto = pos.reduce((s, p) => s + p.menge * p.preis, 0);
+  const mwstB = pos.reduce((s, p) => s + p.menge * p.preis * p.mwst / 100, 0);
+  const brutto = netto + mwstB;
+
+  const rows = pos.map((p, i) => `
+    <tr>
+      <td style="padding:7px 8px;border-bottom:1px solid #eee;font-size:12px;color:#666">${i + 1}</td>
+      <td style="padding:7px 8px;border-bottom:1px solid #eee;font-size:12px;font-weight:500">${he(p.beschreibung)}</td>
+      <td style="padding:7px 8px;border-bottom:1px solid #eee;font-size:10px;color:#888">${p.typ === "material" ? "Material" : "Arbeit"}</td>
+      <td style="padding:7px 8px;border-bottom:1px solid #eee;font-size:12px;text-align:right">${p.menge} ${he(p.einheit)}</td>
+      <td style="padding:7px 8px;border-bottom:1px solid #eee;font-size:12px;text-align:right">${fc(p.preis)}</td>
+      <td style="padding:7px 8px;border-bottom:1px solid #eee;font-size:12px;text-align:right">${p.mwst}%</td>
+      <td style="padding:7px 8px;border-bottom:1px solid #eee;font-size:12px;text-align:right;font-weight:600">${fc(p.menge * p.preis)}</td>
+    </tr>`).join("");
+
+  return `<!DOCTYPE html><html><head><meta charset="utf-8"><style>
+    @import url('https://fonts.googleapis.com/css2?family=DM+Sans:wght@400;500;600;700&display=swap');
+    *{margin:0;padding:0;box-sizing:border-box}
+    body{font-family:'DM Sans',Helvetica,Arial,sans-serif;color:#111;padding:40px 48px;font-size:13px;line-height:1.5;background:#fff}
+    @media print{body{padding:30px 36px}@page{margin:15mm 12mm;size:A4}}
+    table{width:100%;border-collapse:collapse}
+    .sum-row{display:flex;justify-content:space-between;padding:5px 0;font-size:13px}
+    .sum-total{font-size:18px;font-weight:700;border-top:2px solid #111;padding-top:8px;margin-top:4px}
+  </style></head><body>
+    <div style="display:flex;justify-content:space-between;align-items:flex-start;margin-bottom:30px">
+      <div>
+        <div style="width:44px;height:44px;border-radius:10px;background:linear-gradient(135deg,#f59e0b,#d97706);display:inline-flex;align-items:center;justify-content:center;margin-bottom:10px">
+          <span style="color:#fff;font-weight:800;font-size:13px;font-family:sans-serif">ME</span>
+        </div>
+        <div style="font-size:17px;font-weight:700">Müller Elektrotechnik</div>
+        <div style="font-size:11px;color:#666">Hans Müller · Schillerstraße 18<br>80336 München</div>
+        <div style="font-size:11px;color:#666;margin-top:2px">Tel: +49 89 123456</div>
+        <div style="font-size:11px;color:#666">info@mueller-elektro.de</div>
+      </div>
+      <div style="text-align:right">
+        <div style="font-size:24px;font-weight:800;color:#4f46e5;text-transform:uppercase">Rechnung</div>
+        <div style="font-size:12px;color:#666;margin-top:4px">Nr. RE-2026-0047</div>
+        <div style="font-size:12px;color:#666">Datum: 10.03.2026</div>
+        <div style="font-size:12px;color:#666">Fällig: 24.03.2026</div>
+        <div style="font-size:11px;color:#666;margin-top:4px">Leistungszeitraum: 06.03.2026\u2013 10.03.2026</div>
+      </div>
+    </div>
+    <div style="background:#f8f9fa;border-radius:6px;padding:14px;margin-bottom:24px">
+      <div style="font-size:10px;color:#999;text-transform:uppercase;letter-spacing:1px;margin-bottom:3px">Rechnungsempfänger</div>
+      <div style="font-weight:600">Weber Hausverwaltung GmbH</div>
+      <div style="font-size:12px;color:#666">Maximilianstraße 42<br>80538 München</div>
+    </div>
+    <table style="margin-bottom:22px">
+      <thead><tr style="border-bottom:2px solid #e5e7eb">
+        <th style="padding:7px 8px;font-size:10px;font-weight:600;color:#999;text-transform:uppercase;text-align:left">Pos</th>
+        <th style="padding:7px 8px;font-size:10px;font-weight:600;color:#999;text-transform:uppercase;text-align:left">Beschreibung</th>
+        <th style="padding:7px 8px;font-size:10px;font-weight:600;color:#999;text-transform:uppercase;text-align:left">Typ</th>
+        <th style="padding:7px 8px;font-size:10px;font-weight:600;color:#999;text-transform:uppercase;text-align:right">Menge</th>
+        <th style="padding:7px 8px;font-size:10px;font-weight:600;color:#999;text-transform:uppercase;text-align:right">Preis</th>
+        <th style="padding:7px 8px;font-size:10px;font-weight:600;color:#999;text-transform:uppercase;text-align:right">MwSt</th>
+        <th style="padding:7px 8px;font-size:10px;font-weight:600;color:#999;text-transform:uppercase;text-align:right">Summe</th>
+      </tr></thead>
+      <tbody>${rows}</tbody>
+    </table>
+    <div style="display:flex;justify-content:flex-end">
+      <div style="width:280px">
+        <div class="sum-row" style="font-size:12px;color:#666"><span>Arbeitskosten</span><span>${fc(arbeit)}</span></div>
+        <div class="sum-row" style="font-size:12px;color:#666"><span>Materialkosten</span><span>${fc(mat)}</span></div>
+        <div class="sum-row"><span>Netto</span><span>${fc(netto)}</span></div>
+        <div class="sum-row"><span>MwSt (19 %)</span><span>${fc(mwstB)}</span></div>
+        <div class="sum-row sum-total"><span>Brutto</span><span>${fc(brutto)}</span></div>
+      </div>
+    </div>
+    <div style="margin-top:18px;padding:10px 14px;background:#f8f9fa;border-radius:5px;font-size:11px;color:#666">
+      <strong>Hinweis:</strong> Bitte überweisen Sie den Betrag bis zum 24.03.2026 auf unser Konto. Vielen Dank für Ihren Auftrag!
+    </div>
+    <div style="margin-top:28px;padding-top:14px;border-top:1px solid #e5e7eb;display:flex;justify-content:space-between;font-size:10px;color:#999">
+      <span>Sparkasse München · IBAN: DE89 3704 0044 0532 0130 00</span>
+      <span>St.Nr: 143/234/56789 · USt-ID: DE287654321</span>
+    </div>
+  </body></html>`;
+}
+
+const MUSTER_HTML = getMusterRechnungHtml();
+
 // ─── Main Component ──────────────────────────────────────
 export default function LandingPage() {
   const [scrolled, setScrolled] = useState(false);
@@ -119,12 +216,24 @@ export default function LandingPage() {
   const [billing, setBilling] = useState<"monthly" | "yearly">("monthly");
   const [activeStep, setActiveStep] = useState(0);
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
+  const [showMusterrechnung, setShowMusterrechnung] = useState(false);
 
   useEffect(() => {
     const handler = () => setScrolled(window.scrollY > 20);
     window.addEventListener("scroll", handler, { passive: true });
     return () => window.removeEventListener("scroll", handler);
   }, []);
+
+  useEffect(() => {
+    if (showMusterrechnung) {
+      document.body.style.overflow = "hidden";
+      const onKey = (e: KeyboardEvent) => { if (e.key === "Escape") setShowMusterrechnung(false); };
+      window.addEventListener("keydown", onKey);
+      return () => { document.body.style.overflow = ""; window.removeEventListener("keydown", onKey); };
+    } else {
+      document.body.style.overflow = "";
+    }
+  }, [showMusterrechnung]);
 
   useEffect(() => {
     const timer = setInterval(() => setActiveStep((s) => (s + 1) % 4), 4000);
@@ -295,6 +404,20 @@ export default function LandingPage() {
                 </span>
               ))}
             </div>
+
+            <button
+              onClick={() => setShowMusterrechnung(true)}
+              className="mt-5 inline-flex items-center gap-1.5 text-sm text-slate-400 hover:text-brand-600 transition-colors group"
+            >
+              <svg className="w-4 h-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5">
+                <path d="M14 2H6a2 2 0 00-2 2v16a2 2 0 002 2h12a2 2 0 002-2V8z" />
+                <polyline points="14 2 14 8 20 8" />
+                <line x1="16" y1="13" x2="8" y2="13" />
+                <line x1="16" y1="17" x2="8" y2="17" />
+              </svg>
+              <span className="group-hover:underline underline-offset-2">Musterrechnung ansehen</span>
+              <ArrowIcon />
+            </button>
           </div>
 
           {/* Right — App Mockup */}
@@ -611,6 +734,114 @@ export default function LandingPage() {
         </div>
       </FadeIn>
 
+      {/* ═══ MUSTERRECHNUNG ═══ */}
+      <FadeIn className="py-20 md:py-28 bg-gradient-to-b from-slate-50/60 to-white">
+        <div className="max-w-6xl mx-auto px-6">
+          <div className="text-center mb-12">
+            <span className="inline-block text-[11px] font-bold text-brand-600 uppercase tracking-[0.12em] mb-2">Live-Vorschau</span>
+            <h2 className="text-3xl md:text-4xl font-extrabold tracking-tight">So sieht Ihre Rechnung aus</h2>
+            <p className="mt-3 text-slate-500 max-w-md mx-auto">
+              Professionell, §14-konform, mit Ihrem Logo. Hier ist ein echtes Beispiel — zum Ansehen und als PDF.
+            </p>
+          </div>
+
+          <div className="flex flex-col items-center gap-6">
+            {/* Teaser card */}
+            <div className="relative w-full max-w-xl">
+              <div className="absolute -inset-4 bg-gradient-to-br from-brand-400/15 via-violet-400/8 to-transparent rounded-3xl blur-2xl pointer-events-none" />
+              <div className="relative bg-white rounded-2xl shadow-xl shadow-slate-200/60 border border-slate-200/80 overflow-hidden">
+                {/* Invoice header */}
+                <div className="p-6 border-b border-slate-100">
+                  <div className="flex justify-between items-start">
+                    <div>
+                      <div className="w-9 h-9 rounded-lg bg-gradient-to-br from-amber-400 to-amber-600 flex items-center justify-center mb-3">
+                        <span className="text-[11px] font-extrabold text-white tracking-tight">ME</span>
+                      </div>
+                      <div className="font-bold text-slate-900 text-sm">Müller Elektrotechnik</div>
+                      <div className="text-[11px] text-slate-400 mt-0.5">Hans Müller · Schillerstraße 18 · 80336 München</div>
+                    </div>
+                    <div className="text-right">
+                      <div className="text-xl font-extrabold text-brand-600 uppercase tracking-tight">Rechnung</div>
+                      <div className="text-[11px] text-slate-400 mt-1">Nr. RE-2026-0047</div>
+                      <div className="text-[11px] text-slate-400">Datum: 10.03.2026</div>
+                      <div className="text-[11px] text-slate-400">Fällig: 24.03.2026</div>
+                    </div>
+                  </div>
+                </div>
+
+                {/* Customer */}
+                <div className="px-6 py-3 bg-slate-50/80 border-b border-slate-100">
+                  <div className="text-[9px] text-slate-400 uppercase tracking-wider mb-1">Rechnungsempfänger</div>
+                  <div className="font-semibold text-sm text-slate-800">Weber Hausverwaltung GmbH</div>
+                  <div className="text-[11px] text-slate-400">Maximilianstraße 42, 80538 München</div>
+                </div>
+
+                {/* Line items */}
+                <div className="px-6 pt-4 pb-2">
+                  <div className="space-y-1">
+                    {([
+                      { desc: "Elektroinstallation – Stundenlohn", menge: "8 Std", preis: "680,00\u00a0€", typ: "Arbeit" },
+                      { desc: "Wanddose & Schalterdose montieren", menge: "3 Stk", preis: "135,00\u00a0€", typ: "Arbeit" },
+                      { desc: "LED-Einbaustrahler (dimmbar)", menge: "12 Stk", preis: "336,00\u00a0€", typ: "Material" },
+                    ] as { desc: string; menge: string; preis: string; typ: string }[]).map((item, i) => (
+                      <div key={i} className="flex items-center justify-between py-2 border-b border-slate-50">
+                        <div>
+                          <div className="text-xs font-medium text-slate-700">{item.desc}</div>
+                          <div className="text-[10px] text-slate-400">{item.menge} · <span className={item.typ === "Arbeit" ? "text-brand-500" : "text-amber-500"}>{item.typ}</span></div>
+                        </div>
+                        <div className="font-semibold text-sm text-slate-800 tabular-nums ml-4">{item.preis}</div>
+                      </div>
+                    ))}
+                  </div>
+
+                  {/* Faded remaining rows */}
+                  <div className="relative">
+                    <div className="opacity-25 select-none pointer-events-none space-y-1 pt-1">
+                      {[
+                        { desc: "Installationskabel NYM-J 3×1,5mm²", preis: "80,00\u00a0€" },
+                        { desc: "Sicherungsautomat B16", preis: "88,00\u00a0€" },
+                      ].map((item, i) => (
+                        <div key={i} className="flex items-center justify-between py-2 border-b border-slate-50">
+                          <div className="text-xs font-medium text-slate-700">{item.desc}</div>
+                          <div className="font-semibold text-sm text-slate-800">{item.preis}</div>
+                        </div>
+                      ))}
+                    </div>
+                    <div className="absolute inset-0 bg-gradient-to-b from-transparent via-white/60 to-white" />
+                  </div>
+                </div>
+
+                {/* Total bar + CTA overlay */}
+                <div className="relative px-6 pt-2 pb-6 bg-white border-t border-slate-100">
+                  <div className="flex justify-end opacity-20 select-none pointer-events-none">
+                    <div className="w-52 space-y-1 text-xs">
+                      <div className="flex justify-between text-slate-500"><span>Netto</span><span>1.319,00\u00a0€</span></div>
+                      <div className="flex justify-between text-slate-500"><span>MwSt 19%</span><span>250,61\u00a0€</span></div>
+                      <div className="flex justify-between font-bold text-sm text-slate-900 border-t-2 border-slate-800 pt-1.5 mt-1">
+                        <span>Brutto</span><span>1.569,61\u00a0€</span>
+                      </div>
+                    </div>
+                  </div>
+                  <div className="absolute inset-0 flex items-center justify-center bg-white/80 backdrop-blur-[2px]">
+                    <button
+                      onClick={() => setShowMusterrechnung(true)}
+                      className="inline-flex items-center gap-2 px-6 py-3 bg-brand-600 text-white text-sm font-semibold rounded-xl hover:bg-brand-700 transition-all duration-200 shadow-lg shadow-brand-600/30 hover:shadow-brand-600/40 hover:-translate-y-0.5 active:translate-y-0"
+                    >
+                      Vollständige Rechnung ansehen
+                      <ArrowIcon />
+                    </button>
+                  </div>
+                </div>
+              </div>
+            </div>
+
+            <p className="text-[11px] text-slate-400 text-center max-w-xs">
+              Echtes PDF · alle §14 UStG-Pflichtangaben · Ihr Logo, Ihre Daten
+            </p>
+          </div>
+        </div>
+      </FadeIn>
+
       {/* ═══ BEFORE / AFTER ═══ */}
       <FadeIn className="py-20 md:py-28">
         <div className="max-w-6xl mx-auto px-6">
@@ -854,6 +1085,77 @@ export default function LandingPage() {
           </p>
         </div>
       </footer>
+
+      {/* ═══ MUSTERRECHNUNG MODAL ═══ */}
+      {showMusterrechnung && (
+        <div
+          className="fixed inset-0 z-[100] flex items-start justify-center p-4 md:p-8 overflow-y-auto"
+          onClick={() => setShowMusterrechnung(false)}
+        >
+          {/* Backdrop */}
+          <div className="absolute inset-0 bg-slate-950/85 backdrop-blur-md" />
+
+          {/* Modal */}
+          <div
+            className="relative w-full max-w-2xl bg-white rounded-2xl shadow-2xl overflow-hidden my-8 animate-fade-up"
+            onClick={(e) => e.stopPropagation()}
+          >
+            {/* Browser chrome */}
+            <div className="flex items-center justify-between px-5 py-3.5 bg-slate-100 border-b border-slate-200">
+              <div className="flex items-center gap-3">
+                <div className="flex gap-1.5">
+                  <div className="w-3 h-3 rounded-full bg-red-400/80" />
+                  <div className="w-3 h-3 rounded-full bg-yellow-400/80" />
+                  <div className="w-3 h-3 rounded-full bg-green-400/80" />
+                </div>
+                <span className="text-xs font-semibold text-slate-500 ml-1">Musterrechnung · RE-2026-0047</span>
+              </div>
+              <div className="flex items-center gap-2">
+                <button
+                  onClick={() => {
+                    const iframe = document.createElement("iframe");
+                    Object.assign(iframe.style, { position: "fixed", top: "-9999px", left: "-9999px", width: "800px", height: "1100px", border: "none" });
+                    iframe.addEventListener("load", () => {
+                      iframe.contentWindow?.focus();
+                      iframe.contentWindow?.print();
+                      setTimeout(() => { if (document.body.contains(iframe)) document.body.removeChild(iframe); }, 2000);
+                    });
+                    document.body.appendChild(iframe);
+                    iframe.contentDocument?.write(MUSTER_HTML);
+                    iframe.contentDocument?.close();
+                  }}
+                  className="inline-flex items-center gap-1.5 px-3 py-1.5 bg-brand-600 text-white text-xs font-semibold rounded-lg hover:bg-brand-700 transition-colors"
+                >
+                  <svg className="w-3.5 h-3.5" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                    <path d="M21 15v4a2 2 0 01-2 2H5a2 2 0 01-2-2v-4" />
+                    <polyline points="7 10 12 15 17 10" />
+                    <line x1="12" y1="15" x2="12" y2="3" />
+                  </svg>
+                  PDF herunterladen
+                </button>
+                <button
+                  onClick={() => setShowMusterrechnung(false)}
+                  className="p-1.5 rounded-lg hover:bg-slate-200 text-slate-500 transition-colors"
+                  aria-label="Schließen"
+                >
+                  <svg className="w-4 h-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                    <line x1="18" y1="6" x2="6" y2="18" />
+                    <line x1="6" y1="6" x2="18" y2="18" />
+                  </svg>
+                </button>
+              </div>
+            </div>
+
+            {/* Invoice rendered in iframe */}
+            <iframe
+              srcDoc={MUSTER_HTML}
+              className="w-full border-none"
+              style={{ height: "760px" }}
+              title="Musterrechnung Vorschau"
+            />
+          </div>
+        </div>
+      )}
     </div>
   );
 }

@@ -8,11 +8,11 @@ class ErrorBoundary extends Component {
   componentDidCatch(e, i) { console.error("RechnungsKI:", e, i); }
   render() {
     if (this.state.hasError) return (
-      <div style={{ display:"flex", flexDirection:"column", alignItems:"center", justifyContent:"center", height:"100vh", background:"#0b1120", color:"#e2e8f0", gap:16, padding:24, fontFamily:"sans-serif" }}>
-        <div style={{ fontSize:40 }}>⚠️</div>
-        <h2 style={{ fontSize:20, fontWeight:700 }}>Unerwarteter Fehler</h2>
-        <p style={{ fontSize:13, color:"#64748b", textAlign:"center", maxWidth:380 }}>Die App hat einen Fehler. Deine Daten sind sicher – bitte lade die Seite neu.</p>
-        <button style={{ padding:"9px 22px", background:"#4f46e5", color:"#fff", border:"none", borderRadius:8, cursor:"pointer", fontSize:14, fontWeight:600 }} onClick={() => window.location.reload()}>Neu laden</button>
+      <div className="flex flex-col items-center justify-center h-screen bg-[#050510] text-slate-200 gap-5 p-6">
+        <div className="w-16 h-16 rounded-2xl bg-gradient-to-br from-danger-500/20 to-danger-600/10 border border-danger-500/20 flex items-center justify-center text-3xl backdrop-blur-sm">⚠️</div>
+        <h2 className="text-xl font-bold tracking-tight">Unerwarteter Fehler</h2>
+        <p className="text-sm text-slate-500 text-center max-w-sm leading-relaxed">Die App hat einen Fehler. Deine Daten sind sicher – bitte lade die Seite neu.</p>
+        <button className="px-6 py-2.5 bg-gradient-to-r from-brand-600 to-brand-500 text-white rounded-xl cursor-pointer text-sm font-semibold hover:shadow-[0_0_24px_rgba(99,102,241,0.3)] transition-all duration-200" onClick={() => window.location.reload()}>Neu laden</button>
       </div>
     );
     return this.props.children;
@@ -766,10 +766,10 @@ function App() {
     showT("Willkommen bei RechnungsKI!");
   };
 
-  if (!loaded) return <div className="load-wrap"><div className="spinner" /><p style={{ color: "#64748b", fontSize: 13, marginTop: 12 }}>Laden...</p></div>;
+  if (!loaded) return <div className="flex flex-col items-center justify-center h-screen w-full bg-[#050510]"><div className="relative"><div className="w-10 h-10 border-[3px] border-slate-800/50 border-t-brand-400 rounded-full animate-spin" /><div className="absolute inset-0 w-10 h-10 rounded-full bg-brand-500/10 blur-xl animate-pulse-soft" /></div><p className="text-slate-500 text-[13px] mt-4 tracking-wide">Laden...</p></div>;
 
   // Show onboarding fullscreen
-  if (pg === "onboarding") return <div className="app-wrap"><style>{CSS}</style><OnboardingWizard onComplete={completeOnboarding} /></div>;
+  if (pg === "onboarding") return <OnboardingWizard onComplete={completeOnboarding} />;
 
   const navItems = [
     { id: "dashboard", icon: IC.dash, l: "Dashboard" }, { id: "neue-rechnung", icon: IC.doc, l: "Neue Rechnung" },
@@ -780,15 +780,54 @@ function App() {
   ];
 
   return (
-    <div className="app-wrap">
-      <style>{CSS}</style>
-      <div className="mob-header"><button className="mob-menu-btn" onClick={() => setMobNav(!mobNav)}>{mobNav ? IC.x : IC.menu}</button><span style={{ fontWeight: 700, fontSize: 16 }}>RechnungsKI</span><span style={{ fontSize: 10, fontWeight: 700, color: "#818cf8" }}>{plan.toUpperCase()}</span></div>
-      <nav className={`sidebar ${mobNav ? "open" : ""}`}>
-        <div className="brand"><div className="brand-ico">{IC.star}</div><div><div style={{ fontSize: 16, fontWeight: 700, letterSpacing: "-.02em" }}>RechnungsKI</div><div style={{ fontSize: 10, fontWeight: 700, color: "#818cf8", textTransform: "uppercase" }}>{plan}</div></div></div>
-        <div className="nav-list">{navItems.map(n => <button key={n.id} onClick={() => nav(n.id)} className={`nav-btn ${pg === n.id ? "active" : ""}`}><span style={{ opacity: pg === n.id ? 1 : .5, display: "flex" }}>{n.icon}</span><span>{n.l}</span>{n.id === "rechnungen" && rechnungen.filter(r => r.status === "offen").length > 0 && <span className="nav-badge">{rechnungen.filter(r => r.status === "offen").length}</span>}</button>)}</div>
-        <div style={{ borderTop: "1px solid #1e293b", paddingTop: 12 }}><div className="usage-bar"><div className="usage-fill" style={{ width: `${Math.min(rechnungen.length / lim.re * 100, 100)}%` }} /></div><span style={{ fontSize: 10, color: "#475569", padding: "0 8px", display: "block", marginTop: 4 }}>{rechnungen.length}/{lim.re === 99999 ? "∞" : lim.re}</span></div>
+    <div className="flex flex-col md:flex-row min-h-screen font-sans bg-[#050510] text-slate-200">
+      {/* Mobile header */}
+      <div className="hidden max-md:flex sticky top-0 z-50 bg-[#0a0a1a]/90 backdrop-blur-xl border-b border-white/[0.06] px-4 py-3 items-center gap-3">
+        <button className="bg-transparent border-none text-slate-200 cursor-pointer flex p-1 hover:text-white transition-colors" onClick={() => setMobNav(!mobNav)}>{mobNav ? IC.x : IC.menu}</button>
+        <div className="w-6 h-6 rounded-lg bg-gradient-to-br from-brand-500 to-brand-600 flex items-center justify-center text-white text-[10px]">{IC.star}</div>
+        <span className="font-bold text-[15px] tracking-tight">RechnungsKI</span>
+        <span className="text-[9px] font-bold text-brand-400 uppercase tracking-wider ml-0.5 bg-brand-500/10 px-1.5 py-0.5 rounded">{plan.toUpperCase()}</span>
+      </div>
+
+      {/* Sidebar — Glassmorphism */}
+      <nav className={`w-[240px] bg-[#0a0a1a]/70 backdrop-blur-2xl border-r border-white/[0.06] flex flex-col py-5 px-3 shrink-0 sticky top-0 h-screen z-[100] max-md:fixed max-md:left-[-280px] max-md:top-0 max-md:bottom-0 max-md:w-[260px] max-md:transition-[left] max-md:duration-300 max-md:ease-[cubic-bezier(0.16,1,0.3,1)] ${mobNav ? "max-md:!left-0" : ""}`}>
+        {/* Logo */}
+        <div className="flex items-center gap-2.5 px-2 mb-8">
+          <div className="w-8 h-8 rounded-xl bg-gradient-to-br from-brand-500 to-brand-600 flex items-center justify-center text-white shadow-[0_0_20px_rgba(99,102,241,0.25)]">{IC.star}</div>
+          <div>
+            <div className="text-[15px] font-bold tracking-tight">RechnungsKI</div>
+            <div className="text-[9px] font-bold text-brand-400 uppercase tracking-[0.08em]">{plan} Plan</div>
+          </div>
+        </div>
+
+        {/* Nav items */}
+        <div className="flex flex-col gap-0.5 flex-1">
+          {navItems.map(n => (
+            <button key={n.id} onClick={() => nav(n.id)}
+              className={`group flex items-center gap-2.5 py-2 px-3 border-none rounded-xl cursor-pointer text-[13px] font-medium text-left relative transition-all duration-200 ${pg === n.id ? "bg-white/[0.08] text-white shadow-[inset_0_1px_0_rgba(255,255,255,0.06)]" : "bg-transparent text-slate-400 hover:bg-white/[0.04] hover:text-slate-200"}`}>
+              <span className={`flex transition-all duration-200 ${pg === n.id ? "text-brand-400" : "opacity-40 group-hover:opacity-70"}`}>{n.icon}</span>
+              <span>{n.l}</span>
+              {n.id === "rechnungen" && rechnungen.filter(r => r.status === "offen").length > 0 && (
+                <span className="absolute right-2.5 bg-danger-500 text-white text-[9px] font-bold min-w-[18px] h-[18px] flex items-center justify-center rounded-full shadow-[0_0_8px_rgba(239,68,68,0.4)]">{rechnungen.filter(r => r.status === "offen").length}</span>
+              )}
+            </button>
+          ))}
+        </div>
+
+        {/* Usage bar */}
+        <div className="border-t border-white/[0.06] pt-4 mt-2">
+          <div className="flex items-center justify-between px-1 mb-2">
+            <span className="text-[10px] text-slate-500 font-medium">Rechnungen</span>
+            <span className="text-[10px] text-slate-500 font-mono">{rechnungen.length}/{lim.re === 99999 ? "∞" : lim.re}</span>
+          </div>
+          <div className="h-1 bg-white/[0.06] rounded-full overflow-hidden mx-1">
+            <div className="h-full bg-gradient-to-r from-brand-500 to-brand-400 rounded-full transition-[width] duration-500 ease-out" style={{ width: `${Math.min(rechnungen.length / lim.re * 100, 100)}%` }} />
+          </div>
+        </div>
       </nav>
-      <main className="main-content">
+
+      {/* Main content */}
+      <main className="flex-1 min-w-0 overflow-y-auto">
         {pg === "dashboard" && <Dashboard {...{ rechnungen, kunden, firma, nav, updRe, addRe, addKu, plan, lim }} />}
         {pg === "neue-rechnung" && <NeueRechnung {...{ firma, kunden, addKu, addRe, updRe, nextNr: nxtNr(), nav, plan, lim, canCreate: rechnungen.length < lim.re, editRechnung: editRe, onEditDone: () => setEditRe(null), favoriten, addFav, delFav }} />}
         {pg === "rechnungen" && <RechnungenListe {...{ rechnungen, updRe, delRe, nav, dupRe, firma, onEdit: r => { setEditRe(r); setPg("neue-rechnung"); } }} />}
@@ -798,8 +837,12 @@ function App() {
         {pg === "supabase" && <SupabasePage />}
         {pg === "settings" && <SettingsPage {...{ firma, sf, rechnungen, kunden, sre, skn, favoriten, setFavoriten, wiederkehrend, saveWdk, plan, spl, showT }} />}
       </main>
-      {toast && <div className="toast"><span style={{ color: "#34d399", display: "flex" }}>{IC.check}</span>{toast}</div>}
-      {mobNav && <div className="mob-overlay" onClick={() => setMobNav(false)} />}
+
+      {/* Toast — premium */}
+      {toast && <div className="fixed bottom-5 right-5 bg-[#0f0f1a]/90 backdrop-blur-xl border border-white/[0.08] rounded-xl px-4 py-2.5 flex items-center gap-2 text-[13px] font-medium animate-fade-up z-[999] shadow-[0_8px_32px_rgba(0,0,0,0.5)]"><span className="text-success-500 flex">{IC.check}</span>{toast}</div>}
+
+      {/* Mobile overlay */}
+      {mobNav && <div className="max-md:block hidden fixed inset-0 bg-black/60 backdrop-blur-sm z-[90] transition-opacity" onClick={() => setMobNav(false)} />}
     </div>
   );
 }
@@ -833,53 +876,54 @@ function OnboardingWizard({ onComplete }) {
 
   const progress = Math.round((step / (steps.length - 1)) * 100);
 
-  return (
-    <div className="onboard-wrap">
-      {/* Progress */}
-      <div className="onboard-progress"><div className="onboard-progress-fill" style={{ width: `${progress}%` }} /></div>
+  const inp = "w-full py-2.5 px-3 bg-white/[0.04] border border-white/[0.08] rounded-xl text-slate-200 text-[13px] outline-none focus:border-brand-500/50 focus:bg-white/[0.06] transition-all duration-200 placeholder:text-slate-600";
+  const oblbl = "text-[11px] font-semibold text-slate-400 mb-1 block tracking-wide";
 
-      {/* Step indicators */}
-      <div className="onboard-steps">
+  return (
+    <div className="min-h-screen flex flex-col items-center p-6 bg-[#050510] w-full">
+      {/* Progress */}
+      <div className="w-full max-w-[600px] h-1 bg-white/[0.06] rounded-full overflow-hidden mb-6">
+        <div className="h-full bg-gradient-to-r from-brand-600 to-brand-400 rounded-full transition-[width] duration-500 ease-out" style={{ width: `${progress}%` }} />
+      </div>
+
+      {/* Step dots */}
+      <div className="flex gap-3 mb-8 flex-wrap justify-center">
         {steps.map((s, i) => (
-          <div key={i} className={`onboard-step-dot ${i < step ? "done" : ""} ${i === step ? "current" : ""}`}>
-            {i < step ? <span style={{ display: "flex" }}>{IC.check}</span> : <span style={{ fontSize: 14 }}>{s.icon}</span>}
+          <div key={i} className={`w-9 h-9 rounded-xl flex items-center justify-center transition-all duration-300 ${i < step ? "bg-success-500/15 border border-success-500/30 text-success-500" : i === step ? "border border-brand-500/40 bg-brand-500/10 shadow-[0_0_16px_rgba(99,102,241,0.2)]" : "bg-white/[0.04] border border-white/[0.06]"}`}>
+            {i < step ? <span className="flex">{IC.check}</span> : <span className="text-sm">{s.icon}</span>}
           </div>
         ))}
       </div>
 
-      <div className="onboard-card">
-        {/* STEP 0: Welcome */}
+      <div className="bg-[#0a0a1a]/80 backdrop-blur-xl border border-white/[0.06] rounded-2xl p-8 max-w-[680px] w-full flex-1 max-h-[calc(100vh-200px)] overflow-y-auto animate-fade-in">
         {step === 0 && (
-          <div className="onboard-center">
-            <div style={{ fontSize: 52, marginBottom: 16 }}>👋</div>
-            <h1 style={{ fontSize: 28, fontWeight: 800, letterSpacing: "-.03em", marginBottom: 8 }}>Willkommen bei RechnungsKI</h1>
-            <p style={{ fontSize: 15, color: "#94a3b8", maxWidth: 440, lineHeight: 1.7, marginBottom: 8 }}>
-              In 2 Minuten bist du startklar. Wir richten alles für dich ein – danach kannst du sofort deine erste Rechnung erstellen.
-            </p>
-            <div style={{ display: "flex", flexDirection: "column", gap: 8, marginTop: 20, fontSize: 14 }}>
+          <div className="flex flex-col items-center text-center">
+            <div className="w-16 h-16 rounded-2xl bg-gradient-to-br from-brand-500/20 to-brand-600/10 border border-brand-500/20 flex items-center justify-center text-[40px] mb-5">👋</div>
+            <h1 className="text-[28px] font-extrabold tracking-tight mb-2.5 bg-gradient-to-r from-white to-slate-300 bg-clip-text text-transparent">Willkommen bei RechnungsKI</h1>
+            <p className="text-[15px] text-slate-400 max-w-[440px] leading-relaxed mb-2">In 2 Minuten bist du startklar. Wir richten alles für dich ein – danach kannst du sofort deine erste Rechnung erstellen.</p>
+            <div className="flex flex-col gap-2.5 mt-6 text-sm">
               {["Branche wählen – KI-Vorschläge passend für dich", "Firmendaten eingeben – erscheinen auf jeder Rechnung", "Steuern & Bank – für §14-konforme Rechnungen", "Logo hochladen – dein Branding auf jedem Dokument"].map((t, i) => (
-                <div key={i} style={{ display: "flex", alignItems: "center", gap: 10 }}>
-                  <span style={{ width: 24, height: 24, borderRadius: "50%", background: "#1e293b", display: "flex", alignItems: "center", justifyContent: "center", fontSize: 12, fontWeight: 700, color: "#818cf8", flexShrink: 0 }}>{i + 1}</span>
-                  <span style={{ color: "#94a3b8" }}>{t}</span>
+                <div key={i} className="flex items-center gap-3">
+                  <span className="w-7 h-7 rounded-lg bg-brand-500/10 border border-brand-500/15 flex items-center justify-center text-xs font-bold text-brand-400 shrink-0">{i + 1}</span>
+                  <span className="text-slate-400 text-left">{t}</span>
                 </div>
               ))}
             </div>
           </div>
         )}
 
-        {/* STEP 1: Branche */}
         {step === 1 && (
           <div>
-            <h2 className="onboard-title">Was ist deine Branche?</h2>
-            <p className="onboard-desc">Wir passen die KI-Vorschläge, Einheiten und Preise an dein Geschäft an.</p>
-            <div style={{ display: "flex", flexDirection: "column", gap: 12 }}>
+            <h2 className="text-[22px] font-extrabold tracking-tight mb-1.5">Was ist deine Branche?</h2>
+            <p className="text-[14px] text-slate-500 mb-6 leading-relaxed">Wir passen die KI-Vorschläge, Einheiten und Preise an dein Geschäft an.</p>
+            <div className="flex flex-col gap-4">
               {Object.entries(BRANCHEN_KATEGORIEN).map(([kat, branchen]) => (
                 <div key={kat}>
-                  <div style={{ fontSize: 11, fontWeight: 600, color: "#64748b", textTransform: "uppercase", letterSpacing: ".05em", marginBottom: 6, paddingLeft: 2 }}>{kat}</div>
-                  <div style={{ display: "flex", flexWrap: "wrap", gap: 6 }}>
+                  <div className="text-[10px] font-semibold text-slate-500 uppercase tracking-[0.12em] mb-2 pl-0.5">{kat}</div>
+                  <div className="flex flex-wrap gap-2">
                     {branchen.map(b => (
                       <button key={b} onClick={() => { setForm({ ...form, gewerk: b }); setBrancheKat(kat); }}
-                        style={{ padding: "8px 14px", borderRadius: 8, border: form.gewerk === b ? "2px solid #6366f1" : "1px solid #1e293b", background: form.gewerk === b ? "#1e1b4b" : "#111827", color: form.gewerk === b ? "#a5b4fc" : "#94a3b8", fontSize: 13, fontWeight: 500, cursor: "pointer", transition: "all .15s" }}>
+                        className={`px-4 py-2 rounded-xl text-[13px] font-medium cursor-pointer transition-all duration-200 ${form.gewerk === b ? "border border-brand-500/50 bg-brand-500/10 text-brand-300 shadow-[0_0_12px_rgba(99,102,241,0.15)]" : "border border-white/[0.06] bg-white/[0.03] text-slate-400 hover:border-white/[0.12] hover:bg-white/[0.06]"}`}>
                         {b}
                       </button>
                     ))}
@@ -890,111 +934,104 @@ function OnboardingWizard({ onComplete }) {
           </div>
         )}
 
-        {/* STEP 2: Firmendaten */}
         {step === 2 && (
           <div>
-            <h2 className="onboard-title">Deine Firmendaten</h2>
-            <p className="onboard-desc">Diese Daten erscheinen auf jeder Rechnung. Du kannst sie später jederzeit ändern.</p>
-            <div style={{ display: "flex", flexDirection: "column", gap: 10, maxWidth: 480 }}>
-              <div style={{ display: "flex", gap: 10 }}>
-                <div style={{ flex: 1 }}><label className="onboard-lbl">Firmenname *</label><input className="inp" placeholder="z.B. Müller Webdesign" value={form.name} onChange={e => setForm({ ...form, name: e.target.value })} /></div>
-                <div style={{ flex: 1 }}><label className="onboard-lbl">Inhaber</label><input className="inp" placeholder="Max Müller" value={form.inhaber} onChange={e => setForm({ ...form, inhaber: e.target.value })} /></div>
+            <h2 className="text-[22px] font-extrabold tracking-tight mb-1.5">Deine Firmendaten</h2>
+            <p className="text-[14px] text-slate-500 mb-6 leading-relaxed">Diese Daten erscheinen auf jeder Rechnung. Du kannst sie später jederzeit ändern.</p>
+            <div className="flex flex-col gap-3 max-w-[480px]">
+              <div className="flex gap-3">
+                <div className="flex-1"><label className={oblbl}>Firmenname *</label><input className={inp} placeholder="z.B. Müller Webdesign" value={form.name} onChange={e => setForm({ ...form, name: e.target.value })} /></div>
+                <div className="flex-1"><label className={oblbl}>Inhaber</label><input className={inp} placeholder="Max Müller" value={form.inhaber} onChange={e => setForm({ ...form, inhaber: e.target.value })} /></div>
               </div>
-              <div><label className="onboard-lbl">Straße + Nr.</label><input className="inp" placeholder="Musterstraße 42" value={form.strasse} onChange={e => setForm({ ...form, strasse: e.target.value })} /></div>
-              <div style={{ display: "flex", gap: 10 }}>
-                <div style={{ width: 110 }}><label className="onboard-lbl">PLZ</label><input className="inp" placeholder="70173" value={form.plz} onChange={e => setForm({ ...form, plz: e.target.value })} /></div>
-                <div style={{ flex: 1 }}><label className="onboard-lbl">Ort</label><input className="inp" placeholder="Stuttgart" value={form.ort} onChange={e => setForm({ ...form, ort: e.target.value })} /></div>
+              <div><label className={oblbl}>Straße + Nr.</label><input className={inp} placeholder="Musterstraße 42" value={form.strasse} onChange={e => setForm({ ...form, strasse: e.target.value })} /></div>
+              <div className="flex gap-3">
+                <div className="w-[110px]"><label className={oblbl}>PLZ</label><input className={inp} placeholder="70173" value={form.plz} onChange={e => setForm({ ...form, plz: e.target.value })} /></div>
+                <div className="flex-1"><label className={oblbl}>Ort</label><input className={inp} placeholder="Stuttgart" value={form.ort} onChange={e => setForm({ ...form, ort: e.target.value })} /></div>
               </div>
-              <div style={{ display: "flex", gap: 10 }}>
-                <div style={{ flex: 1 }}><label className="onboard-lbl">Telefon</label><input className="inp" placeholder="0711 123456" value={form.telefon} onChange={e => setForm({ ...form, telefon: e.target.value })} /></div>
-                <div style={{ flex: 1 }}><label className="onboard-lbl">E-Mail</label><input className="inp" placeholder="info@firma.de" value={form.email} onChange={e => setForm({ ...form, email: e.target.value })} /></div>
+              <div className="flex gap-3">
+                <div className="flex-1"><label className={oblbl}>Telefon</label><input className={inp} placeholder="0711 123456" value={form.telefon} onChange={e => setForm({ ...form, telefon: e.target.value })} /></div>
+                <div className="flex-1"><label className={oblbl}>E-Mail</label><input className={inp} placeholder="info@firma.de" value={form.email} onChange={e => setForm({ ...form, email: e.target.value })} /></div>
               </div>
             </div>
           </div>
         )}
 
-        {/* STEP 3: Steuer */}
         {step === 3 && (
           <div>
-            <h2 className="onboard-title">Steuerdaten</h2>
-            <p className="onboard-desc">Mindestens eins davon ist Pflicht nach §14 UStG. Ohne wird deine Rechnung nicht rechtskonform sein.</p>
-            <div style={{ display: "flex", flexDirection: "column", gap: 10, maxWidth: 480 }}>
-              <div><label className="onboard-lbl">Steuernummer</label><input className="inp" placeholder="12/345/67890" value={form.steuernr} onChange={e => setForm({ ...form, steuernr: e.target.value })} /></div>
-              <div style={{ textAlign: "center", color: "#475569", fontSize: 12 }}>– oder –</div>
-              <div><label className="onboard-lbl">USt-IdNr.</label><input className="inp" placeholder="DE123456789" value={form.ustid} onChange={e => setForm({ ...form, ustid: e.target.value })} /></div>
+            <h2 className="text-[22px] font-extrabold tracking-tight mb-1.5">Steuerdaten</h2>
+            <p className="text-[14px] text-slate-500 mb-6 leading-relaxed">Mindestens eins davon ist Pflicht nach §14 UStG. Ohne wird deine Rechnung nicht rechtskonform sein.</p>
+            <div className="flex flex-col gap-3 max-w-[480px]">
+              <div><label className={oblbl}>Steuernummer</label><input className={inp} placeholder="12/345/67890" value={form.steuernr} onChange={e => setForm({ ...form, steuernr: e.target.value })} /></div>
+              <div className="text-center text-slate-600 text-[13px] py-1">– oder –</div>
+              <div><label className={oblbl}>USt-IdNr.</label><input className={inp} placeholder="DE123456789" value={form.ustid} onChange={e => setForm({ ...form, ustid: e.target.value })} /></div>
             </div>
-            {!form.steuernr && !form.ustid && <div style={{ marginTop: 14, padding: 12, background: "#1c1917", borderRadius: 8, border: "1px solid #92400e", fontSize: 12, color: "#fbbf24" }}>{IC.shield} Du kannst diesen Schritt überspringen, aber deine Rechnungen werden ohne Steuernr./USt-ID nicht §14-konform sein.</div>}
+            {!form.steuernr && !form.ustid && <div className="mt-4 p-3.5 bg-warning-500/[0.06] rounded-xl border border-warning-500/15 text-[13px] text-warning-500 flex items-start gap-2.5"><span className="mt-0.5">{IC.shield}</span><span>Du kannst diesen Schritt überspringen, aber deine Rechnungen werden ohne Steuernr./USt-ID nicht §14-konform sein.</span></div>}
           </div>
         )}
 
-        {/* STEP 4: Bank */}
         {step === 4 && (
           <div>
-            <h2 className="onboard-title">Bankverbindung</h2>
-            <p className="onboard-desc">Damit deine Kunden wissen, wohin sie überweisen sollen. Erscheint im Footer jeder Rechnung.</p>
-            <div style={{ display: "flex", flexDirection: "column", gap: 10, maxWidth: 480 }}>
-              <div><label className="onboard-lbl">Bank</label><input className="inp" placeholder="Sparkasse Stuttgart" value={form.bankName} onChange={e => setForm({ ...form, bankName: e.target.value })} /></div>
-              <div><label className="onboard-lbl">IBAN</label><input className="inp" placeholder="DE89 3704 0044 0532 0130 00" value={form.iban} onChange={e => setForm({ ...form, iban: e.target.value })} /></div>
-              <div><label className="onboard-lbl">BIC (optional)</label><input className="inp" placeholder="COBADEFFXXX" value={form.bic} onChange={e => setForm({ ...form, bic: e.target.value })} /></div>
+            <h2 className="text-[22px] font-extrabold tracking-tight mb-1.5">Bankverbindung</h2>
+            <p className="text-[14px] text-slate-500 mb-6 leading-relaxed">Damit deine Kunden wissen, wohin sie überweisen sollen. Erscheint im Footer jeder Rechnung.</p>
+            <div className="flex flex-col gap-3 max-w-[480px]">
+              <div><label className={oblbl}>Bank</label><input className={inp} placeholder="Sparkasse Stuttgart" value={form.bankName} onChange={e => setForm({ ...form, bankName: e.target.value })} /></div>
+              <div><label className={oblbl}>IBAN</label><input className={inp} placeholder="DE89 3704 0044 0532 0130 00" value={form.iban} onChange={e => setForm({ ...form, iban: e.target.value })} /></div>
+              <div><label className={oblbl}>BIC (optional)</label><input className={inp} placeholder="COBADEFFXXX" value={form.bic} onChange={e => setForm({ ...form, bic: e.target.value })} /></div>
             </div>
           </div>
         )}
 
-        {/* STEP 5: Logo */}
         {step === 5 && (
           <div>
-            <h2 className="onboard-title">Dein Firmenlogo</h2>
-            <p className="onboard-desc">Optional – aber es macht deine Rechnungen sofort professioneller. PNG oder JPG, max 500 KB.</p>
-            <div className="onboard-center" style={{ marginTop: 20 }}>
+            <h2 className="text-[22px] font-extrabold tracking-tight mb-1.5">Dein Firmenlogo</h2>
+            <p className="text-[14px] text-slate-500 mb-6 leading-relaxed">Optional – aber es macht deine Rechnungen sofort professioneller. PNG oder JPG, max 2 MB.</p>
+            <div className="flex flex-col items-center text-center mt-5">
               {form.logo ? (
-                <div style={{ position: "relative", display: "inline-block" }}>
-                  <img src={form.logo} alt="" style={{ maxHeight: 80, maxWidth: 240, borderRadius: 10, border: "2px solid #334155", background: "#fff", padding: 8, objectFit: "contain" }} />
-                  <button className="i-btn" style={{ position: "absolute", top: -8, right: -8, background: "#1e293b", borderRadius: "50%", width: 22, height: 22, display: "flex", alignItems: "center", justifyContent: "center", border: "1px solid #334155" }} onClick={() => setForm({ ...form, logo: "" })}>✕</button>
+                <div className="relative inline-block">
+                  <img src={form.logo} alt="" className="max-h-20 max-w-60 rounded-xl border border-white/[0.1] bg-white p-3 object-contain shadow-lg" />
+                  <button className="absolute -top-2 -right-2 bg-slate-800 rounded-full w-[22px] h-[22px] flex items-center justify-center border border-white/[0.1] text-slate-400 cursor-pointer text-xs hover:bg-slate-700 transition-colors" onClick={() => setForm({ ...form, logo: "" })}>✕</button>
                 </div>
               ) : (
-                <div onClick={() => fRef.current?.click()} style={{ width: 200, height: 100, borderRadius: 12, border: "3px dashed #334155", display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center", cursor: "pointer", gap: 8, color: "#64748b", transition: "border-color .2s" }}>
-                  <span style={{ fontSize: 28 }}>📷</span>
-                  <span style={{ fontSize: 13 }}>Klicken zum Hochladen</span>
+                <div onClick={() => fRef.current?.click()} className="w-[220px] h-[110px] rounded-2xl border-2 border-dashed border-white/[0.1] flex flex-col items-center justify-center cursor-pointer gap-2.5 text-slate-500 hover:border-brand-500/30 hover:bg-brand-500/[0.03] transition-all duration-200">
+                  <span className="text-[32px]">📷</span>
+                  <span className="text-[13px] font-medium">Klicken zum Hochladen</span>
                 </div>
               )}
-              <input ref={fRef} type="file" accept="image/png,image/jpeg" style={{ display: "none" }} onChange={handleLogo} />
-              {logoErr && <p style={{ fontSize: 12, color: "#f87171", marginTop: 10, fontWeight: 600 }}>⚠ {logoErr}</p>}
-              {!form.logo && !logoErr && <p style={{ fontSize: 12, color: "#475569", marginTop: 12 }}>Du kannst diesen Schritt überspringen und das Logo später hinzufügen.</p>}
+              <input ref={fRef} type="file" accept="image/png,image/jpeg" className="hidden" onChange={handleLogo} />
+              {logoErr && <p className="text-[13px] text-danger-500 mt-3 font-semibold">⚠ {logoErr}</p>}
+              {!form.logo && !logoErr && <p className="text-[13px] text-slate-600 mt-4">Du kannst diesen Schritt überspringen und das Logo später hinzufügen.</p>}
             </div>
           </div>
         )}
 
-        {/* STEP 6: Fertig */}
         {step === 6 && (
-          <div className="onboard-center">
-            <div style={{ fontSize: 52, marginBottom: 12 }}>🚀</div>
-            <h2 style={{ fontSize: 26, fontWeight: 800, letterSpacing: "-.02em", marginBottom: 8 }}>Alles eingerichtet!</h2>
-            <p style={{ fontSize: 15, color: "#94a3b8", maxWidth: 400, lineHeight: 1.7, marginBottom: 20 }}>
-              Dein Profil ist fertig. Du kannst jetzt sofort deine erste Rechnung erstellen.
-            </p>
-            <div style={{ background: "#111827", borderRadius: 12, padding: 20, border: "1px solid #1e293b", maxWidth: 360, width: "100%", textAlign: "left" }}>
-              <div style={{ display: "flex", gap: 12, alignItems: "center", marginBottom: 12 }}>
-                {form.logo && <img src={form.logo} alt="" style={{ maxHeight: 36, maxWidth: 100, objectFit: "contain", borderRadius: 4 }} />}
-                <div><div style={{ fontWeight: 700, fontSize: 15 }}>{form.name}</div><div style={{ fontSize: 12, color: "#818cf8" }}>{form.gewerk}</div></div>
+          <div className="flex flex-col items-center text-center">
+            <div className="w-16 h-16 rounded-2xl bg-gradient-to-br from-success-500/20 to-success-600/10 border border-success-500/20 flex items-center justify-center text-[40px] mb-5">🚀</div>
+            <h2 className="text-[26px] font-extrabold tracking-tight mb-2.5 bg-gradient-to-r from-white to-slate-300 bg-clip-text text-transparent">Alles eingerichtet!</h2>
+            <p className="text-[15px] text-slate-400 max-w-[400px] leading-relaxed mb-6">Dein Profil ist fertig. Du kannst jetzt sofort deine erste Rechnung erstellen.</p>
+            <div className="bg-white/[0.04] rounded-2xl p-5 border border-white/[0.08] max-w-[360px] w-full text-left">
+              <div className="flex gap-3 items-center mb-3">
+                {form.logo && <img src={form.logo} alt="" className="max-h-10 max-w-[100px] object-contain rounded-lg" />}
+                <div><div className="font-bold text-[15px]">{form.name}</div><div className="text-[13px] text-brand-400 font-medium">{form.gewerk}</div></div>
               </div>
-              <div style={{ fontSize: 12, color: "#64748b" }}>{form.strasse && `${form.strasse}, `}{form.plz} {form.ort}</div>
-              {form.email && <div style={{ fontSize: 12, color: "#64748b" }}>{form.email}</div>}
-              {(form.steuernr || form.ustid) && <div style={{ fontSize: 11, color: "#34d399", marginTop: 6 }}>{IC.check} §14 UStG konform</div>}
+              <div className="text-[13px] text-slate-500">{form.strasse && `${form.strasse}, `}{form.plz} {form.ort}</div>
+              {form.email && <div className="text-[13px] text-slate-500">{form.email}</div>}
+              {(form.steuernr || form.ustid) && <div className="text-[12px] text-success-500 mt-2 flex items-center gap-1.5">{IC.check} §14 UStG konform</div>}
             </div>
           </div>
         )}
       </div>
 
-      {/* Navigation */}
-      <div className="onboard-nav">
-        {step > 0 && step < 6 && <button className="s-btn" onClick={() => setStep(step - 1)}>← Zurück</button>}
-        <div style={{ flex: 1 }} />
+      {/* Nav */}
+      <div className="flex items-center gap-3 max-w-[680px] w-full mt-6">
+        {step > 0 && step < 6 && <button className="flex items-center gap-1.5 px-3.5 py-2 bg-white/[0.05] text-slate-400 border border-white/[0.08] rounded-xl text-[12px] cursor-pointer hover:bg-white/[0.08] transition-all font-medium" onClick={() => setStep(step - 1)}>← Zurück</button>}
+        <div className="flex-1" />
         {step < 6 ? (
-          <button className="p-btn" onClick={() => setStep(step + 1)} style={{ opacity: step > 0 && !canNext() ? .4 : 1 }} disabled={step > 0 && !canNext()}>
+          <button className="flex items-center gap-1.5 px-5 py-2.5 bg-gradient-to-r from-brand-600 to-brand-500 text-white border-none rounded-xl text-[13px] font-semibold cursor-pointer hover:shadow-[0_0_24px_rgba(99,102,241,0.3)] hover:translate-y-[-1px] transition-all duration-200" onClick={() => setStep(step + 1)} style={{ opacity: step > 0 && !canNext() ? .4 : 1 }} disabled={step > 0 && !canNext()}>
             {step === 0 ? "Los geht's →" : step === 5 ? (form.logo ? "Weiter →" : "Überspringen →") : "Weiter →"}
           </button>
         ) : (
-          <button className="p-btn" style={{ fontSize: 15, padding: "10px 28px" }} onClick={() => onComplete(form)}>
+          <button className="flex items-center gap-2 px-7 py-3 bg-gradient-to-r from-brand-600 to-brand-500 text-white border-none rounded-xl text-[15px] font-semibold cursor-pointer hover:shadow-[0_0_28px_rgba(99,102,241,0.35)] hover:translate-y-[-1px] transition-all duration-200" onClick={() => onComplete(form)}>
             Erste Rechnung erstellen →
           </button>
         )}
@@ -1052,157 +1089,163 @@ function Dashboard({ rechnungen, kunden, firma, nav, updRe, addRe, addKu, plan, 
   };
 
   return (
-    <div className="page">
-      {/* ── Header mit Begrüßung und Datum ── */}
-      <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start", marginBottom: 20, flexWrap: "wrap", gap: 10 }}>
+    <div className="p-6 px-7 max-md:p-4 animate-fade-in">
+      {/* Header */}
+      <div className="flex justify-between items-start mb-7 flex-wrap gap-3">
         <div>
-          <h1 className="h1" style={{ fontSize: 24 }}>Guten {now.getHours() < 12 ? "Morgen" : now.getHours() < 18 ? "Tag" : "Abend"}{firma?.inhaber ? `, ${firma.inhaber.split(" ")[0]}` : ""}</h1>
-          <p className="sub" style={{ marginTop: 4 }}>{now.toLocaleDateString("de-DE", { weekday: "long", day: "numeric", month: "long", year: "numeric" })}{firma?.name ? ` · ${firma.name}` : ""}</p>
+          <h1 className="text-[26px] font-extrabold tracking-tight bg-gradient-to-r from-white to-slate-300 bg-clip-text text-transparent">Guten {now.getHours() < 12 ? "Morgen" : now.getHours() < 18 ? "Tag" : "Abend"}{firma?.inhaber ? `, ${firma.inhaber.split(" ")[0]}` : ""}</h1>
+          <p className="text-[13px] text-slate-500 mt-1.5">{now.toLocaleDateString("de-DE", { weekday: "long", day: "numeric", month: "long", year: "numeric" })}{firma?.name ? ` · ${firma.name}` : ""}</p>
         </div>
-        <div style={{ display: "flex", gap: 8 }}>
-          <button className="s-btn" onClick={() => nav("rechnungen")}>{IC.euro} Rechnungen</button>
-          <button className="p-btn" onClick={() => nav("neue-rechnung")}>{IC.plus} Neue Rechnung</button>
+        <div className="flex gap-2.5">
+          <button className="flex items-center gap-1.5 px-3.5 py-2 bg-white/[0.05] text-slate-300 border border-white/[0.08] rounded-xl text-[12px] cursor-pointer whitespace-nowrap hover:bg-white/[0.08] hover:border-white/[0.12] transition-all duration-200 font-medium" onClick={() => nav("rechnungen")}>{IC.euro} Rechnungen</button>
+          <button className="flex items-center gap-1.5 px-5 py-2.5 bg-gradient-to-r from-brand-600 to-brand-500 text-white border-none rounded-xl text-[13px] font-semibold cursor-pointer whitespace-nowrap hover:shadow-[0_0_28px_rgba(99,102,241,0.35)] hover:translate-y-[-1px] transition-all duration-200" onClick={() => nav("neue-rechnung")}>{IC.plus} Neue Rechnung</button>
         </div>
       </div>
 
-      {fE.length > 0 && <div className="warn-bar"><span style={{ display: "flex", color: "#f87171" }}>{IC.shield}</span><div><strong>§14 UStG:</strong> {fE.join(", ")} fehlt. <button className="link-btn" onClick={() => nav("settings")}>Beheben →</button></div></div>}
-      {plan === "free" && <div className="upgrade-bar">{IC.crown}<span><strong>Free</strong> – {lim.re} Rechnungen</span><button className="upgrade-sm" onClick={() => nav("abo")}>Upgraden</button></div>}
+      {fE.length > 0 && <div className="flex items-start gap-2.5 px-4 py-3 bg-warning-500/[0.06] border border-warning-500/20 rounded-xl mb-4 text-[13px] text-warning-500"><span className="flex text-warning-500 mt-0.5">{IC.shield}</span><div><strong>§14 UStG:</strong> {fE.join(", ")} fehlt. <button className="bg-transparent border-none text-brand-400 text-[13px] cursor-pointer p-0 font-medium hover:underline" onClick={() => nav("settings")}>Beheben →</button></div></div>}
+      {plan === "free" && <div className="flex items-center gap-2.5 px-4 py-2.5 bg-gradient-to-r from-brand-950/60 to-brand-900/40 border border-brand-500/20 rounded-xl mb-5 text-[13px] text-brand-200 flex-wrap backdrop-blur-sm">{IC.crown}<span><strong>Free</strong> – {lim.re} Rechnungen</span><button className="px-3.5 py-1.5 bg-gradient-to-r from-brand-600 to-brand-500 text-white border-none rounded-lg text-[11px] font-semibold cursor-pointer ml-auto hover:shadow-[0_0_16px_rgba(99,102,241,0.3)] transition-all" onClick={() => nav("abo")}>Upgraden</button></div>}
 
-      {/* ── Leerzustand: Onboarding-Tipps ── */}
+      {/* Empty state */}
       {isEmpty && (
-        <div className="card" style={{ padding: 28, marginBottom: 18, background: "linear-gradient(135deg, #0f172a 0%, #1e1b4b 100%)", border: "1px solid #312e81" }}>
-          <div style={{ textAlign: "center", maxWidth: 440, margin: "0 auto" }}>
-            <div style={{ fontSize: 36, marginBottom: 12 }}>{IC.star}</div>
-            <h2 style={{ fontSize: 18, fontWeight: 700, marginBottom: 8 }}>Willkommen bei RechnungsKI</h2>
-            <p style={{ fontSize: 13, color: "#94a3b8", lineHeight: 1.6, marginBottom: 20 }}>Erstelle deine erste Rechnung in unter 2 Minuten. Alle Daten werden lokal in deinem Browser gespeichert.</p>
-            <div style={{ display: "flex", gap: 10, justifyContent: "center", flexWrap: "wrap" }}>
+        <div className="relative bg-gradient-to-br from-[#0c0c20] to-brand-950/40 rounded-2xl p-8 mb-5 border border-brand-500/15 overflow-hidden">
+          <div className="absolute inset-0 bg-[radial-gradient(ellipse_at_top_right,rgba(99,102,241,0.08),transparent_70%)]" />
+          <div className="text-center max-w-[460px] mx-auto relative z-10">
+            <div className="w-14 h-14 rounded-2xl bg-gradient-to-br from-brand-500/20 to-brand-600/10 border border-brand-500/20 flex items-center justify-center mx-auto mb-4 text-brand-400">{IC.star}</div>
+            <h2 className="text-xl font-bold mb-2 tracking-tight">Willkommen bei RechnungsKI</h2>
+            <p className="text-[14px] text-slate-400 leading-relaxed mb-6">Erstelle deine erste Rechnung in unter 2 Minuten. Alle Daten werden lokal in deinem Browser gespeichert.</p>
+            <div className="flex gap-3 justify-center flex-wrap">
               {[
                 { l: "Kunde anlegen", ico: IC.users, pg: "kunden" },
                 { l: "Erste Rechnung", ico: IC.doc, pg: "neue-rechnung" },
                 { l: "Firmendaten prüfen", ico: IC.gear, pg: "settings" },
               ].map((a, i) => (
-                <button key={i} onClick={() => nav(a.pg)} style={{ display: "flex", alignItems: "center", gap: 6, padding: "10px 16px", background: "#1e293b", border: "1px solid #334155", borderRadius: 8, color: "#e2e8f0", fontSize: 13, fontWeight: 500, cursor: "pointer" }}>
-                  <span style={{ opacity: .6, display: "flex" }}>{a.ico}</span>{a.l}
+                <button key={i} onClick={() => nav(a.pg)} className="flex items-center gap-2 px-5 py-2.5 bg-white/[0.05] border border-white/[0.08] rounded-xl text-slate-200 text-[13px] font-medium cursor-pointer hover:bg-white/[0.08] hover:border-white/[0.12] hover:translate-y-[-1px] transition-all duration-200">
+                  <span className="opacity-50 flex">{a.ico}</span>{a.l}
                 </button>
               ))}
             </div>
-            <div style={{ marginTop: 16, paddingTop: 16, borderTop: "1px solid #334155" }}>
-              <button onClick={loadMuster} style={{ display: "flex", alignItems: "center", gap: 6, padding: "9px 16px", background: "transparent", border: "1px dashed #4338ca", borderRadius: 8, color: "#a5b4fc", fontSize: 12, fontWeight: 500, cursor: "pointer", margin: "0 auto" }}>
-                {IC.eye} Musterrechnung laden – so sieht eine fertige Rechnung aus
+            <div className="mt-5 pt-5 border-t border-white/[0.06]">
+              <button onClick={loadMuster} className="flex items-center gap-2 px-5 py-2.5 bg-transparent border border-dashed border-brand-500/30 rounded-xl text-brand-300 text-[13px] font-medium cursor-pointer mx-auto hover:bg-brand-500/[0.06] hover:border-brand-500/50 transition-all duration-200">
+                {IC.eye} Musterrechnung laden
               </button>
             </div>
           </div>
         </div>
       )}
 
-      {/* ── KPI-Kacheln mit Icons ── */}
-      <div className="kpi-grid">
+      {/* KPI cards */}
+      <div className="grid grid-cols-4 max-md:grid-cols-2 max-[480px]:grid-cols-1 gap-3 mb-5">
         {[
-          { l: "Umsatz", v: fc(totalUmsatz), s: `${paid.length} bezahlt`, c: "#34d399", ico: IC.euro },
-          { l: "Offen", v: fc(offenSum), s: `${offen.length} Rechnungen`, c: "#fbbf24", ico: IC.doc },
-          { l: "Überfällig", v: ueber.length, s: ueber.length ? "Jetzt mahnen" : "Alles im Griff", c: "#f87171", ico: IC.alert },
-          { l: "Kunden", v: kunden.length, c: "#818cf8", s: "gespeichert", ico: IC.users },
+          { l: "Umsatz", v: fc(totalUmsatz), s: `${paid.length} bezahlt`, c: "text-success-500", gc: "from-success-500/10 to-success-600/5", glow: "rgba(16,185,129,0.06)", ico: IC.euro },
+          { l: "Offen", v: fc(offenSum), s: `${offen.length} Rechnungen`, c: "text-warning-500", gc: "from-warning-500/10 to-warning-600/5", glow: "rgba(245,158,11,0.06)", ico: IC.doc },
+          { l: "Überfällig", v: ueber.length, s: ueber.length ? "Jetzt mahnen" : "Alles im Griff", c: "text-danger-500", gc: "from-danger-500/10 to-danger-600/5", glow: "rgba(239,68,68,0.06)", ico: IC.alert },
+          { l: "Kunden", v: kunden.length, c: "text-brand-400", gc: "from-brand-500/10 to-brand-600/5", glow: "rgba(99,102,241,0.06)", s: "gespeichert", ico: IC.users },
         ].map((k, i) => (
-          <div key={i} className="kpi" style={{ borderLeft: `4px solid ${k.c}`, position: "relative", overflow: "hidden" }}>
-            <div style={{ position: "absolute", top: 12, right: 12, opacity: .08, color: k.c }}><svg width="40" height="40" viewBox="0 0 24 24" fill="currentColor">{k.ico.props.children}</svg></div>
-            <div className="kpi-l">{k.l}</div>
-            <div className="kpi-v" style={k.l === "Überfällig" && ueber.length > 0 ? { color: "#f87171" } : {}}>{k.v}</div>
-            <div className="kpi-s">{k.s}</div>
+          <div key={i} className={`group relative bg-[#0a0a1a]/80 rounded-2xl p-4 border border-white/[0.06] overflow-hidden hover:border-white/[0.1] transition-all duration-300`}>
+            <div className={`absolute inset-0 bg-gradient-to-br ${k.gc} opacity-0 group-hover:opacity-100 transition-opacity duration-500`} />
+            <div className={`absolute top-3 right-3 opacity-[0.06] ${k.c}`}><svg width="44" height="44" viewBox="0 0 24 24" fill="currentColor">{k.ico.props.children}</svg></div>
+            <div className="relative z-10">
+              <div className="text-[10px] text-slate-500 font-semibold uppercase tracking-[0.1em]">{k.l}</div>
+              <div className={`text-[24px] font-extrabold mt-1.5 tracking-tight ${k.l === "Überfällig" && ueber.length > 0 ? "text-danger-500" : ""}`}>{k.v}</div>
+              <div className="text-[11px] text-slate-500 mt-1">{k.s}</div>
+            </div>
           </div>
         ))}
       </div>
 
-      {/* ── Überfällig-Alarm (prominent, oben) ── */}
-      {ueber.length > 0 && <div className="warn-card" style={{ marginBottom: 18 }}><div style={{ display: "flex", alignItems: "center", gap: 8, marginBottom: 8, fontWeight: 600 }}><span style={{ color: "#f87171", display: "flex" }}>{IC.alert}</span>Überfällig ({ueber.length})</div>{ueber.map(r => <div key={r.id} style={{ display: "flex", alignItems: "center", gap: 10, padding: "8px 0", fontSize: 12, flexWrap: "wrap", borderBottom: "1px solid #33251a" }}><span style={{ fontWeight: 600, fontFamily: "'JetBrains Mono',mono", fontSize: 11 }}>{r.nummer}</span><span style={{ flex: 1 }}>{r.kundeName}</span><span style={{ fontWeight: 600 }}>{fc(r.gesamt)}</span><span style={{ fontSize: 11, color: "#f87171" }}>{Math.floor((Date.now() - new Date(r.faelligDatum)) / 86400000)}d überfällig</span><button className="s-btn" onClick={() => updRe(r.id, { status: "gemahnt" })}>{IC.mail} Mahnen</button></div>)}</div>}
+      {/* Overdue alert */}
+      {ueber.length > 0 && <div className="bg-danger-500/[0.04] border border-danger-500/15 rounded-2xl p-5 mb-5"><div className="flex items-center gap-2.5 mb-3 font-semibold text-[14px]"><span className="w-7 h-7 rounded-lg bg-danger-500/10 flex items-center justify-center text-danger-500">{IC.alert}</span>Überfällig ({ueber.length})</div>{ueber.map(r => <div key={r.id} className="flex items-center gap-3 py-2.5 text-[13px] flex-wrap border-b border-white/[0.04] last:border-0"><span className="font-semibold font-mono text-[11px] text-slate-400">{r.nummer}</span><span className="flex-1">{r.kundeName}</span><span className="font-semibold">{fc(r.gesamt)}</span><span className="text-[11px] text-danger-400 bg-danger-500/10 px-2 py-0.5 rounded-md font-medium">{Math.floor((Date.now() - new Date(r.faelligDatum)) / 86400000)}d überfällig</span><button className="flex items-center gap-1.5 px-3 py-1.5 bg-white/[0.05] text-slate-300 border border-white/[0.08] rounded-lg text-[11px] cursor-pointer whitespace-nowrap hover:bg-white/[0.08] transition-all font-medium" onClick={() => updRe(r.id, { status: "gemahnt" })}>{IC.mail} Mahnen</button></div>)}</div>}
 
-      {/* ── Chart + Letzte Rechnungen ── */}
-      <div className="dash-grid">
-        <div className="card">
-          <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 12 }}>
-            <h3 className="card-t" style={{ marginBottom: 0 }}>Umsatz (6 Monate)</h3>
-            <span style={{ fontSize: 18, fontWeight: 700, color: "#34d399" }}>{fc(totalUmsatz)}</span>
+      {/* Chart + Recent */}
+      <div className="grid grid-cols-[1.7fr_1fr] max-md:grid-cols-1 gap-3 mb-5">
+        <div className="bg-[#0a0a1a]/80 rounded-2xl p-5 border border-white/[0.06]">
+          <div className="flex justify-between items-center mb-4">
+            <h3 className="text-[14px] font-semibold">Umsatz (6 Monate)</h3>
+            <span className="text-lg font-bold text-success-500">{fc(totalUmsatz)}</span>
           </div>
-          <div style={{ display: "flex", alignItems: "flex-end", gap: 8, height: 140 }}>
+          <div className="flex items-end gap-2.5 h-[150px]">
             {months.map(m => (
-              <div key={m.k} style={{ flex: 1, display: "flex", flexDirection: "column", alignItems: "center", gap: 4 }}>
-                {m.s > 0 && <span style={{ fontSize: 9, color: "#64748b", fontWeight: 500 }}>{m.s >= 1000 ? `${(m.s/1000).toFixed(1)}k` : fc(m.s)}</span>}
-                <div style={{ width: "100%", height: 110, display: "flex", alignItems: "flex-end" }}>
-                  <div className="chart-bar" style={{ height: `${Math.max(m.s / mx * 100, 4)}%` }} />
+              <div key={m.k} className="flex-1 flex flex-col items-center gap-1.5">
+                {m.s > 0 && <span className="text-[9px] text-slate-500 font-medium">{m.s >= 1000 ? `${(m.s/1000).toFixed(1)}k` : fc(m.s)}</span>}
+                <div className="w-full h-[120px] flex items-end">
+                  <div className="w-full bg-gradient-to-t from-brand-600 via-brand-500 to-brand-400 rounded-t-md transition-[height] duration-700 ease-out min-h-[3px] relative overflow-hidden" style={{ height: `${Math.max(m.s / mx * 100, 4)}%` }}>
+                    <div className="absolute inset-0 bg-gradient-to-r from-transparent via-white/[0.08] to-transparent" />
+                  </div>
                 </div>
-                <span style={{ fontSize: 10, color: "#64748b" }}>{m.l}</span>
+                <span className="text-[10px] text-slate-500 font-medium">{m.l}</span>
               </div>
             ))}
           </div>
         </div>
 
-        <div className="card">
-          <h3 className="card-t">Letzte Aktivität</h3>
+        <div className="bg-[#0a0a1a]/80 rounded-2xl p-5 border border-white/[0.06]">
+          <h3 className="text-[14px] font-semibold mb-4">Letzte Aktivität</h3>
           {rechnungen.length === 0 ? (
-            <div style={{ display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center", padding: "24px 0", color: "#475569" }}>
-              <div style={{ opacity: .3, marginBottom: 8 }}>{IC.doc}</div>
-              <p style={{ fontSize: 12 }}>Noch keine Rechnungen</p>
-              <button className="link-btn" onClick={() => nav("neue-rechnung")}>Erste Rechnung erstellen →</button>
+            <div className="flex flex-col items-center justify-center py-8 text-slate-600">
+              <div className="w-10 h-10 rounded-xl bg-white/[0.04] flex items-center justify-center mb-3 opacity-40">{IC.doc}</div>
+              <p className="text-[13px]">Noch keine Rechnungen</p>
+              <button className="bg-transparent border-none text-brand-400 text-[13px] cursor-pointer p-0 mt-1.5 font-medium hover:underline" onClick={() => nav("neue-rechnung")}>Erste Rechnung erstellen →</button>
             </div>
           ) : [...rechnungen].reverse().slice(0, 5).map(r => (
-            <div key={r.id} className="recent-item">
-              <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
-                <div style={{ width: 28, height: 28, borderRadius: 6, background: "#1e293b", display: "flex", alignItems: "center", justifyContent: "center", fontSize: 11, fontWeight: 700, color: "#818cf8", flexShrink: 0 }}>{r.kundeName?.charAt(0)?.toUpperCase()}</div>
-                <div><div style={{ fontWeight: 600, fontSize: 13 }}>{r.kundeName}</div><div className="sub">{r.nummer} · {fd(r.datum)}</div></div>
+            <div key={r.id} className="flex justify-between items-center py-2 border-b border-white/[0.04] last:border-0 group">
+              <div className="flex items-center gap-2.5">
+                <div className="w-8 h-8 rounded-lg bg-gradient-to-br from-brand-500/20 to-brand-600/10 flex items-center justify-center text-[11px] font-bold text-brand-400 shrink-0 border border-brand-500/10">{r.kundeName?.charAt(0)?.toUpperCase()}</div>
+                <div><div className="font-semibold text-[13px] group-hover:text-white transition-colors">{r.kundeName}</div><div className="text-[11px] text-slate-500">{r.nummer} · {fd(r.datum)}</div></div>
               </div>
-              <div style={{ textAlign: "right" }}><div style={{ fontWeight: 600, fontSize: 13 }}>{fc(r.gesamt)}</div><SB s={r.status} /></div>
+              <div className="text-right"><div className="font-semibold text-[13px]">{fc(r.gesamt)}</div><SB s={r.status} /></div>
             </div>
           ))}
         </div>
       </div>
 
-      {/* ── Schnellaktionen ── */}
-      {!isEmpty && <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(150px, 1fr))", gap: 8, marginBottom: 18 }}>
+      {/* Quick actions */}
+      {!isEmpty && <div className="grid grid-cols-[repeat(auto-fit,minmax(160px,1fr))] gap-2.5 mb-5">
         {[
-          { l: "Neue Rechnung", ico: IC.doc, pg: "neue-rechnung", c: "#6366f1" },
-          { l: "Neues Angebot", ico: IC.eye, pg: "neue-rechnung", c: "#8b5cf6" },
-          { l: "Kunden", ico: IC.users, pg: "kunden", c: "#3b82f6" },
-          { l: "DATEV Export", ico: IC.dl, pg: "rechnungen", c: "#14b8a6" },
+          { l: "Neue Rechnung", ico: IC.doc, pg: "neue-rechnung", c: "text-brand-400" },
+          { l: "Neues Angebot", ico: IC.eye, pg: "neue-rechnung", c: "text-purple-400" },
+          { l: "Kunden", ico: IC.users, pg: "kunden", c: "text-blue-400" },
+          { l: "DATEV Export", ico: IC.dl, pg: "rechnungen", c: "text-teal-400" },
         ].map((a, i) => (
-          <button key={i} onClick={() => nav(a.pg)} style={{ display: "flex", alignItems: "center", gap: 8, padding: "12px 14px", background: "#111827", border: "1px solid #1e293b", borderRadius: 8, color: "#e2e8f0", fontSize: 12, fontWeight: 500, cursor: "pointer", textAlign: "left" }}>
-            <span style={{ color: a.c, display: "flex", opacity: .7 }}>{a.ico}</span>{a.l}
+          <button key={i} onClick={() => nav(a.pg)} className="group flex items-center gap-2.5 px-4 py-3.5 bg-[#0a0a1a]/80 border border-white/[0.06] rounded-xl text-slate-200 text-[13px] font-medium cursor-pointer text-left hover:bg-white/[0.04] hover:border-white/[0.1] hover:translate-y-[-1px] transition-all duration-200">
+            <span className={`${a.c} flex opacity-60 group-hover:opacity-100 transition-opacity`}>{a.ico}</span>{a.l}
           </button>
         ))}
       </div>}
 
-      {/* ── Angebote ohne Antwort ── */}
-      {alteAngebote.length > 0 && <div className="warn-card" style={{ borderColor: "#1e3a5f", marginBottom: 18 }}><div style={{ display: "flex", alignItems: "center", gap: 8, marginBottom: 8, fontWeight: 600 }}>{IC.eye} Angebote ohne Antwort ({alteAngebote.length})</div>{alteAngebote.map(r => <div key={r.id} style={{ display: "flex", alignItems: "center", gap: 10, padding: "8px 0", fontSize: 12, flexWrap: "wrap", borderBottom: "1px solid #1e2d3f" }}><span style={{ fontWeight: 600, fontFamily: "'JetBrains Mono',mono", fontSize: 11 }}>{r.nummer}</span><span style={{ flex: 1 }}>{r.kundeName}</span><span style={{ fontWeight: 600 }}>{fc(r.gesamt)}</span><span style={{ opacity: .6, fontSize: 11 }}>{Math.floor((Date.now() - new Date(r.datum)) / 86400000)} Tage</span><button className="s-btn-g" onClick={() => updRe(r.id, { status: "offen", typ: "rechnung" })}>→ Rechnung</button><button className="s-btn" onClick={() => updRe(r.id, { status: "storniert" })}>Ablehnen</button></div>)}</div>}
+      {/* Old offers */}
+      {alteAngebote.length > 0 && <div className="bg-brand-500/[0.04] border border-brand-500/15 rounded-2xl p-5 mb-5"><div className="flex items-center gap-2.5 mb-3 font-semibold text-[14px]"><span className="w-7 h-7 rounded-lg bg-brand-500/10 flex items-center justify-center text-brand-400">{IC.eye}</span>Angebote ohne Antwort ({alteAngebote.length})</div>{alteAngebote.map(r => <div key={r.id} className="flex items-center gap-3 py-2.5 text-[13px] flex-wrap border-b border-white/[0.04] last:border-0"><span className="font-semibold font-mono text-[11px] text-slate-400">{r.nummer}</span><span className="flex-1">{r.kundeName}</span><span className="font-semibold">{fc(r.gesamt)}</span><span className="opacity-50 text-[11px]">{Math.floor((Date.now() - new Date(r.datum)) / 86400000)} Tage</span><button className="flex items-center gap-1.5 px-3 py-1.5 bg-success-500/10 text-success-400 border border-success-500/20 rounded-lg text-[11px] cursor-pointer whitespace-nowrap font-medium hover:bg-success-500/15 transition-all" onClick={() => updRe(r.id, { status: "offen", typ: "rechnung" })}>→ Rechnung</button><button className="flex items-center gap-1.5 px-3 py-1.5 bg-white/[0.05] text-slate-400 border border-white/[0.08] rounded-lg text-[11px] cursor-pointer whitespace-nowrap font-medium hover:bg-white/[0.08] transition-all" onClick={() => updRe(r.id, { status: "storniert" })}>Ablehnen</button></div>)}</div>}
 
-      {/* ── Quartals-Steuerübersicht ── */}
+      {/* Quarterly tax */}
       {!firma?.kleinunternehmer && (qNetto > 0 || qMwst > 0) && (
-        <div className="card" style={{ marginBottom: 18 }}>
-          <h3 className="card-t">Q{q + 1}/{now.getFullYear()} – Steuerübersicht</h3>
-          <div style={{ display: "grid", gridTemplateColumns: "repeat(3, 1fr)", gap: 10, marginTop: 8 }}>
-            <div style={{ padding: "12px 14px", background: "#0b0d14", borderRadius: 8, border: "1px solid #1e293b" }}>
-              <div style={{ fontSize: 10, color: "#64748b", textTransform: "uppercase", letterSpacing: ".05em" }}>Nettoumsatz</div>
-              <div style={{ fontSize: 22, fontWeight: 700, marginTop: 4 }}>{fc(qNetto)}</div>
+        <div className="bg-[#0a0a1a]/80 rounded-2xl p-5 border border-white/[0.06] mb-5">
+          <h3 className="text-[14px] font-semibold mb-4">Q{q + 1}/{now.getFullYear()} – Steuerübersicht</h3>
+          <div className="grid grid-cols-3 gap-3 mt-2">
+            <div className="p-4 bg-white/[0.02] rounded-xl border border-white/[0.06]">
+              <div className="text-[10px] text-slate-500 uppercase tracking-[0.1em] font-medium">Nettoumsatz</div>
+              <div className="text-[22px] font-extrabold mt-1.5 tracking-tight">{fc(qNetto)}</div>
             </div>
-            <div style={{ padding: "12px 14px", background: "#0b0d14", borderRadius: 8, border: "1px solid #1e293b" }}>
-              <div style={{ fontSize: 10, color: "#64748b", textTransform: "uppercase", letterSpacing: ".05em" }}>MwSt-Schuld</div>
-              <div style={{ fontSize: 22, fontWeight: 700, marginTop: 4, color: "#f87171" }}>{fc(qMwst)}</div>
+            <div className="p-4 bg-danger-500/[0.03] rounded-xl border border-danger-500/10">
+              <div className="text-[10px] text-slate-500 uppercase tracking-[0.1em] font-medium">MwSt-Schuld</div>
+              <div className="text-[22px] font-extrabold mt-1.5 text-danger-400 tracking-tight">{fc(qMwst)}</div>
             </div>
-            <div style={{ padding: "12px 14px", background: "#0b0d14", borderRadius: 8, border: "1px solid #1e293b" }}>
-              <div style={{ fontSize: 10, color: "#64748b", textTransform: "uppercase", letterSpacing: ".05em" }}>Bruttoeinnahmen</div>
-              <div style={{ fontSize: 22, fontWeight: 700, marginTop: 4, color: "#34d399" }}>{fc(qNetto + qMwst)}</div>
+            <div className="p-4 bg-success-500/[0.03] rounded-xl border border-success-500/10">
+              <div className="text-[10px] text-slate-500 uppercase tracking-[0.1em] font-medium">Bruttoeinnahmen</div>
+              <div className="text-[22px] font-extrabold mt-1.5 text-success-400 tracking-tight">{fc(qNetto + qMwst)}</div>
             </div>
           </div>
-          <p style={{ fontSize: 11, color: "#475569", marginTop: 10 }}>Nur bezahlte Rechnungen · {qStart.toLocaleDateString("de-DE")} – {qEnd.toLocaleDateString("de-DE")}</p>
+          <p className="text-[11px] text-slate-500 mt-3">Nur bezahlte Rechnungen · {qStart.toLocaleDateString("de-DE")} – {qEnd.toLocaleDateString("de-DE")}</p>
         </div>
       )}
 
-      {/* ── Lokaler Speicher Hinweis ── */}
-      <div style={{ display: "flex", alignItems: "center", gap: 8, padding: "10px 14px", background: "#0b0d14", border: "1px solid #1e293b", borderRadius: 8, fontSize: 11, color: "#475569" }}>
-        {IC.db}<span>Daten werden lokal im Browser gespeichert. Nutze den <button className="link-btn" style={{ fontSize: 11, display: "inline" }} onClick={() => nav("settings")}>Daten-Export</button> für Backups.</span>
+      {/* Local storage notice */}
+      <div className="flex items-center gap-2.5 px-4 py-3 bg-white/[0.02] border border-white/[0.06] rounded-xl text-[12px] text-slate-500">
+        {IC.db}<span>Daten werden lokal im Browser gespeichert. Nutze den <button className="bg-transparent border-none text-brand-400 text-[12px] cursor-pointer p-0 inline font-medium hover:underline" onClick={() => nav("settings")}>Daten-Export</button> für Backups.</span>
       </div>
     </div>
   );
 }
 
-function SB({ s }) { const m = { offen: { b: "#fef3c7", c: "#92400e", l: "Offen" }, bezahlt: { b: "#d1fae5", c: "#065f46", l: "Bezahlt" }, gemahnt: { b: "#fee2e2", c: "#991b1b", l: "Gemahnt" }, storniert: { b: "#e5e7eb", c: "#374151", l: "Storniert" }, angebot: { b: "#e0e7ff", c: "#3730a3", l: "Angebot" } }; const v = m[s] || m.offen; return <span className="status-badge" style={{ background: v.b, color: v.c }}>{v.l}</span>; }
+function SB({ s }) { const m = { offen: { cls: "bg-warning-500/15 text-warning-500 border-warning-500/20", l: "Offen" }, bezahlt: { cls: "bg-success-500/15 text-success-500 border-success-500/20", l: "Bezahlt" }, gemahnt: { cls: "bg-danger-500/15 text-danger-500 border-danger-500/20", l: "Gemahnt" }, storniert: { cls: "bg-white/[0.06] text-slate-500 border-white/[0.08]", l: "Storniert" }, angebot: { cls: "bg-brand-500/15 text-brand-400 border-brand-500/20", l: "Angebot" } }; const v = m[s] || m.offen; return <span className={`text-[10px] font-semibold px-2 py-0.5 rounded-md whitespace-nowrap border ${v.cls}`}>{v.l}</span>; }
 
 // ═══ NEUE RECHNUNG (compact – same logic as v3) ═══
 function NeueRechnung({ firma, kunden, addKu, addRe, updRe, nextNr, nav, plan, lim, canCreate, editRechnung, onEditDone, favoriten = [], addFav, delFav }) {
@@ -1242,7 +1285,8 @@ function NeueRechnung({ firma, kunden, addKu, addRe, updRe, nextNr, nav, plan, l
     if (!canCreate) { nav("abo"); return; }
     let kunde = selK; if (showN && neuK.name) kunde = await addKu(neuK); if (!kunde) return;
     const d = new Date().toISOString().split("T")[0]; const fdt = new Date(); fdt.setDate(fdt.getDate() + ziel);
-    const re = { id: uid(), nummer: nextNr, typ, datum: d, faelligDatum: fdt.toISOString().split("T")[0], kundeId: kunde.id, kundeName: kunde.name, kundeAdresse: `${kunde.strasse}, ${kunde.plz} ${kunde.ort}`, kundeEmail: kunde.email || "", positionen: pos, netto: nettoNR, mwst: mwstB, gesamt: brutto, zahlungsziel: ziel, notiz, status: typ === "angebot" ? "angebot" : "offen", gewerk: gw, rabatt, zeitraumVon: zvon, zeitraumBis: zbis };
+    const r2 = (v: number) => Math.round(v * 100) / 100;
+    const re = { id: uid(), nummer: nextNr, typ, datum: d, faelligDatum: fdt.toISOString().split("T")[0], kundeId: kunde.id, kundeName: kunde.name, kundeAdresse: `${kunde.strasse}, ${kunde.plz} ${kunde.ort}`, kundeEmail: kunde.email || "", positionen: pos, netto: r2(nettoNR), mwst: r2(mwstB), gesamt: r2(brutto), zahlungsziel: ziel, notiz, status: typ === "angebot" ? "angebot" : "offen", gewerk: gw, rabatt, zeitraumVon: zvon, zeitraumBis: zbis };
     const errs = validateRechnung(re, firma); if (errs.length > 0) { setValE(errs); return; }
     setSaving(true);
     if (editRechnung) {
@@ -1254,58 +1298,66 @@ function NeueRechnung({ firma, kunden, addKu, addRe, updRe, nextNr, nav, plan, l
     setSaving(false); nav("rechnungen");
   };
 
-  if (!firma) return <div className="page"><div className="empty"><div className="empty-ico">{IC.gear}</div><h2>Firmendaten fehlen</h2><button className="p-btn" style={{ marginTop: 14 }} onClick={() => nav("settings")}>Einstellungen</button></div></div>;
+  const inp = "w-full py-2.5 px-3 bg-white/[0.04] border border-white/[0.08] rounded-xl text-slate-200 text-[13px] outline-none focus:border-brand-500/50 focus:bg-white/[0.06] transition-all duration-200 placeholder:text-slate-600";
+  const sel = "w-full py-2.5 px-3 bg-white/[0.04] border border-white/[0.08] rounded-xl text-slate-200 text-[13px] outline-none cursor-pointer";
+  const posI = "py-[6px] px-2 bg-white/[0.04] border border-white/[0.06] rounded-lg text-slate-200 text-[11px] outline-none focus:border-brand-500/50 transition-colors";
+
+  if (!firma) return <div className="p-6 px-7 animate-fade-in"><div className="flex flex-col items-center justify-center py-12 text-center"><div className="w-12 h-12 rounded-xl bg-white/[0.04] border border-white/[0.06] flex items-center justify-center mb-3 text-slate-500">{IC.gear}</div><h2 className="text-lg font-bold">Firmendaten fehlen</h2><button className="flex items-center gap-1.5 px-5 py-2.5 bg-gradient-to-r from-brand-600 to-brand-500 text-white border-none rounded-xl text-[13px] font-semibold cursor-pointer mt-4 hover:shadow-[0_0_24px_rgba(99,102,241,0.3)] transition-all" onClick={() => nav("settings")}>Einstellungen</button></div></div>;
 
   return (
-    <div className="page">
-      <div className="page-head"><div><h1 className="h1">{editRechnung ? "Rechnung bearbeiten" : typ === "angebot" ? "Neues Angebot" : "Neue Rechnung"}</h1><p className="sub">Nr. {editRechnung ? editRechnung.nummer : nextNr}</p></div>
-        <div className="toggle-wrap"><button className={`tog-btn ${typ === "rechnung" ? "active" : ""}`} onClick={() => setTyp("rechnung")}>Rechnung</button><button className={`tog-btn ${typ === "angebot" ? "active" : ""}`} onClick={() => setTyp("angebot")}>Angebot</button></div>
-      </div>
-      {valE.length > 0 && <div className="warn-bar">{IC.alert}<div><strong>Fehler:</strong> {valE.join(", ")}</div></div>}
-      <div className="form-grid">
-        <div className="form-left">
-          <div className="sec"><label className="lbl">Branche</label><select className="sel" value={gw} onChange={e => { setGw(e.target.value); setShowV(false); }}><option value="">–</option>{Object.entries(BRANCHEN_KATEGORIEN).map(([kat, branchen]) => <optgroup key={kat} label={kat}>{branchen.map(b => <option key={b} value={b}>{b}</option>)}</optgroup>)}</select></div>
-          <div className="sec"><label className="lbl">Leistungszeitraum</label><div style={{ display: "flex", gap: 8, alignItems: "center" }}><input type="date" className="inp" style={{ flex: 1 }} value={zvon} onChange={e => setZvon(e.target.value)} /><span className="sub">bis</span><input type="date" className="inp" style={{ flex: 1 }} value={zbis} onChange={e => setZbis(e.target.value)} /></div></div>
-          <div className="sec"><label className="lbl">Kunde</label>
-            {!showN ? <><div style={{ position: "relative" }}><span className="search-ico">{IC.search}</span><input className="inp search-inp" placeholder="Suchen..." value={kS} onChange={e => setKS(e.target.value)} /></div>
-              {kS && fK.length > 0 && !selK && <div className="dd">{fK.map(k => <button key={k.id} className="dd-item" onClick={() => { setSelK(k); setKS(""); }}><strong>{k.name}</strong><span style={{ fontSize: 11, opacity: .6 }}>{k.plz} {k.ort}</span></button>)}</div>}
-              {selK && <div className="sel-kunde"><div><strong>{selK.name}</strong><br /><span className="sub">{selK.strasse}, {selK.plz} {selK.ort}</span></div><button className="i-btn" onClick={() => setSelK(null)}>✕</button></div>}
-              <button className="link-btn" onClick={() => setShowN(true)}>+ Neuer Kunde</button>
-            </> : <div style={{ display: "flex", flexDirection: "column", gap: 6, marginTop: 6 }}>
-              <input className="inp" placeholder="Name *" value={neuK.name} onChange={e => setNeuK({ ...neuK, name: e.target.value })} />
-              <input className="inp" placeholder="Straße" value={neuK.strasse} onChange={e => setNeuK({ ...neuK, strasse: e.target.value })} />
-              <div style={{ display: "flex", gap: 6 }}><input className="inp" style={{ width: 90 }} placeholder="PLZ" value={neuK.plz} onChange={e => setNeuK({ ...neuK, plz: e.target.value })} /><input className="inp" style={{ flex: 1 }} placeholder="Ort" value={neuK.ort} onChange={e => setNeuK({ ...neuK, ort: e.target.value })} /></div>
-              <input className="inp" placeholder="E-Mail" value={neuK.email} onChange={e => setNeuK({ ...neuK, email: e.target.value })} />
-              <button className="link-btn" onClick={() => { setShowN(false); setNeuK({ name: "", strasse: "", plz: "", ort: "", email: "" }); }}>← Zurück</button>
-            </div>}
-          </div>
-          <div className="sec">
-            <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", flexWrap: "wrap", gap: 6 }}>
-              <label className="lbl" style={{ marginBottom: 0 }}>Positionen</label>
-              <div style={{ display: "flex", gap: 6 }}>{pos.length > 0 && <div style={{ fontSize: 10, color: "#64748b", display: "flex", gap: 8 }}><span>Arb: {fc(arbS)}</span><span>Mat: {fc(matS)}</span></div>}{gw && <button className="ai-btn" onClick={() => setShowV(!showV)}>{IC.star} KI</button>}</div>
-            </div>
-            {favoriten.length > 0 && <div className="vor-wrap" style={{ marginBottom: 6 }}><div style={{ fontSize: 10, color: "#fbbf24", fontWeight: 700, textTransform: "uppercase", letterSpacing: ".05em", marginBottom: 4 }}>★ Favoriten</div><div style={{ display: "flex", flexWrap: "wrap", gap: 4 }}>{favoriten.map((v, i) => <button key={i} className="vor-chip" style={{ borderColor: "#854d0e44" }} onClick={() => addP(v)}><span style={{ fontSize: 12 }}>{v.beschreibung}</span><span style={{ opacity: .5, fontSize: 10 }}>{fc(v.preis)}/{v.einheit}</span><span style={{ marginLeft: 4, fontSize: 10, color: "#fbbf24" }} onClick={e => { e.stopPropagation(); delFav(v.id); }} title="Entfernen">✕</span></button>)}</div></div>}
-            {showV && gw && <div className="vor-wrap"><div style={{ display: "flex", flexWrap: "wrap", gap: 4 }}>{(GV[gw] || []).map((v, i) => <button key={i} className="vor-chip" onClick={() => addP(v)}><span style={{ fontSize: 12 }}>{v.beschreibung}</span><span style={{ opacity: .5, fontSize: 10 }}>{fc(v.preis)}/{v.einheit}</span><span style={{ marginLeft: 4, fontSize: 10, color: "#64748b" }} onClick={e => { e.stopPropagation(); addFav(v); }} title="Als Favorit speichern">★</span></button>)}</div></div>}
-            {pos.length > 0 && <div className="pos-table"><div className="pos-h"><span style={{ flex: 2.5 }}>Beschr.</span><span style={{ flex: .6 }}>Typ</span><span style={{ flex: .6 }}>Menge</span><span style={{ flex: .6 }}>Einh.</span><span style={{ flex: .7, textAlign: "right" }}>Preis</span><span style={{ flex: .5 }}>MwSt</span><span style={{ flex: .7, textAlign: "right" }}>Sum.</span><span style={{ width: 24 }} /></div>
-              {pos.map(p => <div key={p.id} className="pos-r"><input className="pos-i" style={{ flex: 2.5 }} value={p.beschreibung} onChange={e => updP(p.id, "beschreibung", e.target.value)} /><select className="pos-i" style={{ flex: .6 }} value={p.typ} onChange={e => updP(p.id, "typ", e.target.value)}><option value="arbeit">Arb</option><option value="material">Mat</option></select><input className="pos-i" style={{ flex: .6, textAlign: "center" }} type="number" min=".01" step=".01" value={p.menge} onChange={e => updP(p.id, "menge", parseFloat(e.target.value) || 0)} /><input className="pos-i" style={{ flex: .6, textAlign: "center" }} value={p.einheit} onChange={e => updP(p.id, "einheit", e.target.value)} /><input className="pos-i" style={{ flex: .7, textAlign: "right" }} type="number" min="0" step=".01" value={p.preis} onChange={e => updP(p.id, "preis", parseFloat(e.target.value) || 0)} /><select className="pos-i" style={{ flex: .5 }} value={p.mwst} onChange={e => updP(p.id, "mwst", parseInt(e.target.value))}><option value={19}>19</option><option value={7}>7</option><option value={0}>0</option></select><span style={{ flex: .7, textAlign: "right", fontWeight: 600, fontSize: 11 }}>{fc(p.menge * p.preis)}</span><button className="i-btn" onClick={() => rmP(p.id)}>{IC.trash}</button></div>)}
-            </div>}
-            <button className="add-pos" onClick={() => addP({ beschreibung: "", einheit: "Stk", preis: 0, typ: "arbeit" })}>{IC.plus} Position</button>
-          </div>
-          <div className="sec"><div style={{ display: "flex", gap: 12, flexWrap: "wrap" }}><div style={{ width: 90 }}><label className="lbl">Rabatt %</label><input className="inp" type="number" min="0" max="100" value={rabatt} onChange={e => setRabatt(Math.min(100, Math.max(0, parseFloat(e.target.value) || 0)))} /></div><div style={{ flex: 1, minWidth: 180 }}><label className="lbl">Notiz</label><input className="inp" placeholder="..." value={notiz} onChange={e => setNotiz(e.target.value)} /></div></div></div>
+    <div className="p-6 px-7 max-md:p-4 animate-fade-in">
+      <div className="flex justify-between items-start mb-6 flex-wrap gap-2.5">
+        <div><h1 className="text-xl font-bold tracking-tight">{editRechnung ? "Rechnung bearbeiten" : typ === "angebot" ? "Neues Angebot" : "Neue Rechnung"}</h1><p className="text-[13px] text-slate-500 mt-1">Nr. {editRechnung ? editRechnung.nummer : nextNr}</p></div>
+        <div className="flex bg-white/[0.04] rounded-xl p-0.5 border border-white/[0.06]">
+          <button className={`px-3.5 py-1.5 border-none rounded-lg text-[12px] cursor-pointer font-medium transition-all ${typ === "rechnung" ? "bg-white/[0.08] text-white" : "bg-transparent text-slate-500 hover:text-slate-300"}`} onClick={() => setTyp("rechnung")}>Rechnung</button>
+          <button className={`px-3.5 py-1.5 border-none rounded-lg text-[12px] cursor-pointer font-medium transition-all ${typ === "angebot" ? "bg-white/[0.08] text-white" : "bg-transparent text-slate-500 hover:text-slate-300"}`} onClick={() => setTyp("angebot")}>Angebot</button>
         </div>
-        <div className="form-right">
-          <div className="sum-card">
-            <h3 style={{ fontSize: 14, fontWeight: 700, marginBottom: 10 }}>Zusammenfassung</h3>
-            <div className="sum-r"><span>Nr.</span><span style={{ fontFamily: "'JetBrains Mono',mono", fontSize: 11 }}>{nextNr}</span></div>
-            <div className="sum-r"><span>Ziel</span><select className="sel" style={{ width: "auto", padding: "2px 6px", fontSize: 11 }} value={ziel} onChange={e => setZiel(parseInt(e.target.value))}><option value={7}>7d</option><option value={14}>14d</option><option value={30}>30d</option></select></div>
-            <div style={{ borderTop: "1px solid #1e293b", margin: "8px 0" }} />
-            {arbS > 0 && <div className="sum-r" style={{ fontSize: 11 }}><span>Arbeit</span><span>{fc(arbS)}</span></div>}
-            {matS > 0 && <div className="sum-r" style={{ fontSize: 11 }}><span>Material</span><span>{fc(matS)}</span></div>}
-            <div className="sum-r"><span>Netto</span><span>{fc(netto)}</span></div>
-            {rabatt > 0 && <div className="sum-r" style={{ color: "#f87171" }}><span>-{rabatt}%</span><span>-{fc(rabattB)}</span></div>}
-            <div className="sum-r"><span>MwSt</span><span>{fc(mwstB)}</span></div>
-            <div className="sum-r sum-total"><span>Brutto</span><span>{fc(brutto)}</span></div>
-            <button className="p-btn" style={{ width: "100%", justifyContent: "center", marginTop: 12, opacity: (pos.length === 0 || (!selK && !neuK.name)) ? .4 : 1 }} disabled={pos.length === 0 || (!selK && !neuK.name) || saving} onClick={doSave}>{saving ? "..." : "Erstellen"}</button>
+      </div>
+      {valE.length > 0 && <div className="flex items-start gap-2.5 px-4 py-3 bg-danger-500/[0.06] border border-danger-500/15 rounded-xl mb-4 text-[13px] text-danger-400">{IC.alert}<div><strong>Fehler:</strong> {valE.join(", ")}</div></div>}
+      <div className="grid grid-cols-[1fr_300px] max-md:grid-cols-1 gap-5">
+        <div className="flex flex-col gap-3">
+          <div className="bg-[#0a0a1a]/80 rounded-2xl p-4 border border-white/[0.06]"><label className="text-[11px] font-semibold text-slate-400 mb-1.5 block tracking-wide">Branche</label><select className={sel} value={gw} onChange={e => { setGw(e.target.value); setShowV(false); }}><option value="">–</option>{Object.entries(BRANCHEN_KATEGORIEN).map(([kat, branchen]) => <optgroup key={kat} label={kat}>{branchen.map(b => <option key={b} value={b}>{b}</option>)}</optgroup>)}</select></div>
+          <div className="bg-[#0a0a1a]/80 rounded-2xl p-4 border border-white/[0.06]"><label className="text-[11px] font-semibold text-slate-400 mb-1.5 block tracking-wide">Leistungszeitraum</label><div className="flex gap-2.5 items-center"><input type="date" className={`${inp} flex-1`} value={zvon} onChange={e => setZvon(e.target.value)} /><span className="text-[13px] text-slate-500">bis</span><input type="date" className={`${inp} flex-1`} value={zbis} onChange={e => setZbis(e.target.value)} /></div></div>
+          <div className="bg-[#0a0a1a]/80 rounded-2xl p-4 border border-white/[0.06]"><label className="text-[11px] font-semibold text-slate-400 mb-1.5 block tracking-wide">Kunde</label>
+            {!showN ? <><div className="relative"><span className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-600 flex">{IC.search}</span><input className={`${inp} pl-[34px]`} placeholder="Suchen..." value={kS} onChange={e => setKS(e.target.value)} /></div>
+              {kS && fK.length > 0 && !selK && <div className="bg-white/[0.04] border border-white/[0.08] rounded-xl mt-1.5 max-h-[140px] overflow-y-auto">{fK.map(k => <button key={k.id} className="flex flex-col gap-px py-2 px-3 bg-transparent border-none text-slate-200 cursor-pointer w-full text-left border-b border-white/[0.04] text-[13px] hover:bg-white/[0.04] transition-colors" onClick={() => { setSelK(k); setKS(""); }}><strong>{k.name}</strong><span className="text-[11px] opacity-50">{k.plz} {k.ort}</span></button>)}</div>}
+              {selK && <div className="flex justify-between items-center bg-brand-500/[0.06] border border-brand-500/15 rounded-xl py-2.5 px-3 mt-1.5"><div><strong>{selK.name}</strong><br /><span className="text-[12px] text-slate-500">{selK.strasse}, {selK.plz} {selK.ort}</span></div><button className="bg-transparent border-none text-slate-500 cursor-pointer p-1 rounded-lg hover:bg-white/[0.05] transition-colors" onClick={() => setSelK(null)}>✕</button></div>}
+              <button className="bg-transparent border-none text-brand-400 text-[13px] cursor-pointer p-0 mt-1.5 font-medium hover:underline" onClick={() => setShowN(true)}>+ Neuer Kunde</button>
+            </> : <div className="flex flex-col gap-2 mt-2">
+              <input className={inp} placeholder="Name *" value={neuK.name} onChange={e => setNeuK({ ...neuK, name: e.target.value })} />
+              <input className={inp} placeholder="Straße" value={neuK.strasse} onChange={e => setNeuK({ ...neuK, strasse: e.target.value })} />
+              <div className="flex gap-2"><input className={`${inp} !w-[90px]`} placeholder="PLZ" value={neuK.plz} onChange={e => setNeuK({ ...neuK, plz: e.target.value })} /><input className={`${inp} flex-1`} placeholder="Ort" value={neuK.ort} onChange={e => setNeuK({ ...neuK, ort: e.target.value })} /></div>
+              <input className={inp} placeholder="E-Mail" value={neuK.email} onChange={e => setNeuK({ ...neuK, email: e.target.value })} />
+              <button className="bg-transparent border-none text-brand-400 text-[13px] cursor-pointer p-0 font-medium hover:underline" onClick={() => { setShowN(false); setNeuK({ name: "", strasse: "", plz: "", ort: "", email: "" }); }}>← Zurück</button>
+            </div>}
+          </div>
+          <div className="bg-[#0a0a1a]/80 rounded-2xl p-4 border border-white/[0.06]">
+            <div className="flex justify-between items-center flex-wrap gap-1.5">
+              <label className="text-[11px] font-semibold text-slate-400 tracking-wide">Positionen</label>
+              <div className="flex gap-2">{pos.length > 0 && <div className="text-[10px] text-slate-500 flex gap-2.5"><span>Arb: {fc(arbS)}</span><span>Mat: {fc(matS)}</span></div>}{gw && <button className="flex items-center gap-1.5 px-3 py-1.5 bg-gradient-to-r from-brand-600 to-purple-600 text-white border-none rounded-lg text-[11px] font-semibold cursor-pointer hover:shadow-[0_0_16px_rgba(99,102,241,0.3)] transition-all" onClick={() => setShowV(!showV)}>{IC.star} KI</button>}</div>
+            </div>
+            {favoriten.length > 0 && <div className="bg-brand-500/[0.06] border border-brand-500/15 rounded-xl p-3 mt-2 mb-2"><div className="text-[10px] text-warning-500 font-bold uppercase tracking-[0.1em] mb-1.5">★ Favoriten</div><div className="flex flex-wrap gap-1.5">{favoriten.map((v, i) => <button key={i} className="flex flex-col gap-px py-1.5 px-2.5 bg-white/[0.04] border border-white/[0.06] rounded-lg text-slate-200 cursor-pointer text-[11px] text-left hover:border-brand-500/30 transition-all" onClick={() => addP(v)}><span className="text-[12px]">{v.beschreibung}</span><span className="opacity-40 text-[10px]">{fc(v.preis)}/{v.einheit}</span><span className="ml-1 text-[10px] text-warning-500" onClick={e => { e.stopPropagation(); delFav(v.id); }} title="Entfernen">✕</span></button>)}</div></div>}
+            {showV && gw && <div className="bg-brand-500/[0.06] border border-brand-500/15 rounded-xl p-3 mt-2"><div className="flex flex-wrap gap-1.5">{(GV[gw] || []).map((v, i) => <button key={i} className="flex flex-col gap-px py-1.5 px-2.5 bg-white/[0.04] border border-white/[0.06] rounded-lg text-slate-200 cursor-pointer text-[11px] text-left hover:border-brand-500/30 transition-all" onClick={() => addP(v)}><span className="text-[12px]">{v.beschreibung}</span><span className="opacity-40 text-[10px]">{fc(v.preis)}/{v.einheit}</span><span className="ml-1 text-[10px] text-slate-500" onClick={e => { e.stopPropagation(); addFav(v); }} title="Als Favorit speichern">★</span></button>)}</div></div>}
+            {pos.length > 0 && <div className="mt-3 overflow-x-auto"><div className="flex gap-1 py-1.5 px-1 text-[9px] font-semibold text-slate-500 uppercase tracking-[0.1em] border-b border-white/[0.06] min-w-[520px]"><span style={{ flex: 2.5 }}>Beschr.</span><span style={{ flex: .6 }}>Typ</span><span style={{ flex: .6 }}>Menge</span><span style={{ flex: .6 }}>Einh.</span><span style={{ flex: .7, textAlign: "right" }}>Preis</span><span style={{ flex: .5 }}>MwSt</span><span style={{ flex: .7, textAlign: "right" }}>Sum.</span><span className="w-6" /></div>
+              {pos.map(p => <div key={p.id} className="flex gap-1 items-center py-1 border-b border-white/[0.04] min-w-[520px]"><input className={posI} style={{ flex: 2.5 }} value={p.beschreibung} onChange={e => updP(p.id, "beschreibung", e.target.value)} /><select className={posI} style={{ flex: .6 }} value={p.typ} onChange={e => updP(p.id, "typ", e.target.value)}><option value="arbeit">Arb</option><option value="material">Mat</option></select><input className={`${posI} text-center`} style={{ flex: .6 }} type="number" min=".01" step=".01" value={p.menge} onChange={e => updP(p.id, "menge", parseFloat(e.target.value) || 0)} /><input className={`${posI} text-center`} style={{ flex: .6 }} value={p.einheit} onChange={e => updP(p.id, "einheit", e.target.value)} /><input className={`${posI} text-right`} style={{ flex: .7 }} type="number" min="0" step=".01" value={p.preis} onChange={e => updP(p.id, "preis", parseFloat(e.target.value) || 0)} /><select className={posI} style={{ flex: .5 }} value={p.mwst} onChange={e => updP(p.id, "mwst", parseInt(e.target.value))}><option value={19}>19</option><option value={7}>7</option><option value={0}>0</option></select><span style={{ flex: .7, textAlign: "right", fontWeight: 600, fontSize: 11 }}>{fc(p.menge * p.preis)}</span><button className="bg-transparent border-none text-slate-500 cursor-pointer p-1 rounded-lg hover:text-slate-300 transition-colors" onClick={() => rmP(p.id)}>{IC.trash}</button></div>)}
+            </div>}
+            <button className="flex items-center gap-1.5 py-2.5 bg-transparent border-2 border-dashed border-white/[0.08] rounded-xl text-slate-500 text-[13px] cursor-pointer w-full justify-center mt-2 hover:border-white/[0.15] hover:text-slate-300 transition-all" onClick={() => addP({ beschreibung: "", einheit: "Stk", preis: 0, typ: "arbeit" })}>{IC.plus} Position</button>
+          </div>
+          <div className="bg-[#0a0a1a]/80 rounded-2xl p-4 border border-white/[0.06]"><div className="flex gap-3 flex-wrap"><div className="w-[100px]"><label className="text-[11px] font-semibold text-slate-400 mb-1.5 block tracking-wide">Rabatt %</label><input className={inp} type="number" min="0" max="100" value={rabatt} onChange={e => setRabatt(Math.min(100, Math.max(0, parseFloat(e.target.value) || 0)))} /></div><div className="flex-1 min-w-[180px]"><label className="text-[11px] font-semibold text-slate-400 mb-1.5 block tracking-wide">Notiz</label><input className={inp} placeholder="..." value={notiz} onChange={e => setNotiz(e.target.value)} /></div></div></div>
+        </div>
+        <div className="sticky top-6 self-start max-md:static">
+          <div className="bg-[#0a0a1a]/80 rounded-2xl p-5 border border-white/[0.06]">
+            <h3 className="text-[14px] font-bold mb-3">Zusammenfassung</h3>
+            <div className="flex justify-between items-center py-1.5 text-[13px]"><span className="text-slate-400">Nr.</span><span className="font-mono text-[11px]">{nextNr}</span></div>
+            <div className="flex justify-between items-center py-1.5 text-[13px]"><span className="text-slate-400">Ziel</span><select className="bg-white/[0.04] border border-white/[0.06] rounded-lg text-slate-200 text-[11px] py-1 px-2 cursor-pointer" value={ziel} onChange={e => setZiel(parseInt(e.target.value))}><option value={7}>7d</option><option value={14}>14d</option><option value={30}>30d</option></select></div>
+            <div className="border-t border-white/[0.06] my-2.5" />
+            {arbS > 0 && <div className="flex justify-between items-center py-1 text-[12px] text-slate-400"><span>Arbeit</span><span>{fc(arbS)}</span></div>}
+            {matS > 0 && <div className="flex justify-between items-center py-1 text-[12px] text-slate-400"><span>Material</span><span>{fc(matS)}</span></div>}
+            <div className="flex justify-between items-center py-1.5 text-[13px]"><span>Netto</span><span>{fc(netto)}</span></div>
+            {rabatt > 0 && <div className="flex justify-between items-center py-1.5 text-[13px] text-danger-400"><span>-{rabatt}%</span><span>-{fc(rabattB)}</span></div>}
+            <div className="flex justify-between items-center py-1.5 text-[13px]"><span>MwSt</span><span>{fc(mwstB)}</span></div>
+            <div className="flex justify-between items-center py-2 text-[18px] font-extrabold text-brand-400 pt-3 border-t border-white/[0.06] mt-1.5"><span>Brutto</span><span>{fc(brutto)}</span></div>
+            <button className="flex items-center gap-1.5 w-full justify-center mt-4 px-4 py-2.5 bg-gradient-to-r from-brand-600 to-brand-500 text-white border-none rounded-xl text-[13px] font-semibold cursor-pointer hover:shadow-[0_0_24px_rgba(99,102,241,0.3)] hover:translate-y-[-1px] transition-all duration-200" style={{ opacity: (pos.length === 0 || (!selK && !neuK.name)) ? .4 : 1 }} disabled={pos.length === 0 || (!selK && !neuK.name) || saving} onClick={doSave}>{saving ? "..." : editRechnung ? "Speichern" : "Erstellen"}</button>
           </div>
         </div>
       </div>
@@ -1322,35 +1374,50 @@ function RechnungenListe({ rechnungen, updRe, delRe, nav, dupRe, firma, onEdit }
   const fl = rechnungen.filter(r => filter === "alle" || r.status === filter).filter(r => r.kundeName?.toLowerCase().includes(search.toLowerCase()) || r.nummer?.includes(search)).sort((a, b) => new Date(b.datum) - new Date(a.datum));
   const exportDatev = () => { const csv = datevCSV(rechnungen, firma); const b = new Blob([csv], { type: "text/csv" }); const a = document.createElement("a"); a.href = URL.createObjectURL(b); a.download = `DATEV_${new Date().toISOString().split("T")[0]}.csv`; a.click(); };
 
+  const sbtn = "flex items-center gap-1.5 px-3 py-1.5 bg-white/[0.05] text-slate-300 border border-white/[0.08] rounded-lg text-[11px] cursor-pointer whitespace-nowrap hover:bg-white/[0.08] transition-all font-medium";
+  const sbtnG = "flex items-center gap-1.5 px-3 py-1.5 bg-success-500/10 text-success-400 border border-success-500/20 rounded-lg text-[11px] cursor-pointer whitespace-nowrap font-medium hover:bg-success-500/15 transition-all";
+  const dbtn = "px-2.5 py-1.5 bg-danger-500/10 text-danger-400 border border-danger-500/20 rounded-lg text-[11px] cursor-pointer font-medium hover:bg-danger-500/15 transition-all";
+  const inp = "w-full py-2.5 px-3 bg-white/[0.04] border border-white/[0.08] rounded-xl text-slate-200 text-[13px] outline-none focus:border-brand-500/50 focus:bg-white/[0.06] transition-all duration-200 placeholder:text-slate-600";
+
   return (
-    <div className="page">
-      <div className="page-head"><div><h1 className="h1">Rechnungen</h1><p className="sub">{rechnungen.length} insgesamt</p></div><div style={{ display: "flex", gap: 6, flexWrap: "wrap" }}><button className="s-btn" onClick={exportDatev}>{IC.dl} DATEV</button><button className="p-btn" onClick={() => nav("neue-rechnung")}>{IC.plus} Neu</button></div></div>
-      <div style={{ display: "flex", gap: 8, marginBottom: 16, flexWrap: "wrap" }}><div style={{ position: "relative", flex: 1, minWidth: 160 }}><span className="search-ico">{IC.search}</span><input className="inp search-inp" placeholder="Suchen..." value={search} onChange={e => setSearch(e.target.value)} /></div><div className="tabs">{["alle", "offen", "bezahlt", "gemahnt", "storniert", "angebot"].map(f => <button key={f} className={`tab ${filter === f ? "active" : ""}`} onClick={() => setFilter(f)}>{f.charAt(0).toUpperCase() + f.slice(1)}</button>)}</div></div>
-      {fl.length === 0 ? <div className="empty"><div className="empty-ico">{IC.doc}</div><h2>Keine Ergebnisse</h2></div> :
-        <div className="tbl-wrap"><div className="tbl-h"><span style={{ flex: 1 }}>Nr.</span><span style={{ flex: 1.5 }}>Kunde</span><span style={{ flex: .7 }}>Datum</span><span style={{ flex: .8, textAlign: "right" }}>Betrag</span><span style={{ flex: .6, textAlign: "center" }}>Status</span><span style={{ flex: 2, textAlign: "right" }}>Aktionen</span></div>
-          {fl.map(r => <div key={r.id} className="tbl-r">
-            <span style={{ flex: 1, fontWeight: 600, fontFamily: "'JetBrains Mono',mono", fontSize: 11 }}>{r.nummer}</span>
-            <span style={{ flex: 1.5, fontSize: 13 }}>{r.kundeName}</span>
-            <span style={{ flex: .7, opacity: .6, fontSize: 12 }}>{fd(r.datum)}</span>
-            <span style={{ flex: .8, textAlign: "right", fontWeight: 600, fontSize: 13 }}>{fc(r.gesamt)}</span>
-            <span style={{ flex: .6, textAlign: "center" }}><SB s={r.status} /></span>
-            <span style={{ flex: 2, display: "flex", gap: 4, justifyContent: "flex-end", flexWrap: "wrap" }}>
-              {firma && <button className="s-btn pdf-btn" onClick={() => downloadPdf(r, firma)}>{IC.pdf} PDF</button>}
-              {r.status === "offen" && <button className="s-btn-g" onClick={() => updRe(r.id, { status: "bezahlt" })}>{IC.check}</button>}
-              {(r.status === "offen" || r.status === "gemahnt") && firma && <button className="s-btn" onClick={() => { setMahnM(r); setMahnS(r.mahnstufe ? Math.min(r.mahnstufe + 1, 3) : (r.status === "gemahnt" ? 2 : 1)); }}>{IC.mail}</button>}
-              {r.status === "angebot" && <button className="s-btn-g" onClick={() => updRe(r.id, { status: "offen", typ: "rechnung" })}>→RE</button>}
-              {r.status !== "storniert" && <button className="s-btn" onClick={() => onEdit(r)} title="Bearbeiten">✏️</button>}
-              <button className="s-btn" onClick={() => dupRe(r)}>{IC.copy}</button>
-              {r.status !== "storniert" && r.status !== "bezahlt" && <button className="d-btn" style={{ padding: "4px 8px", fontSize: 11 }} onClick={() => setStornierConfirm(r)}>Storno</button>}
-              {(r.status === "storniert" || r.status === "angebot") && <button className="d-btn" style={{ padding: "4px 8px", fontSize: 11 }} onClick={() => setDeleteConfirm(r)}>{IC.trash}</button>}
+    <div className="p-6 px-7 max-md:p-4 animate-fade-in">
+      <div className="flex justify-between items-start mb-6 flex-wrap gap-2.5"><div><h1 className="text-xl font-bold tracking-tight">Rechnungen</h1><p className="text-[13px] text-slate-500 mt-1">{rechnungen.length} insgesamt</p></div><div className="flex gap-2 flex-wrap"><button className={sbtn} onClick={exportDatev}>{IC.dl} DATEV</button><button className="flex items-center gap-1.5 px-5 py-2.5 bg-gradient-to-r from-brand-600 to-brand-500 text-white border-none rounded-xl text-[13px] font-semibold cursor-pointer hover:shadow-[0_0_24px_rgba(99,102,241,0.3)] hover:translate-y-[-1px] transition-all duration-200" onClick={() => nav("neue-rechnung")}>{IC.plus} Neu</button></div></div>
+      <div className="flex gap-2.5 mb-5 flex-wrap"><div className="relative flex-1 min-w-[160px]"><span className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-600 flex">{IC.search}</span><input className={`${inp} pl-[34px]`} placeholder="Suchen..." value={search} onChange={e => setSearch(e.target.value)} /></div><div className="overflow-x-auto shrink-0"><div className="flex gap-0.5 bg-white/[0.04] rounded-xl p-0.5 border border-white/[0.06] w-max">{["alle", "offen", "bezahlt", "gemahnt", "storniert", "angebot"].map(f => <button key={f} className={`px-3 py-1.5 border-none rounded-lg text-[12px] cursor-pointer font-medium transition-all ${filter === f ? "bg-white/[0.08] text-white" : "bg-transparent text-slate-500 hover:text-slate-300"}`} onClick={() => setFilter(f)}>{f.charAt(0).toUpperCase() + f.slice(1)}</button>)}</div></div></div>
+      {fl.length === 0 ? <div className="flex flex-col items-center justify-center py-12 text-center"><div className="w-12 h-12 rounded-xl bg-white/[0.04] border border-white/[0.06] flex items-center justify-center mb-3 text-slate-500">{IC.doc}</div><h2 className="text-lg font-bold">Keine Ergebnisse</h2></div> :
+        <div className="bg-[#0a0a1a]/80 rounded-2xl border border-white/[0.06] overflow-hidden"><div className="flex gap-1 py-2.5 px-4 text-[10px] font-semibold text-slate-500 uppercase tracking-[0.1em] bg-white/[0.02] border-b border-white/[0.06] max-md:hidden"><span style={{ flex: 1 }}>Nr.</span><span style={{ flex: 1.5 }}>Kunde</span><span style={{ flex: .7 }}>Datum</span><span style={{ flex: .8, textAlign: "right" }}>Betrag</span><span style={{ flex: .6, textAlign: "center" }}>Status</span><span style={{ flex: 2, textAlign: "right" }}>Aktionen</span></div>
+          {fl.map(r => <div key={r.id} className="flex gap-1 py-3 px-4 items-center border-b border-white/[0.04] text-[13px] hover:bg-white/[0.02] transition-colors max-md:flex-col max-md:items-start max-md:gap-2 max-md:px-3">
+            <div className="flex items-center gap-2 w-full md:hidden">
+              <span className="font-semibold font-mono text-[11px] text-slate-400">{r.nummer}</span>
+              <span className="font-semibold text-[13px] flex-1">{r.kundeName}</span>
+              <SB s={r.status} />
+            </div>
+            <div className="flex items-center gap-2 w-full md:hidden text-[12px] text-slate-500">
+              <span>{fd(r.datum)}</span>
+              <span className="flex-1" />
+              <span className="font-semibold text-slate-200 text-[14px]">{fc(r.gesamt)}</span>
+            </div>
+            <span className="font-semibold font-mono text-[11px] text-slate-400 max-md:hidden" style={{ flex: 1 }}>{r.nummer}</span>
+            <span className="text-[13px] max-md:hidden" style={{ flex: 1.5 }}>{r.kundeName}</span>
+            <span className="text-slate-500 text-[12px] max-md:hidden" style={{ flex: .7 }}>{fd(r.datum)}</span>
+            <span className="font-semibold text-[13px] text-right max-md:hidden" style={{ flex: .8 }}>{fc(r.gesamt)}</span>
+            <span className="text-center max-md:hidden" style={{ flex: .6 }}><SB s={r.status} /></span>
+            <span className="flex gap-1.5 justify-end flex-wrap max-md:w-full" style={{ flex: 2 }}>
+              {firma && <button className="flex items-center gap-1 px-2.5 py-1.5 bg-brand-500/10 text-brand-300 border border-brand-500/20 rounded-lg text-[11px] cursor-pointer whitespace-nowrap font-medium hover:bg-brand-500/15 transition-all" onClick={() => downloadPdf(r, firma)}>{IC.pdf} PDF</button>}
+              {r.status === "offen" && <button className={sbtnG} onClick={() => updRe(r.id, { status: "bezahlt" })}>{IC.check}</button>}
+              {(r.status === "offen" || r.status === "gemahnt") && firma && <button className={sbtn} onClick={() => { setMahnM(r); setMahnS(r.mahnstufe ? Math.min(r.mahnstufe + 1, 3) : (r.status === "gemahnt" ? 2 : 1)); }}>{IC.mail}</button>}
+              {r.status === "angebot" && <button className={sbtnG} onClick={() => updRe(r.id, { status: "offen", typ: "rechnung" })}>→RE</button>}
+              {r.status !== "storniert" && <button className={sbtn} onClick={() => onEdit(r)} title="Bearbeiten">✏️</button>}
+              <button className={sbtn} onClick={() => dupRe(r)}>{IC.copy}</button>
+              {r.status !== "storniert" && r.status !== "bezahlt" && <button className={dbtn} onClick={() => setStornierConfirm(r)}>Storno</button>}
+              {(r.status === "storniert" || r.status === "angebot") && <button className={dbtn} onClick={() => setDeleteConfirm(r)}>{IC.trash}</button>}
             </span>
           </div>)}</div>}
 
-      {mahnM && firma && <div className="modal-overlay" onClick={() => setMahnM(null)}><div className="modal-box" style={{ maxWidth: 560 }} onClick={e => e.stopPropagation()}><div style={{ padding: 24 }}><h2 style={{ fontSize: 16, fontWeight: 700, marginBottom: 10, color: "#111" }}>Zahlungserinnerung</h2><div style={{ display: "flex", gap: 4, marginBottom: 12 }}>{[1, 2, 3].map(s => <button key={s} className={`tab ${mahnS === s ? "active" : ""}`} onClick={() => setMahnS(s)}>{s}. Mahnung</button>)}</div><textarea style={{ width: "100%", minHeight: 180, padding: 12, border: "1px solid #d1d5db", borderRadius: 7, fontSize: 12, fontFamily: "'DM Sans',sans-serif", color: "#111", resize: "vertical" }} value={mahnung(mahnM, firma, mahnS)} readOnly /><div style={{ display: "flex", gap: 6, marginTop: 12, justifyContent: "flex-end" }}><button className="s-btn pdf-btn" onClick={() => { printHtmlInIframe(generateMahnungPdfHtml(mahnM, firma, mahnS)); updRe(mahnM.id, { status: "gemahnt", mahnstufe: mahnS }); setMahnM(null); }}>{IC.pdf} PDF</button><button className="p-btn" onClick={() => { navigator.clipboard.writeText(mahnung(mahnM, firma, mahnS)); updRe(mahnM.id, { status: "gemahnt", mahnstufe: mahnS }); setMahnM(null); }}>Kopieren</button><button className="s-btn" onClick={() => setMahnM(null)}>Schließen</button></div></div></div></div>}
+      {mahnM && firma && <div className="fixed inset-0 bg-black/70 backdrop-blur-sm flex items-center justify-center z-[1000] p-4" onClick={() => setMahnM(null)}><div className="bg-[#0f0f1a] border border-white/[0.08] rounded-2xl max-w-[560px] w-full max-h-[90vh] overflow-y-auto shadow-[0_24px_80px_rgba(0,0,0,0.6)]" onClick={e => e.stopPropagation()}><div className="p-6"><h2 className="text-[16px] font-bold mb-3">Zahlungserinnerung</h2><div className="flex gap-1 mb-4 bg-white/[0.04] rounded-xl p-0.5 w-fit border border-white/[0.06]">{[1, 2, 3].map(s => <button key={s} className={`px-3 py-1.5 border-none rounded-lg text-[12px] cursor-pointer font-medium transition-all ${mahnS === s ? "bg-white/[0.08] text-white" : "bg-transparent text-slate-500"}`} onClick={() => setMahnS(s)}>{s}. Mahnung</button>)}</div><textarea className="w-full min-h-[180px] p-4 bg-white/[0.04] border border-white/[0.08] rounded-xl text-[13px] font-sans text-slate-200 resize-y outline-none" value={mahnung(mahnM, firma, mahnS)} readOnly /><div className="flex gap-2 mt-4 justify-end"><button className="flex items-center gap-1.5 px-3 py-1.5 bg-brand-500/10 text-brand-300 border border-brand-500/20 rounded-lg text-[11px] cursor-pointer font-medium" onClick={() => { printHtmlInIframe(generateMahnungPdfHtml(mahnM, firma, mahnS)); updRe(mahnM.id, { status: "gemahnt", mahnstufe: mahnS }); setMahnM(null); }}>{IC.pdf} PDF</button><button className="flex items-center gap-1.5 px-5 py-2.5 bg-gradient-to-r from-brand-600 to-brand-500 text-white border-none rounded-xl text-[13px] font-semibold cursor-pointer hover:shadow-[0_0_24px_rgba(99,102,241,0.3)] transition-all" onClick={() => { navigator.clipboard.writeText(mahnung(mahnM, firma, mahnS)); updRe(mahnM.id, { status: "gemahnt", mahnstufe: mahnS }); setMahnM(null); }}>Kopieren</button><button className={sbtn} onClick={() => setMahnM(null)}>Schließen</button></div></div></div></div>}
 
-      {stornierConfirm && <div className="modal-overlay" onClick={() => setStornierConfirm(null)}><div className="modal-box" style={{ maxWidth: 380 }} onClick={e => e.stopPropagation()}><div style={{ padding: 24 }}><h2 style={{ fontSize: 16, fontWeight: 700, marginBottom: 8, color: "#111" }}>Rechnung stornieren?</h2><p style={{ fontSize: 13, color: "#555", marginBottom: 16, lineHeight: 1.5 }}><strong>{stornierConfirm.nummer}</strong> – {stornierConfirm.kundeName}<br />Betrag: {fc(stornierConfirm.gesamt)}<br /><br />Die Rechnung wird als storniert markiert und aus allen Auswertungen ausgeschlossen.</p><div style={{ display: "flex", gap: 8, justifyContent: "flex-end" }}><button className="d-btn" onClick={() => { updRe(stornierConfirm.id, { status: "storniert" }); setStornierConfirm(null); }}>Ja, stornieren</button><button className="s-btn" onClick={() => setStornierConfirm(null)}>Abbrechen</button></div></div></div></div>}
+      {stornierConfirm && <div className="fixed inset-0 bg-black/70 backdrop-blur-sm flex items-center justify-center z-[1000] p-4" onClick={() => setStornierConfirm(null)}><div className="bg-[#0f0f1a] border border-white/[0.08] rounded-2xl max-w-[400px] w-full max-h-[90vh] overflow-y-auto shadow-[0_24px_80px_rgba(0,0,0,0.6)]" onClick={e => e.stopPropagation()}><div className="p-6"><h2 className="text-[16px] font-bold mb-3">Rechnung stornieren?</h2><p className="text-[13px] text-slate-400 mb-5 leading-relaxed"><strong className="text-slate-200">{stornierConfirm.nummer}</strong> – {stornierConfirm.kundeName}<br />Betrag: {fc(stornierConfirm.gesamt)}<br /><br />Die Rechnung wird als storniert markiert und aus allen Auswertungen ausgeschlossen.</p><div className="flex gap-2 justify-end"><button className={dbtn} onClick={() => { updRe(stornierConfirm.id, { status: "storniert" }); setStornierConfirm(null); }}>Ja, stornieren</button><button className={sbtn} onClick={() => setStornierConfirm(null)}>Abbrechen</button></div></div></div></div>}
 
-      {deleteConfirm && <div className="modal-overlay" onClick={() => setDeleteConfirm(null)}><div className="modal-box" style={{ maxWidth: 380 }} onClick={e => e.stopPropagation()}><div style={{ padding: 24 }}><h2 style={{ fontSize: 16, fontWeight: 700, marginBottom: 8, color: "#111" }}>Rechnung endgültig löschen?</h2><p style={{ fontSize: 13, color: "#555", marginBottom: 16, lineHeight: 1.5 }}><strong>{deleteConfirm.nummer}</strong> – {deleteConfirm.kundeName}<br />Betrag: {fc(deleteConfirm.gesamt)}<br /><br /><span style={{ color: "#ef4444" }}>Die Rechnung wird unwiderruflich gelöscht und kann nicht wiederhergestellt werden.</span></p><div style={{ display: "flex", gap: 8, justifyContent: "flex-end" }}><button className="d-btn" onClick={() => { delRe(deleteConfirm.id); setDeleteConfirm(null); }}>Endgültig löschen</button><button className="s-btn" onClick={() => setDeleteConfirm(null)}>Abbrechen</button></div></div></div></div>}
+      {deleteConfirm && <div className="fixed inset-0 bg-black/70 backdrop-blur-sm flex items-center justify-center z-[1000] p-4" onClick={() => setDeleteConfirm(null)}><div className="bg-[#0f0f1a] border border-white/[0.08] rounded-2xl max-w-[400px] w-full max-h-[90vh] overflow-y-auto shadow-[0_24px_80px_rgba(0,0,0,0.6)]" onClick={e => e.stopPropagation()}><div className="p-6"><h2 className="text-[16px] font-bold mb-3">Rechnung endgültig löschen?</h2><p className="text-[13px] text-slate-400 mb-5 leading-relaxed"><strong className="text-slate-200">{deleteConfirm.nummer}</strong> – {deleteConfirm.kundeName}<br />Betrag: {fc(deleteConfirm.gesamt)}<br /><br /><span className="text-danger-400">Die Rechnung wird unwiderruflich gelöscht und kann nicht wiederhergestellt werden.</span></p><div className="flex gap-2 justify-end"><button className={dbtn} onClick={() => { delRe(deleteConfirm.id); setDeleteConfirm(null); }}>Endgültig löschen</button><button className={sbtn} onClick={() => setDeleteConfirm(null)}>Abbrechen</button></div></div></div></div>}
     </div>
   );
 }
@@ -1365,33 +1432,36 @@ function KundenListe({ kunden, rechnungen, updKu, delKu }) {
   const st = kid => { const kr = rechnungen.filter(r => r.kundeId === kid); return { c: kr.length, u: kr.filter(r => r.status === "bezahlt").reduce((s, r) => s + r.gesamt, 0) }; };
   const openEdit = k => { setEditK(k); setEditForm({ name: k.name || "", strasse: k.strasse || "", plz: k.plz || "", ort: k.ort || "", email: k.email || "", telefon: k.telefon || "" }); };
   const hasOpenRE = kid => rechnungen.some(r => r.kundeId === kid && (r.status === "offen" || r.status === "gemahnt"));
+  const inp = "w-full py-2.5 px-3 bg-white/[0.04] border border-white/[0.08] rounded-xl text-slate-200 text-[13px] outline-none focus:border-brand-500/50 focus:bg-white/[0.06] transition-all duration-200 placeholder:text-slate-600";
+  const mInp = "w-full py-2.5 px-3 bg-white/[0.04] border border-white/[0.08] rounded-xl text-slate-200 text-[13px] outline-none focus:border-brand-500/50 transition-all duration-200 placeholder:text-slate-600";
+
   return (
-    <div className="page">
-      <div className="page-head"><div><h1 className="h1">Kunden</h1><p className="sub">{kunden.length}</p></div></div>
-      <div style={{ position: "relative", maxWidth: 320, marginBottom: 16 }}><span className="search-ico">{IC.search}</span><input className="inp search-inp" placeholder="Suchen..." value={search} onChange={e => setSearch(e.target.value)} /></div>
-      {f.length === 0 ? <div className="empty"><div className="empty-ico">{IC.users}</div><h2>Keine Kunden</h2></div> :
-        <div className="kunden-grid">{f.map(k => { const s = st(k.id); return (
-          <div key={k.id} className="kunde-c">
-            <div className="kunde-av">{k.name?.charAt(0)?.toUpperCase()}</div>
-            <div style={{ flex: 1, minWidth: 0 }}>
-              <div style={{ fontWeight: 600, fontSize: 13 }}>{k.name}</div>
-              <div style={{ fontSize: 11, color: "#64748b" }}>{k.strasse && `${k.strasse}, `}{k.plz} {k.ort}</div>
-              {k.email && <div style={{ fontSize: 11, color: "#64748b" }}>{k.email}</div>}
-              {k.telefon && <div style={{ fontSize: 11, color: "#64748b" }}>{k.telefon}</div>}
+    <div className="p-6 px-7 max-md:p-4 animate-fade-in">
+      <div className="flex justify-between items-start mb-6 flex-wrap gap-2.5"><div><h1 className="text-xl font-bold tracking-tight">Kunden</h1><p className="text-[13px] text-slate-500 mt-1">{kunden.length} gespeichert</p></div></div>
+      <div className="relative max-w-xs mb-5"><span className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-600 flex">{IC.search}</span><input className={`${inp} pl-[34px]`} placeholder="Suchen..." value={search} onChange={e => setSearch(e.target.value)} /></div>
+      {f.length === 0 ? <div className="flex flex-col items-center justify-center py-12 text-center"><div className="w-12 h-12 rounded-xl bg-white/[0.04] border border-white/[0.06] flex items-center justify-center mb-3 text-slate-500">{IC.users}</div><h2 className="text-lg font-bold">Keine Kunden</h2></div> :
+        <div className="grid grid-cols-[repeat(auto-fill,minmax(300px,1fr))] gap-3">{f.map(k => { const s = st(k.id); return (
+          <div key={k.id} className="group flex gap-3 bg-[#0a0a1a]/80 rounded-2xl p-4 border border-white/[0.06] items-center hover:border-white/[0.1] hover:bg-white/[0.02] transition-all duration-200">
+            <div className="w-10 h-10 rounded-xl bg-gradient-to-br from-brand-500/20 to-purple-500/20 border border-brand-500/15 flex items-center justify-center text-sm font-bold text-brand-400 shrink-0">{k.name?.charAt(0)?.toUpperCase()}</div>
+            <div className="flex-1 min-w-0">
+              <div className="font-semibold text-[14px] group-hover:text-white transition-colors">{k.name}</div>
+              <div className="text-[12px] text-slate-500">{k.strasse && `${k.strasse}, `}{k.plz} {k.ort}</div>
+              {k.email && <div className="text-[12px] text-slate-500">{k.email}</div>}
+              {k.telefon && <div className="text-[12px] text-slate-500">{k.telefon}</div>}
             </div>
-            <div style={{ display: "flex", flexDirection: "column", alignItems: "flex-end", gap: 4 }}>
-              <div style={{ fontSize: 11, textAlign: "right" }}><div>{s.c} RE</div><div>{fc(s.u)}</div></div>
-              <div style={{ display: "flex", gap: 4 }}>
-                <button className="s-btn" style={{ padding: "3px 8px", fontSize: 11 }} onClick={() => openEdit(k)}>✏️</button>
-                <button className="d-btn" style={{ padding: "3px 8px", fontSize: 11 }} onClick={() => setDelConfirm(k)} title="Löschen">{IC.trash}</button>
+            <div className="flex flex-col items-end gap-1.5">
+              <div className="text-[11px] text-right text-slate-400"><div>{s.c} RE</div><div className="font-medium">{fc(s.u)}</div></div>
+              <div className="flex gap-1.5">
+                <button className="flex items-center gap-1 px-2.5 py-1.5 bg-white/[0.05] text-slate-400 border border-white/[0.08] rounded-lg text-[11px] cursor-pointer hover:bg-white/[0.08] transition-all" onClick={() => openEdit(k)}>✏️</button>
+                <button className="px-2.5 py-1.5 bg-danger-500/10 text-danger-400 border border-danger-500/20 rounded-lg text-[11px] cursor-pointer hover:bg-danger-500/15 transition-all" onClick={() => setDelConfirm(k)} title="Löschen">{IC.trash}</button>
               </div>
             </div>
           </div>
         ); })}</div>}
 
-      {editK && <div className="modal-overlay" onClick={() => setEditK(null)}><div className="modal-box" style={{ maxWidth: 420 }} onClick={e => e.stopPropagation()}><div style={{ padding: 24 }}><h2 style={{ fontSize: 16, fontWeight: 700, marginBottom: 16, color: "#111" }}>Kunde bearbeiten</h2><div style={{ display: "flex", flexDirection: "column", gap: 8 }}><input className="inp" style={{ color: "#111" }} placeholder="Name *" value={editForm.name} onChange={e => setEditForm({ ...editForm, name: e.target.value })} /><input className="inp" style={{ color: "#111" }} placeholder="Straße" value={editForm.strasse} onChange={e => setEditForm({ ...editForm, strasse: e.target.value })} /><div style={{ display: "flex", gap: 8 }}><input className="inp" style={{ width: 90, color: "#111" }} placeholder="PLZ" value={editForm.plz} onChange={e => setEditForm({ ...editForm, plz: e.target.value })} /><input className="inp" style={{ flex: 1, color: "#111" }} placeholder="Ort" value={editForm.ort} onChange={e => setEditForm({ ...editForm, ort: e.target.value })} /></div><input className="inp" style={{ color: "#111" }} placeholder="E-Mail" value={editForm.email} onChange={e => setEditForm({ ...editForm, email: e.target.value })} /><input className="inp" style={{ color: "#111" }} placeholder="Telefon" value={editForm.telefon} onChange={e => setEditForm({ ...editForm, telefon: e.target.value })} /></div><div style={{ display: "flex", gap: 8, marginTop: 16, justifyContent: "flex-end" }}><button className="p-btn" onClick={() => { if (!editForm.name) return; updKu(editK.id, editForm); setEditK(null); }}>Speichern</button><button className="s-btn" onClick={() => setEditK(null)}>Abbrechen</button></div></div></div></div>}
+      {editK && <div className="fixed inset-0 bg-black/70 backdrop-blur-sm flex items-center justify-center z-[1000] p-4" onClick={() => setEditK(null)}><div className="bg-[#0f0f1a] border border-white/[0.08] rounded-2xl max-w-[440px] w-full max-h-[90vh] overflow-y-auto shadow-[0_24px_80px_rgba(0,0,0,0.6)]" onClick={e => e.stopPropagation()}><div className="p-6"><h2 className="text-[16px] font-bold mb-4">Kunde bearbeiten</h2><div className="flex flex-col gap-2.5"><input className={mInp} placeholder="Name *" value={editForm.name} onChange={e => setEditForm({ ...editForm, name: e.target.value })} /><input className={mInp} placeholder="Straße" value={editForm.strasse} onChange={e => setEditForm({ ...editForm, strasse: e.target.value })} /><div className="flex gap-2"><input className={`${mInp} !w-[100px]`} placeholder="PLZ" value={editForm.plz} onChange={e => setEditForm({ ...editForm, plz: e.target.value })} /><input className={`${mInp} flex-1`} placeholder="Ort" value={editForm.ort} onChange={e => setEditForm({ ...editForm, ort: e.target.value })} /></div><input className={mInp} placeholder="E-Mail" value={editForm.email} onChange={e => setEditForm({ ...editForm, email: e.target.value })} /><input className={mInp} placeholder="Telefon" value={editForm.telefon} onChange={e => setEditForm({ ...editForm, telefon: e.target.value })} /></div><div className="flex gap-2 mt-5 justify-end"><button className="flex items-center gap-1.5 px-5 py-2.5 bg-gradient-to-r from-brand-600 to-brand-500 text-white border-none rounded-xl text-[13px] font-semibold cursor-pointer hover:shadow-[0_0_24px_rgba(99,102,241,0.3)] transition-all" onClick={() => { if (!editForm.name) return; updKu(editK.id, editForm); setEditK(null); }}>Speichern</button><button className="flex items-center gap-1.5 px-3.5 py-2 bg-white/[0.05] text-slate-300 border border-white/[0.08] rounded-xl text-[12px] cursor-pointer font-medium hover:bg-white/[0.08] transition-all" onClick={() => setEditK(null)}>Abbrechen</button></div></div></div></div>}
 
-      {delConfirm && <div className="modal-overlay" onClick={() => setDelConfirm(null)}><div className="modal-box" style={{ maxWidth: 360 }} onClick={e => e.stopPropagation()}><div style={{ padding: 24 }}><h2 style={{ fontSize: 16, fontWeight: 700, marginBottom: 8, color: "#111" }}>Kunde löschen?</h2><p style={{ fontSize: 13, color: "#555", marginBottom: 16, lineHeight: 1.5 }}><strong>{delConfirm.name}</strong>{hasOpenRE(delConfirm.id) ? <><br /><span style={{ color: "#ef4444" }}>⚠ Dieser Kunde hat noch offene Rechnungen!</span></> : ""}<br /><br />Alle Kundendaten werden gelöscht. Rechnungen bleiben erhalten.</p><div style={{ display: "flex", gap: 8, justifyContent: "flex-end" }}><button className="d-btn" onClick={() => { delKu(delConfirm.id); setDelConfirm(null); }}>Löschen</button><button className="s-btn" onClick={() => setDelConfirm(null)}>Abbrechen</button></div></div></div></div>}
+      {delConfirm && <div className="fixed inset-0 bg-black/70 backdrop-blur-sm flex items-center justify-center z-[1000] p-4" onClick={() => setDelConfirm(null)}><div className="bg-[#0f0f1a] border border-white/[0.08] rounded-2xl max-w-[400px] w-full max-h-[90vh] overflow-y-auto shadow-[0_24px_80px_rgba(0,0,0,0.6)]" onClick={e => e.stopPropagation()}><div className="p-6"><h2 className="text-[16px] font-bold mb-3">Kunde löschen?</h2><p className="text-[13px] text-slate-400 mb-5 leading-relaxed"><strong className="text-slate-200">{delConfirm.name}</strong>{hasOpenRE(delConfirm.id) ? <><br /><span className="text-danger-400">Dieser Kunde hat noch offene Rechnungen!</span></> : ""}<br /><br />Alle Kundendaten werden gelöscht. Rechnungen bleiben erhalten.</p><div className="flex gap-2 justify-end"><button className="px-3 py-1.5 bg-danger-500/10 text-danger-400 border border-danger-500/20 rounded-lg text-[11px] cursor-pointer font-medium hover:bg-danger-500/15 transition-all" onClick={() => { delKu(delConfirm.id); setDelConfirm(null); }}>Löschen</button><button className="flex items-center gap-1.5 px-3.5 py-2 bg-white/[0.05] text-slate-300 border border-white/[0.08] rounded-xl text-[12px] cursor-pointer font-medium hover:bg-white/[0.08] transition-all" onClick={() => setDelConfirm(null)}>Abbrechen</button></div></div></div></div>}
     </div>
   );
 }
@@ -1418,37 +1488,41 @@ function WiederkehrendPage({ wiederkehrend, addWdk, updWdk, delWdk, kunden, rech
 
   const intervals = { monatlich: "Monatlich", quartal: "Quartal", jaehrlich: "Jährlich" };
 
-  return (
-    <div className="page">
-      <div className="page-head"><div><h1 className="h1">Wiederkehrende Rechnungen</h1><p className="sub">Automatisch erstellt wenn fällig</p></div><button className="p-btn" onClick={() => setShowForm(!showForm)}>{IC.plus} Neue Vorlage</button></div>
+  const inp = "w-full py-2.5 px-3 bg-white/[0.04] border border-white/[0.08] rounded-xl text-slate-200 text-[13px] outline-none focus:border-brand-500/50 focus:bg-white/[0.06] transition-all duration-200 placeholder:text-slate-600";
+  const sel = "w-full py-2.5 px-3 bg-white/[0.04] border border-white/[0.08] rounded-xl text-slate-200 text-[13px] outline-none cursor-pointer";
+  const lbl = "text-[11px] font-semibold text-slate-400 mb-1.5 block tracking-wide";
 
-      {showForm && <div className="card" style={{ marginBottom: 20 }}>
-        <h3 className="card-t">Neue Vorlage</h3>
-        <div style={{ display: "flex", flexDirection: "column", gap: 10, maxWidth: 500 }}>
-          <div><label className="lbl">Name der Vorlage *</label><input className="inp" placeholder="z.B. Müller GmbH – Wartung" value={form.name} onChange={e => setForm({...form, name: e.target.value})} /></div>
-          <div><label className="lbl">Aus vorhandener Rechnung übernehmen</label><select className="sel" onChange={e => e.target.value && calcFromRe(e.target.value)}><option value="">– Manuell eingeben –</option>{rechnungen.filter(r => r.status !== "storniert").map(r => <option key={r.id} value={r.id}>{r.nummer} – {r.kundeName} ({fc(r.gesamt)})</option>)}</select></div>
-          <div><label className="lbl">Kunde *</label>
-            {!selK ? <><div style={{ position: "relative" }}><span className="search-ico">{IC.search}</span><input className="inp search-inp" placeholder="Suchen..." value={kS} onChange={e => setKS(e.target.value)} /></div>
-              {kS && fK.length > 0 && <div className="dd">{fK.map(k => <button key={k.id} className="dd-item" onClick={() => { setSelK(k); setForm({...form, kundeId: k.id, kundeName: k.name, kundeAdresse: `${k.strasse || ""}, ${k.plz || ""} ${k.ort || ""}`, kundeEmail: k.email || ""}); setKS(""); }}><strong>{k.name}</strong></button>)}</div>}</>
-              : <div className="sel-kunde"><div><strong>{selK.name}</strong></div><button className="i-btn" onClick={() => { setSelK(null); setForm({...form, kundeId: "", kundeName: ""}); }}>✕</button></div>}
+  return (
+    <div className="p-6 px-7 max-md:p-4 animate-fade-in">
+      <div className="flex justify-between items-start mb-6 flex-wrap gap-2.5"><div><h1 className="text-xl font-bold tracking-tight">Wiederkehrende Rechnungen</h1><p className="text-[13px] text-slate-500 mt-1">Automatisch erstellt wenn fällig</p></div><button className="flex items-center gap-1.5 px-5 py-2.5 bg-gradient-to-r from-brand-600 to-brand-500 text-white border-none rounded-xl text-[13px] font-semibold cursor-pointer hover:shadow-[0_0_24px_rgba(99,102,241,0.3)] hover:translate-y-[-1px] transition-all duration-200" onClick={() => setShowForm(!showForm)}>{IC.plus} Neue Vorlage</button></div>
+
+      {showForm && <div className="bg-[#0a0a1a]/80 rounded-2xl p-5 border border-white/[0.06] mb-5">
+        <h3 className="text-[14px] font-semibold mb-4">Neue Vorlage</h3>
+        <div className="flex flex-col gap-3 max-w-[500px]">
+          <div><label className={lbl}>Name der Vorlage *</label><input className={inp} placeholder="z.B. Müller GmbH – Wartung" value={form.name} onChange={e => setForm({...form, name: e.target.value})} /></div>
+          <div><label className={lbl}>Aus vorhandener Rechnung übernehmen</label><select className={sel} onChange={e => e.target.value && calcFromRe(e.target.value)}><option value="">– Manuell eingeben –</option>{rechnungen.filter(r => r.status !== "storniert").map(r => <option key={r.id} value={r.id}>{r.nummer} – {r.kundeName} ({fc(r.gesamt)})</option>)}</select></div>
+          <div><label className={lbl}>Kunde *</label>
+            {!selK ? <><div className="relative"><span className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-600 flex">{IC.search}</span><input className={`${inp} pl-[34px]`} placeholder="Suchen..." value={kS} onChange={e => setKS(e.target.value)} /></div>
+              {kS && fK.length > 0 && <div className="bg-white/[0.04] border border-white/[0.08] rounded-xl mt-1.5 max-h-[140px] overflow-y-auto">{fK.map(k => <button key={k.id} className="flex flex-col gap-px py-2 px-3 bg-transparent border-none text-slate-200 cursor-pointer w-full text-left border-b border-white/[0.04] text-[13px] hover:bg-white/[0.04] transition-colors" onClick={() => { setSelK(k); setForm({...form, kundeId: k.id, kundeName: k.name, kundeAdresse: `${k.strasse || ""}, ${k.plz || ""} ${k.ort || ""}`, kundeEmail: k.email || ""}); setKS(""); }}><strong>{k.name}</strong></button>)}</div>}</>
+              : <div className="flex justify-between items-center bg-brand-500/[0.06] border border-brand-500/15 rounded-xl py-2.5 px-3 mt-1.5"><div><strong>{selK.name}</strong></div><button className="bg-transparent border-none text-slate-500 cursor-pointer p-1 rounded-lg hover:bg-white/[0.05] transition-colors" onClick={() => { setSelK(null); setForm({...form, kundeId: "", kundeName: ""}); }}>✕</button></div>}
           </div>
-          <div style={{ display: "flex", gap: 10 }}>
-            <div style={{ flex: 1 }}><label className="lbl">Intervall</label><select className="sel" value={form.interval} onChange={e => setForm({...form, interval: e.target.value})}><option value="monatlich">Monatlich</option><option value="quartal">Quartal</option><option value="jaehrlich">Jährlich</option></select></div>
-            <div style={{ flex: 1 }}><label className="lbl">Erste Fälligkeit</label><input type="date" className="inp" value={form.nextDue} onChange={e => setForm({...form, nextDue: e.target.value})} /></div>
+          <div className="flex gap-3">
+            <div className="flex-1"><label className={lbl}>Intervall</label><select className={sel} value={form.interval} onChange={e => setForm({...form, interval: e.target.value})}><option value="monatlich">Monatlich</option><option value="quartal">Quartal</option><option value="jaehrlich">Jährlich</option></select></div>
+            <div className="flex-1"><label className={lbl}>Erste Fälligkeit</label><input type="date" className={inp} value={form.nextDue} onChange={e => setForm({...form, nextDue: e.target.value})} /></div>
           </div>
-          {form.positionen.length > 0 && <div style={{ fontSize: 12, color: "#64748b", padding: "8px 12px", background: "#111827", borderRadius: 8, border: "1px solid #1e293b" }}>{form.positionen.length} Position(en) übernommen · {fc(form.gesamt)}</div>}
-          <div style={{ display: "flex", gap: 8 }}><button className="p-btn" onClick={doAdd}>Speichern</button><button className="s-btn" onClick={() => setShowForm(false)}>Abbrechen</button></div>
+          {form.positionen.length > 0 && <div className="text-[13px] text-slate-400 py-2.5 px-3.5 bg-white/[0.03] rounded-xl border border-white/[0.06]">{form.positionen.length} Position(en) übernommen · {fc(form.gesamt)}</div>}
+          <div className="flex gap-2"><button className="flex items-center gap-1.5 px-5 py-2.5 bg-gradient-to-r from-brand-600 to-brand-500 text-white border-none rounded-xl text-[13px] font-semibold cursor-pointer hover:shadow-[0_0_24px_rgba(99,102,241,0.3)] transition-all" onClick={doAdd}>Speichern</button><button className="flex items-center gap-1.5 px-3.5 py-2 bg-white/[0.05] text-slate-300 border border-white/[0.08] rounded-xl text-[12px] cursor-pointer font-medium hover:bg-white/[0.08] transition-all" onClick={() => setShowForm(false)}>Abbrechen</button></div>
         </div>
       </div>}
 
-      {wiederkehrend.length === 0 && !showForm ? <div className="empty"><div className="empty-ico">🔄</div><h2>Noch keine Vorlagen</h2><p className="sub" style={{ marginTop: 6 }}>Erstelle Vorlagen für Wartungsverträge, monatliche Retainer oder Abonnements.</p></div> :
-        <div style={{ display: "flex", flexDirection: "column", gap: 10 }}>
-          {wiederkehrend.map(w => <div key={w.id} className="card" style={{ display: "flex", gap: 12, alignItems: "center", opacity: w.aktiv ? 1 : .5 }}>
-            <div style={{ flex: 1 }}><div style={{ fontWeight: 600, fontSize: 14 }}>{w.name}</div><div style={{ fontSize: 12, color: "#64748b", marginTop: 2 }}>{w.kundeName} · {intervals[w.interval]} · Nächste: {fd(w.nextDue)}</div></div>
-            <div style={{ fontWeight: 700, fontSize: 15, whiteSpace: "nowrap" }}>{fc(w.gesamt)}</div>
-            <div style={{ display: "flex", gap: 6 }}>
-              <button className="s-btn" style={{ fontSize: 11 }} onClick={() => updWdk(w.id, { aktiv: !w.aktiv })}>{w.aktiv ? "Pausieren" : "Aktivieren"}</button>
-              <button className="d-btn" style={{ padding: "4px 8px" }} onClick={() => delWdk(w.id)}>{IC.trash}</button>
+      {wiederkehrend.length === 0 && !showForm ? <div className="flex flex-col items-center justify-center py-12 text-center"><div className="w-12 h-12 rounded-xl bg-white/[0.04] border border-white/[0.06] flex items-center justify-center mb-3 text-2xl">🔄</div><h2 className="text-lg font-bold">Noch keine Vorlagen</h2><p className="text-[13px] text-slate-500 mt-2 max-w-[400px] leading-relaxed">Erstelle Vorlagen für Wartungsverträge, monatliche Retainer oder Abonnements.</p></div> :
+        <div className="flex flex-col gap-3">
+          {wiederkehrend.map(w => <div key={w.id} className={`bg-[#0a0a1a]/80 rounded-2xl p-5 border border-white/[0.06] flex gap-3 items-center hover:border-white/[0.1] transition-all ${w.aktiv ? "" : "opacity-40"}`}>
+            <div className="flex-1"><div className="font-semibold text-[14px]">{w.name}</div><div className="text-[13px] text-slate-500 mt-0.5">{w.kundeName} · {intervals[w.interval]} · Nächste: {fd(w.nextDue)}</div></div>
+            <div className="font-extrabold text-[16px] whitespace-nowrap">{fc(w.gesamt)}</div>
+            <div className="flex gap-2">
+              <button className="flex items-center gap-1.5 px-3 py-1.5 bg-white/[0.05] text-slate-300 border border-white/[0.08] rounded-lg text-[11px] cursor-pointer font-medium hover:bg-white/[0.08] transition-all" onClick={() => updWdk(w.id, { aktiv: !w.aktiv })}>{w.aktiv ? "Pausieren" : "Aktivieren"}</button>
+              <button className="px-2.5 py-1.5 bg-danger-500/10 text-danger-400 border border-danger-500/20 rounded-lg text-[11px] cursor-pointer hover:bg-danger-500/15 transition-all" onClick={() => delWdk(w.id)}>{IC.trash}</button>
             </div>
           </div>)}
         </div>}
@@ -1465,8 +1539,8 @@ function AboPage({ plan, spl }) {
     { id: "enterprise", n: "Enterprise", p: "49,99", feat: ["Unbegrenzt", "Multi-User", "API", "DATEV direkt", "PDF-Versand"] },
   ];
   return (
-    <div className="page"><div style={{ textAlign: "center", marginBottom: 28 }}><h1 className="h1" style={{ fontSize: 26, background: "linear-gradient(135deg,#818cf8,#c084fc)", WebkitBackgroundClip: "text", WebkitTextFillColor: "transparent" }}>Wähle deinen Plan</h1></div>
-      <div className="plan-grid">{pls.map(p => <div key={p.id} className={`plan-card ${p.pop ? "popular" : ""}`}>{p.pop && <div className="pop-badge">BELIEBT</div>}<div style={{ fontSize: 12, fontWeight: 600, color: "#818cf8" }}>{p.n}</div><div style={{ display: "flex", alignItems: "baseline", gap: 3, margin: "4px 0" }}><span style={{ fontSize: 30, fontWeight: 800 }}>{p.p}€</span><span style={{ fontSize: 11, color: "#64748b" }}>/Mo</span></div><div style={{ flex: 1, display: "flex", flexDirection: "column", gap: 5, margin: "12px 0 16px" }}>{p.feat.map((f, i) => <div key={i} style={{ display: "flex", alignItems: "center", gap: 5, fontSize: 12 }}><span style={{ color: "#34d399", display: "flex" }}>{IC.check}</span>{f}</div>)}</div><button className={plan === p.id ? "s-btn" : p.pop ? "p-btn" : "s-btn"} style={{ width: "100%", justifyContent: "center" }} disabled={plan === p.id} onClick={() => spl(p.id)}>{plan === p.id ? "Aktuell" : "Wählen"}</button></div>)}</div>
+    <div className="p-6 px-7 max-md:p-4 animate-fade-in"><div className="text-center mb-8"><h1 className="text-[28px] font-extrabold bg-gradient-to-r from-brand-400 to-purple-400 bg-clip-text text-transparent tracking-tight">Wähle deinen Plan</h1><p className="text-[14px] text-slate-500 mt-2">Starte kostenlos. Upgrade jederzeit.</p></div>
+      <div className="grid grid-cols-4 max-md:grid-cols-2 max-[480px]:grid-cols-1 gap-3">{pls.map(p => <div key={p.id} className={`rounded-2xl p-5 flex flex-col relative transition-all duration-200 ${p.pop ? "bg-gradient-to-b from-brand-500/10 to-brand-600/5 border-2 border-brand-500/40 shadow-[0_0_40px_rgba(99,102,241,0.08)]" : "bg-[#0a0a1a]/80 border border-white/[0.06] hover:border-white/[0.1]"}`}>{p.pop && <div className="absolute -top-2.5 left-1/2 -translate-x-1/2 bg-gradient-to-r from-brand-500 to-brand-600 text-white text-[9px] font-bold px-3.5 py-0.5 rounded-full tracking-wider shadow-[0_0_16px_rgba(99,102,241,0.3)]">BELIEBT</div>}<div className="text-[12px] font-semibold text-brand-400">{p.n}</div><div className="flex items-baseline gap-[3px] my-1.5"><span className="text-[32px] font-extrabold tracking-tight">{p.p}€</span><span className="text-[12px] text-slate-500">/Mo</span></div><div className="flex-1 flex flex-col gap-1.5 my-3 mb-5">{p.feat.map((f, i) => <div key={i} className="flex items-center gap-2 text-[13px]"><span className="text-success-500 flex">{IC.check}</span>{f}</div>)}</div><button className={`w-full justify-center transition-all duration-200 ${plan === p.id ? "flex items-center gap-1.5 px-3 py-2 bg-white/[0.05] text-slate-400 border border-white/[0.08] rounded-xl text-[12px] cursor-default" : p.pop ? "flex items-center gap-1.5 px-4 py-2.5 bg-gradient-to-r from-brand-600 to-brand-500 text-white border-none rounded-xl text-[13px] font-semibold cursor-pointer hover:shadow-[0_0_28px_rgba(99,102,241,0.35)] hover:translate-y-[-1px]" : "flex items-center gap-1.5 px-3 py-2 bg-white/[0.05] text-slate-300 border border-white/[0.08] rounded-xl text-[12px] cursor-pointer font-medium hover:bg-white/[0.08]"}`} disabled={plan === p.id} onClick={() => spl(p.id)}>{plan === p.id ? "Aktuell" : "Wählen"}</button></div>)}</div>
     </div>
   );
 }
@@ -1477,56 +1551,58 @@ function SupabasePage() {
   const [copied, setCopied] = useState("");
   const copyCode = (code, label) => { navigator.clipboard.writeText(code); setCopied(label); setTimeout(() => setCopied(""), 2000); };
 
-  return (
-    <div className="page">
-      <div className="page-head"><div><h1 className="h1">Backend-Integration</h1><p className="sub">Supabase Setup für Produktion</p></div></div>
+  const sbtn = "flex items-center gap-1.5 px-3 py-1.5 bg-white/[0.05] text-slate-300 border border-white/[0.08] rounded-lg text-[11px] cursor-pointer whitespace-nowrap hover:bg-white/[0.08] transition-all font-medium";
 
-      <div className="tabs" style={{ marginBottom: 20 }}>
-        {[{ id: "intro", l: "Übersicht" }, { id: "sql", l: "1. SQL Schema" }, { id: "code", l: "2. JS Client" }, { id: "deploy", l: "3. Deployment" }].map(t => <button key={t.id} className={`tab ${tab === t.id ? "active" : ""}`} onClick={() => setTab(t.id)}>{t.l}</button>)}
+  return (
+    <div className="p-6 px-7 max-md:p-4 animate-fade-in">
+      <div className="flex justify-between items-start mb-6"><div><h1 className="text-xl font-bold tracking-tight">Backend-Integration</h1><p className="text-[13px] text-slate-500 mt-1">Supabase Setup für Produktion</p></div></div>
+
+      <div className="flex gap-0.5 bg-white/[0.04] rounded-xl p-0.5 mb-6 border border-white/[0.06] w-fit">
+        {[{ id: "intro", l: "Übersicht" }, { id: "sql", l: "1. SQL Schema" }, { id: "code", l: "2. JS Client" }, { id: "deploy", l: "3. Deployment" }].map(t => <button key={t.id} className={`px-3 py-1.5 border-none rounded-lg text-[12px] cursor-pointer font-medium transition-all ${tab === t.id ? "bg-white/[0.08] text-white" : "bg-transparent text-slate-500 hover:text-slate-300"}`} onClick={() => setTab(t.id)}>{t.l}</button>)}
       </div>
 
       {tab === "intro" && (
-        <div style={{ display: "flex", flexDirection: "column", gap: 14 }}>
-          <div className="card"><h3 className="card-t">Warum Supabase?</h3><p style={{ fontSize: 13, color: "#94a3b8", lineHeight: 1.7 }}>Supabase ist eine Open-Source Firebase-Alternative mit PostgreSQL. Kostenloser Tier mit 500MB Storage, Auth, Realtime und Row Level Security – perfekt für RechnungsKI.</p></div>
-          <div className="card"><h3 className="card-t">Was du bekommst</h3>
-            <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 10, marginTop: 8 }}>
-              {["Auth (Login/Register)", "PostgreSQL Datenbank", "Row Level Security", "Realtime Updates", "Auto-generierte API", "Cloud Hosting (DE möglich)", "Edge Functions", "50k monatl. Requests (free)"].map((f, i) => <div key={i} style={{ display: "flex", gap: 6, fontSize: 13, alignItems: "center" }}><span style={{ color: "#34d399", display: "flex" }}>{IC.check}</span>{f}</div>)}
+        <div className="flex flex-col gap-3.5">
+          <div className="bg-[#0a0a1a]/80 rounded-2xl p-5 border border-white/[0.06]"><h3 className="text-[14px] font-semibold mb-4">Warum Supabase?</h3><p className="text-[13px] text-slate-400 leading-relaxed">Supabase ist eine Open-Source Firebase-Alternative mit PostgreSQL. Kostenloser Tier mit 500MB Storage, Auth, Realtime und Row Level Security – perfekt für RechnungsKI.</p></div>
+          <div className="bg-[#0a0a1a]/80 rounded-2xl p-5 border border-white/[0.06]"><h3 className="text-[14px] font-semibold mb-4">Was du bekommst</h3>
+            <div className="grid grid-cols-2 gap-2.5 mt-2">
+              {["Auth (Login/Register)", "PostgreSQL Datenbank", "Row Level Security", "Realtime Updates", "Auto-generierte API", "Cloud Hosting (DE möglich)", "Edge Functions", "50k monatl. Requests (free)"].map((f, i) => <div key={i} className="flex gap-1.5 text-[13px] items-center"><span className="text-success-500 flex">{IC.check}</span>{f}</div>)}
             </div>
           </div>
-          <div className="card"><h3 className="card-t">3 Schritte zur Produktion</h3>
-            <div style={{ display: "flex", flexDirection: "column", gap: 10, marginTop: 8 }}>
-              {["Account auf supabase.com erstellen (kostenlos)", "SQL Schema in SQL Editor einfügen", "Supabase JS Client in dein React-Projekt einbauen"].map((s, i) => <div key={i} style={{ display: "flex", gap: 10, fontSize: 13 }}><span style={{ color: "#818cf8", fontWeight: 700, minWidth: 20 }}>{i + 1}.</span>{s}</div>)}
+          <div className="bg-[#0a0a1a]/80 rounded-2xl p-5 border border-white/[0.06]"><h3 className="text-[14px] font-semibold mb-4">3 Schritte zur Produktion</h3>
+            <div className="flex flex-col gap-2.5 mt-2">
+              {["Account auf supabase.com erstellen (kostenlos)", "SQL Schema in SQL Editor einfügen", "Supabase JS Client in dein React-Projekt einbauen"].map((s, i) => <div key={i} className="flex gap-2.5 text-[13px]"><span className="text-brand-400 font-bold min-w-5">{i + 1}.</span>{s}</div>)}
             </div>
           </div>
         </div>
       )}
 
       {tab === "sql" && (
-        <div className="card">
-          <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 12 }}>
-            <h3 className="card-t" style={{ marginBottom: 0 }}>SQL Schema</h3>
-            <button className={`s-btn ${copied === "sql" ? "copied" : ""}`} onClick={() => copyCode(SUPABASE_SQL_SCHEMA, "sql")}>{copied === "sql" ? "✓ Kopiert!" : "Kopieren"}</button>
+        <div className="bg-[#0a0a1a]/80 rounded-2xl p-5 border border-white/[0.06]">
+          <div className="flex justify-between items-center mb-3">
+            <h3 className="text-[13px] font-semibold">SQL Schema</h3>
+            <button className={sbtn} onClick={() => copyCode(SUPABASE_SQL_SCHEMA, "sql")}>{copied === "sql" ? "✓ Kopiert!" : "Kopieren"}</button>
           </div>
-          <p style={{ fontSize: 12, color: "#64748b", marginBottom: 12 }}>Kopiere dieses SQL und füge es in den Supabase SQL Editor ein (Dashboard → SQL Editor → New Query).</p>
-          <pre style={{ background: "#0b0d14", border: "1px solid #1e293b", borderRadius: 8, padding: 16, fontSize: 11, color: "#94a3b8", overflow: "auto", maxHeight: 500, lineHeight: 1.6, fontFamily: "'JetBrains Mono',monospace", whiteSpace: "pre-wrap" }}>{SUPABASE_SQL_SCHEMA}</pre>
+          <p className="text-xs text-slate-500 mb-3">Kopiere dieses SQL und füge es in den Supabase SQL Editor ein (Dashboard → SQL Editor → New Query).</p>
+          <pre className="bg-white/[0.02] border border-white/[0.06] rounded-xl p-4 text-[11px] text-slate-400 overflow-auto max-h-[500px] leading-relaxed font-mono whitespace-pre-wrap">{SUPABASE_SQL_SCHEMA}</pre>
         </div>
       )}
 
       {tab === "code" && (
-        <div className="card">
-          <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 12 }}>
-            <h3 className="card-t" style={{ marginBottom: 0 }}>JavaScript Client</h3>
-            <button className={`s-btn ${copied === "js" ? "copied" : ""}`} onClick={() => copyCode(SUPABASE_JS_CODE, "js")}>{copied === "js" ? "✓ Kopiert!" : "Kopieren"}</button>
+        <div className="bg-[#0a0a1a]/80 rounded-2xl p-5 border border-white/[0.06]">
+          <div className="flex justify-between items-center mb-3">
+            <h3 className="text-[13px] font-semibold">JavaScript Client</h3>
+            <button className={sbtn} onClick={() => copyCode(SUPABASE_JS_CODE, "js")}>{copied === "js" ? "✓ Kopiert!" : "Kopieren"}</button>
           </div>
-          <p style={{ fontSize: 12, color: "#64748b", marginBottom: 12 }}>Erstelle eine Datei <code style={{ background: "#1e293b", padding: "2px 6px", borderRadius: 4 }}>lib/supabase.js</code> mit diesem Code.</p>
-          <pre style={{ background: "#0b0d14", border: "1px solid #1e293b", borderRadius: 8, padding: 16, fontSize: 11, color: "#94a3b8", overflow: "auto", maxHeight: 500, lineHeight: 1.6, fontFamily: "'JetBrains Mono',monospace", whiteSpace: "pre-wrap" }}>{SUPABASE_JS_CODE}</pre>
+          <p className="text-xs text-slate-500 mb-3">Erstelle eine Datei <code className="bg-slate-800 px-1.5 py-0.5 rounded">lib/supabase.js</code> mit diesem Code.</p>
+          <pre className="bg-white/[0.02] border border-white/[0.06] rounded-xl p-4 text-[11px] text-slate-400 overflow-auto max-h-[500px] leading-relaxed font-mono whitespace-pre-wrap">{SUPABASE_JS_CODE}</pre>
         </div>
       )}
 
       {tab === "deploy" && (
-        <div style={{ display: "flex", flexDirection: "column", gap: 14 }}>
-          <div className="card"><h3 className="card-t">Deployment-Checkliste</h3>
-            <div style={{ display: "flex", flexDirection: "column", gap: 8, marginTop: 8 }}>
+        <div className="flex flex-col gap-3.5">
+          <div className="bg-[#0a0a1a]/80 rounded-2xl p-5 border border-white/[0.06]"><h3 className="text-[14px] font-semibold mb-4">Deployment-Checkliste</h3>
+            <div className="flex flex-col gap-2 mt-2">
               {[
                 { title: "1. Supabase Projekt erstellen", desc: "supabase.com → New Project → Region: Frankfurt (eu-central-1)" },
                 { title: "2. SQL ausführen", desc: "Dashboard → SQL Editor → Paste Schema → Run" },
@@ -1535,12 +1611,12 @@ function SupabasePage() {
                 { title: "5. Auth aktivieren", desc: "Dashboard → Auth → Email/Password aktivieren" },
                 { title: "6. Storage ersetzen", desc: "window.storage Calls durch Supabase Client Calls ersetzen" },
                 { title: "7. Vercel/Netlify Deploy", desc: "git push → automatisches Deployment" },
-              ].map((s, i) => <div key={i} style={{ padding: 12, background: "#0b0d14", borderRadius: 8, border: "1px solid #1e293b" }}><div style={{ fontWeight: 600, fontSize: 13, marginBottom: 3 }}>{s.title}</div><div style={{ fontSize: 12, color: "#64748b" }}>{s.desc}</div></div>)}
+              ].map((s, i) => <div key={i} className="p-3 bg-white/[0.02] rounded-xl border border-white/[0.06]"><div className="font-semibold text-[13px] mb-[3px]">{s.title}</div><div className="text-xs text-slate-500">{s.desc}</div></div>)}
             </div>
           </div>
-          <div className="card"><h3 className="card-t">Kosten-Schätzung</h3>
-            <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr 1fr", gap: 10, marginTop: 8 }}>
-              {[{ n: "Supabase Free", p: "0€/Mo", d: "Bis 50.000 Requests" }, { n: "Supabase Pro", p: "25$/Mo", d: "Ab 100.000 Requests" }, { n: "Vercel Hosting", p: "0-20$/Mo", d: "Gratis bis 100GB" }].map((c, i) => <div key={i} style={{ padding: 14, background: "#0b0d14", borderRadius: 8, border: "1px solid #1e293b", textAlign: "center" }}><div style={{ fontWeight: 600, fontSize: 13 }}>{c.n}</div><div style={{ fontSize: 22, fontWeight: 800, color: "#818cf8", margin: "4px 0" }}>{c.p}</div><div style={{ fontSize: 11, color: "#64748b" }}>{c.d}</div></div>)}
+          <div className="bg-[#0a0a1a]/80 rounded-2xl p-5 border border-white/[0.06]"><h3 className="text-[14px] font-semibold mb-4">Kosten-Schätzung</h3>
+            <div className="grid grid-cols-3 gap-2.5 mt-2">
+              {[{ n: "Supabase Free", p: "0€/Mo", d: "Bis 50.000 Requests" }, { n: "Supabase Pro", p: "25$/Mo", d: "Ab 100.000 Requests" }, { n: "Vercel Hosting", p: "0-20$/Mo", d: "Gratis bis 100GB" }].map((c, i) => <div key={i} className="p-3.5 bg-white/[0.02] rounded-xl border border-white/[0.06] text-center"><div className="font-semibold text-[13px]">{c.n}</div><div className="text-[22px] font-extrabold text-brand-400 my-1">{c.p}</div><div className="text-[11px] text-slate-500">{c.d}</div></div>)}
             </div>
           </div>
         </div>
@@ -1556,198 +1632,39 @@ function SettingsPage({ firma, sf, rechnungen, kunden, sre, skn, favoriten, setF
   const [deleteInput, setDeleteInput] = useState(""); const fRef = useRef();
   const handleLogo = e => { const f = e.target.files[0]; if (!f) return; if (f.size > 2000000) { alert("Datei zu groß – max. 2 MB."); return; } const img = new Image(); const url = URL.createObjectURL(f); img.onload = () => { const c = document.createElement("canvas"); const MAX = 400; let w = img.width, h = img.height; if (w > MAX) { h = h * MAX / w; w = MAX; } c.width = w; c.height = h; c.getContext("2d").drawImage(img, 0, 0, w, h); const compressed = c.toDataURL("image/jpeg", 0.75); setForm(prev => ({ ...prev, logo: compressed })); URL.revokeObjectURL(url); }; img.src = url; };
 
+  const inp = "w-full py-2.5 px-3 bg-white/[0.04] border border-white/[0.08] rounded-xl text-slate-200 text-[13px] outline-none focus:border-brand-500/50 focus:bg-white/[0.06] transition-all duration-200 placeholder:text-slate-600";
+  const sbtn = "flex items-center gap-1.5 px-3 py-1.5 bg-white/[0.05] text-slate-300 border border-white/[0.08] rounded-lg text-[11px] cursor-pointer whitespace-nowrap hover:bg-white/[0.08] transition-all font-medium";
+
   return (
-    <div className="page"><div className="page-head"><div><h1 className="h1">Einstellungen</h1></div></div>
-      <div style={{ display: "flex", flexDirection: "column", gap: 16, maxWidth: 600 }}>
-        <div className="sec"><h3 className="sec-title">Logo</h3><div style={{ display: "flex", alignItems: "center", gap: 14 }}>
-          {form.logo ? <div style={{ position: "relative" }}><img src={form.logo} alt="" style={{ maxHeight: 50, maxWidth: 150, borderRadius: 6, border: "1px solid #334155", background: "#fff", padding: 2, objectFit: "contain" }} /><button className="i-btn" style={{ position: "absolute", top: -5, right: -5, background: "#1e293b", borderRadius: "50%", width: 18, height: 18, display: "flex", alignItems: "center", justifyContent: "center", border: "1px solid #334155", fontSize: 10 }} onClick={() => setForm({ ...form, logo: "" })}>✕</button></div>
-            : <div style={{ width: 90, height: 50, borderRadius: 6, border: "2px dashed #334155", display: "flex", alignItems: "center", justifyContent: "center", color: "#475569", cursor: "pointer" }} onClick={() => fRef.current?.click()}>{IC.img}</div>}
-          <button className="s-btn" onClick={() => fRef.current?.click()}>{form.logo ? "Ändern" : "Hochladen"}</button><input ref={fRef} type="file" accept="image/png,image/jpeg" style={{ display: "none" }} onChange={handleLogo} /></div></div>
-        <div className="sec"><h3 className="sec-title">Firmendaten</h3><div style={{ display: "flex", flexDirection: "column", gap: 7 }}>
-          <div style={{ display: "flex", gap: 7 }}><FI l="Firma *" v={form.name} k="name" f={form} s={setForm} /><FI l="Inhaber" v={form.inhaber} k="inhaber" f={form} s={setForm} /></div>
+    <div className="p-6 px-7 max-md:p-4 animate-fade-in"><div className="flex justify-between items-start mb-6"><div><h1 className="text-xl font-bold tracking-tight">Einstellungen</h1></div></div>
+      <div className="flex flex-col gap-4 max-w-[620px]">
+        <div className="bg-[#0a0a1a]/80 rounded-2xl p-4 border border-white/[0.06]"><h3 className="text-[14px] font-bold mb-3">Logo</h3><div className="flex items-center gap-4">
+          {form.logo ? <div className="relative"><img src={form.logo} alt="" className="max-h-[50px] max-w-[150px] rounded-xl border border-white/[0.1] bg-white p-1 object-contain" /><button className="absolute -top-1.5 -right-1.5 bg-slate-800 rounded-full w-[18px] h-[18px] flex items-center justify-center border border-white/[0.1] text-[10px] text-slate-400 cursor-pointer hover:bg-slate-700 transition-colors" onClick={() => setForm({ ...form, logo: "" })}>✕</button></div>
+            : <div className="w-[100px] h-[56px] rounded-xl border-2 border-dashed border-white/[0.1] flex items-center justify-center text-slate-600 cursor-pointer hover:border-brand-500/30 hover:bg-brand-500/[0.03] transition-all" onClick={() => fRef.current?.click()}>{IC.img}</div>}
+          <button className={sbtn} onClick={() => fRef.current?.click()}>{form.logo ? "Ändern" : "Hochladen"}</button><input ref={fRef} type="file" accept="image/png,image/jpeg" className="hidden" onChange={handleLogo} /></div></div>
+        <div className="bg-[#0a0a1a]/80 rounded-2xl p-4 border border-white/[0.06]"><h3 className="text-[14px] font-bold mb-3">Firmendaten</h3><div className="flex flex-col gap-2">
+          <div className="flex gap-[7px]"><FI l="Firma *" v={form.name} k="name" f={form} s={setForm} /><FI l="Inhaber" v={form.inhaber} k="inhaber" f={form} s={setForm} /></div>
           <FI l="Straße *" v={form.strasse} k="strasse" f={form} s={setForm} />
-          <div style={{ display: "flex", gap: 7 }}><FI l="PLZ *" v={form.plz} k="plz" f={form} s={setForm} w={100} /><FI l="Ort *" v={form.ort} k="ort" f={form} s={setForm} /></div>
-          <div style={{ display: "flex", gap: 7 }}><FI l="Tel" v={form.telefon} k="telefon" f={form} s={setForm} /><FI l="E-Mail" v={form.email} k="email" f={form} s={setForm} /></div>
+          <div className="flex gap-[7px]"><FI l="PLZ *" v={form.plz} k="plz" f={form} s={setForm} w={100} /><FI l="Ort *" v={form.ort} k="ort" f={form} s={setForm} /></div>
+          <div className="flex gap-[7px]"><FI l="Tel" v={form.telefon} k="telefon" f={form} s={setForm} /><FI l="E-Mail" v={form.email} k="email" f={form} s={setForm} /></div>
         </div></div>
-        <div className="sec"><h3 className="sec-title">Steuern (§14 Pflicht)</h3><div style={{ display: "flex", gap: 7, marginBottom: 8 }}><FI l="Steuernr." v={form.steuernr} k="steuernr" f={form} s={setForm} /><FI l="USt-ID" v={form.ustid} k="ustid" f={form} s={setForm} /></div><label style={{ display: "flex", alignItems: "center", gap: 8, cursor: "pointer", fontSize: 13 }}><input type="checkbox" checked={!!form.kleinunternehmer} onChange={e => setForm({ ...form, kleinunternehmer: e.target.checked })} /><span>Kleinunternehmer nach §19 UStG (kein MwSt-Ausweis)</span></label></div>
-        <div className="sec"><h3 className="sec-title">Bank</h3><div style={{ display: "flex", flexDirection: "column", gap: 7 }}><FI l="Bank" v={form.bankName} k="bankName" f={form} s={setForm} /><div style={{ display: "flex", gap: 7 }}><FI l="IBAN" v={form.iban} k="iban" f={form} s={setForm} /><FI l="BIC" v={form.bic} k="bic" f={form} s={setForm} w={140} /></div></div></div>
-        <button className="p-btn" onClick={() => { if (!form.name) return; sf(form); }}>Speichern</button>
-        <div className="sec"><h3 className="sec-title">{IC.dl} Datensicherung</h3>
-          <p style={{ fontSize: 12, color: "#64748b", marginBottom: 10, lineHeight: 1.5 }}>Exportiere alle Daten als JSON-Backup oder importiere ein vorhandenes Backup.</p>
-          <div style={{ display: "flex", gap: 8, flexWrap: "wrap" }}>
-            <button className="s-btn" onClick={() => { const data = { version: 1, date: new Date().toISOString(), firma, rechnungen, kunden, favoriten: favoriten || [], wiederkehrend: wiederkehrend || [], plan }; const blob = new Blob([JSON.stringify(data, null, 2)], { type: "application/json" }); const a = document.createElement("a"); a.href = URL.createObjectURL(blob); a.download = `RechnungsKI_Backup_${new Date().toISOString().split("T")[0]}.json`; a.click(); URL.revokeObjectURL(a.href); showT("Backup heruntergeladen!"); }}>{IC.dl} Export (.json)</button>
-            <label className="s-btn" style={{ cursor: "pointer" }}><input type="file" accept=".json" style={{ display: "none" }} onChange={e => { const f = e.target.files?.[0]; if (!f) return; const reader = new FileReader(); reader.onload = ev => { try { const d = JSON.parse(ev.target.result); if (!d.version || !d.firma) { showT("Ungültiges Backup!"); return; } if (!confirm(`Backup vom ${fd(d.date)} importieren? Aktuelle Daten werden überschrieben.`)) return; sf(d.firma); sre(d.rechnungen || []); skn(d.kunden || []); if (d.favoriten) { setFavoriten(d.favoriten); sv("inv-favoriten", d.favoriten); } if (d.wiederkehrend) { saveWdk(d.wiederkehrend); } if (d.plan) { spl(d.plan); } setForm(d.firma); showT("Backup importiert!"); } catch { showT("Datei konnte nicht gelesen werden!"); } }; reader.readAsText(f); e.target.value = ""; }} />⬆ Import</label>
+        <div className="bg-[#0a0a1a]/80 rounded-2xl p-4 border border-white/[0.06]"><h3 className="text-[14px] font-bold mb-3">Steuern (§14 Pflicht)</h3><div className="flex gap-2 mb-2.5"><FI l="Steuernr." v={form.steuernr} k="steuernr" f={form} s={setForm} /><FI l="USt-ID" v={form.ustid} k="ustid" f={form} s={setForm} /></div><label className="flex items-center gap-2.5 cursor-pointer text-[13px]"><input type="checkbox" className="w-4 h-4 rounded accent-brand-500" checked={!!form.kleinunternehmer} onChange={e => setForm({ ...form, kleinunternehmer: e.target.checked })} /><span>Kleinunternehmer nach §19 UStG (kein MwSt-Ausweis)</span></label></div>
+        <div className="bg-[#0a0a1a]/80 rounded-2xl p-4 border border-white/[0.06]"><h3 className="text-[14px] font-bold mb-3">Bank</h3><div className="flex flex-col gap-2"><FI l="Bank" v={form.bankName} k="bankName" f={form} s={setForm} /><div className="flex gap-2"><FI l="IBAN" v={form.iban} k="iban" f={form} s={setForm} /><FI l="BIC" v={form.bic} k="bic" f={form} s={setForm} w={140} /></div></div></div>
+        <button className="flex items-center gap-1.5 px-5 py-2.5 bg-gradient-to-r from-brand-600 to-brand-500 text-white border-none rounded-xl text-[13px] font-semibold cursor-pointer w-fit hover:shadow-[0_0_24px_rgba(99,102,241,0.3)] hover:translate-y-[-1px] transition-all duration-200" onClick={() => { if (!form.name) return; sf(form); }}>Speichern</button>
+        <div className="bg-[#0a0a1a]/80 rounded-2xl p-4 border border-white/[0.06]"><h3 className="text-[14px] font-bold mb-3">{IC.dl} Datensicherung</h3>
+          <p className="text-xs text-slate-500 mb-2.5 leading-relaxed">Exportiere alle Daten als JSON-Backup oder importiere ein vorhandenes Backup.</p>
+          <div className="flex gap-2 flex-wrap">
+            <button className={sbtn} onClick={() => { const data = { version: 1, date: new Date().toISOString(), firma, rechnungen, kunden, favoriten: favoriten || [], wiederkehrend: wiederkehrend || [], plan }; const blob = new Blob([JSON.stringify(data, null, 2)], { type: "application/json" }); const a = document.createElement("a"); a.href = URL.createObjectURL(blob); a.download = `RechnungsKI_Backup_${new Date().toISOString().split("T")[0]}.json`; a.click(); URL.revokeObjectURL(a.href); showT("Backup heruntergeladen!"); }}>{IC.dl} Export (.json)</button>
+            <label className={`${sbtn} cursor-pointer`}><input type="file" accept=".json" className="hidden" onChange={e => { const f = e.target.files?.[0]; if (!f) return; const reader = new FileReader(); reader.onload = ev => { try { const d = JSON.parse(ev.target.result); if (!d.version || !d.firma) { showT("Ungültiges Backup!"); return; } if (!confirm(`Backup vom ${fd(d.date)} importieren? Aktuelle Daten werden überschrieben.`)) return; sf(d.firma); sre(d.rechnungen || []); skn(d.kunden || []); if (d.favoriten) { setFavoriten(d.favoriten); sv("inv-favoriten", d.favoriten); } if (d.wiederkehrend) { saveWdk(d.wiederkehrend); } if (d.plan) { spl(d.plan); } setForm(d.firma); showT("Backup importiert!"); } catch { showT("Datei konnte nicht gelesen werden!"); } }; reader.readAsText(f); e.target.value = ""; }} />⬆ Import</label>
           </div>
         </div>
-        <div style={{ background: "#1c1917", borderRadius: 10, padding: 16, border: "1px solid #7f1d1d" }}><h3 style={{ fontSize: 13, fontWeight: 700, color: "#f87171", marginBottom: 6 }}>Gefahrenzone</h3>
-          {!showR ? <button className="d-btn" onClick={() => { setShowR(true); setDeleteInput(""); }}>Alles löschen</button> : <div style={{ display: "flex", flexDirection: "column", gap: 8 }}><p style={{ fontSize: 12, color: "#fca5a5", lineHeight: 1.5 }}>Alle Rechnungen, Kunden und Firmendaten werden unwiderruflich gelöscht.<br />Gib <strong>LÖSCHEN</strong> ein um zu bestätigen:</p><input className="inp" style={{ color: "#f87171", borderColor: "#991b1b" }} placeholder="LÖSCHEN" value={deleteInput} onChange={e => setDeleteInput(e.target.value)} /><div style={{ display: "flex", gap: 6 }}><button className="d-btn" disabled={deleteInput !== "LÖSCHEN"} style={{ opacity: deleteInput !== "LÖSCHEN" ? 0.4 : 1, cursor: deleteInput !== "LÖSCHEN" ? "not-allowed" : "pointer" }} onClick={async () => { if (deleteInput !== "LÖSCHEN") return; await sre([]); await skn([]); await sf(null); window.location.reload(); }}>Endgültig löschen</button><button className="s-btn" onClick={() => { setShowR(false); setDeleteInput(""); }}>Abbrechen</button></div></div>}
+        <div className="bg-danger-500/[0.04] rounded-2xl p-4 border border-danger-500/15"><h3 className="text-[14px] font-bold text-danger-400 mb-2">Gefahrenzone</h3>
+          {!showR ? <button className="px-3 py-1.5 bg-danger-500/10 text-danger-400 border border-danger-500/20 rounded-lg text-[11px] cursor-pointer font-medium hover:bg-danger-500/15 transition-all" onClick={() => { setShowR(true); setDeleteInput(""); }}>Alles löschen</button> : <div className="flex flex-col gap-2.5"><p className="text-[13px] text-danger-300/80 leading-relaxed">Alle Rechnungen, Kunden und Firmendaten werden unwiderruflich gelöscht.<br />Gib <strong>LÖSCHEN</strong> ein um zu bestätigen:</p><input className={`${inp} !text-danger-400 !border-danger-500/30`} placeholder="LÖSCHEN" value={deleteInput} onChange={e => setDeleteInput(e.target.value)} /><div className="flex gap-2"><button className="px-3 py-1.5 bg-danger-500/10 text-danger-400 border border-danger-500/20 rounded-lg text-[11px] cursor-pointer font-medium" disabled={deleteInput !== "LÖSCHEN"} style={{ opacity: deleteInput !== "LÖSCHEN" ? 0.4 : 1, cursor: deleteInput !== "LÖSCHEN" ? "not-allowed" : "pointer" }} onClick={async () => { if (deleteInput !== "LÖSCHEN") return; await sre([]); await skn([]); await sf(null); window.location.reload(); }}>Endgültig löschen</button><button className={sbtn} onClick={() => { setShowR(false); setDeleteInput(""); }}>Abbrechen</button></div></div>}
         </div>
       </div>
     </div>
   );
 }
-function FI({ l, v, k, f, s, w }) { return <div style={{ flex: 1, ...(w ? { maxWidth: w } : {}) }}><label style={{ fontSize: 10, color: "#64748b", marginBottom: 1, display: "block" }}>{l}</label><input className="inp" value={v || ""} onChange={e => s({ ...f, [k]: e.target.value })} /></div>; }
+function FI({ l, v, k, f, s, w }) { return <div className="flex-1" style={w ? { maxWidth: w } : {}}><label className="text-[10px] text-slate-500 mb-1 block font-medium tracking-wide">{l}</label><input className="w-full py-2.5 px-3 bg-white/[0.04] border border-white/[0.08] rounded-xl text-slate-200 text-[13px] outline-none focus:border-brand-500/50 focus:bg-white/[0.06] transition-all duration-200" value={v || ""} onChange={e => s({ ...f, [k]: e.target.value })} /></div>; }
 
-// ═══ CSS ═══
-const CSS = `
-@import url('https://fonts.googleapis.com/css2?family=DM+Sans:opsz,wght@9..40,300;9..40,400;9..40,500;9..40,600;9..40,700;9..40,800&family=JetBrains+Mono:wght@400;500&display=swap');
-*{box-sizing:border-box;margin:0;padding:0}
-input,select,textarea,button{font-family:'DM Sans',sans-serif}
-::-webkit-scrollbar{width:4px}::-webkit-scrollbar-thumb{background:#334155;border-radius:2px}
-@keyframes fadeIn{from{opacity:0;transform:translateY(4px)}to{opacity:1;transform:translateY(0)}}
-@keyframes spin{to{transform:rotate(360deg)}}
-@keyframes slideUp{from{opacity:0;transform:translateY(12px)}to{opacity:1;transform:translateY(0)}}
-
-.app-wrap{display:flex;min-height:100vh;font-family:'DM Sans',sans-serif;background:#0b1120;color:#e2e8f0}
-.load-wrap{display:flex;flex-direction:column;align-items:center;justify-content:center;height:100vh;width:100%;background:#0b1120}
-.spinner{width:24px;height:24px;border:3px solid #1e293b;border-top:3px solid #818cf8;border-radius:50%;animation:spin .7s linear infinite}
-
-.mob-header{display:none;position:sticky;top:0;z-index:50;background:#0f172a;border-bottom:1px solid #1e293b;padding:10px 14px;align-items:center;gap:10}
-.mob-menu-btn{background:none;border:none;color:#e2e8f0;cursor:pointer;display:flex;padding:4px}
-.mob-overlay{display:none;position:fixed;inset:0;background:rgba(0,0,0,.5);z-index:90}
-
-.sidebar{width:216px;background:#0f172a;border-right:1px solid #1e293b;display:flex;flex-direction:column;padding:14px 8px;flex-shrink:0;position:sticky;top:0;height:100vh;z-index:100}
-.brand{display:flex;align-items:center;gap:8;padding:0 6px;margin-bottom:20}
-.brand-ico{width:28px;height:28px;border-radius:7px;background:linear-gradient(135deg,#6366f1,#a78bfa);display:flex;align-items:center;justify-content:center;color:#fff}
-.nav-list{display:flex;flex-direction:column;gap:1px;flex:1}
-.main-content{flex:1;min-width:0;overflow-y:auto}
-
-.nav-btn{display:flex;align-items:center;gap:7px;padding:7px 9px;background:transparent;border:none;color:#94a3b8;border-radius:6px;cursor:pointer;font-size:13px;font-weight:500;text-align:left;position:relative;transition:all .12s}
-.nav-btn.active{background:#1e293b;color:#e2e8f0}
-.nav-btn:hover{background:#1e293b44}
-.nav-badge{position:absolute;right:7px;background:#ef4444;color:#fff;font-size:9px;font-weight:700;padding:1px 5px;border-radius:10px}
-.usage-bar{height:3px;background:#1e293b;border-radius:2px;overflow:hidden;margin:0 8px}
-.usage-fill{height:100%;background:linear-gradient(90deg,#818cf8,#6366f1);border-radius:2px;transition:width .3s}
-
-.page{padding:20px 24px;animation:fadeIn .2s ease}
-.page-head{display:flex;justify-content:space-between;align-items:flex-start;margin-bottom:20px;flex-wrap:wrap;gap:8}
-.h1{font-size:21px;font-weight:700;letter-spacing:-.03em}
-.sub{font-size:12px;color:#64748b;margin-top:2px}
-.card-t{font-size:13px;font-weight:600;margin-bottom:12px}
-.card{background:#111827;border-radius:10px;padding:18px;border:1px solid #1e293b}
-.sec{background:#111827;border-radius:10px;padding:14px;border:1px solid #1e293b}
-.sec-title{font-size:13px;font-weight:700;margin-bottom:10px}
-.lbl{font-size:11px;font-weight:600;color:#94a3b8;margin-bottom:4px;display:block}
-.status-badge{font-size:10px;font-weight:600;padding:2px 7px;border-radius:20px;white-space:nowrap}
-
-.p-btn{display:flex;align-items:center;gap:5px;padding:8px 15px;background:linear-gradient(135deg,#6366f1,#818cf8);color:#fff;border:none;border-radius:7px;font-size:13px;font-weight:600;cursor:pointer;white-space:nowrap}
-.s-btn{display:flex;align-items:center;gap:3px;padding:4px 9px;background:#1e293b;color:#94a3b8;border:1px solid #334155;border-radius:5px;font-size:11px;cursor:pointer;white-space:nowrap}
-.s-btn-g{display:flex;align-items:center;gap:3px;padding:4px 9px;background:#065f46;color:#34d399;border:1px solid #059669;border-radius:5px;font-size:11px;cursor:pointer;white-space:nowrap}
-.pdf-btn{background:#1e1b4b;color:#a5b4fc;border-color:#4338ca}
-.link-btn{background:none;border:none;color:#818cf8;font-size:12px;cursor:pointer;padding:4px 0;font-weight:500}
-.ai-btn{display:flex;align-items:center;gap:4px;padding:4px 9px;background:linear-gradient(135deg,#4f46e5,#7c3aed);color:#fff;border:none;border-radius:5px;font-size:11px;font-weight:600;cursor:pointer}
-.i-btn{background:none;border:none;color:#64748b;cursor:pointer;padding:2px;display:flex;border-radius:3px}
-.d-btn{padding:5px 10px;background:#7f1d1d;color:#fca5a5;border:1px solid #991b1b;border-radius:5px;font-size:11px;cursor:pointer}
-.add-pos{display:flex;align-items:center;gap:5px;padding:8px;background:transparent;border:2px dashed #334155;border-radius:7px;color:#64748b;font-size:12px;cursor:pointer;width:100%;justify-content:center;margin-top:6px}
-
-.upgrade-bar{display:flex;align-items:center;gap:8px;padding:8px 12px;background:linear-gradient(90deg,#1e1b4b,#312e81);border:1px solid #4338ca;border-radius:8px;margin-bottom:16px;font-size:12px;color:#c7d2fe;flex-wrap:wrap}
-.upgrade-sm{padding:4px 10px;background:#6366f1;color:#fff;border:none;border-radius:5px;font-size:11px;font-weight:600;cursor:pointer;margin-left:auto}
-.warn-bar{display:flex;align-items:flex-start;gap:7px;padding:9px 12px;background:#1c1917;border:1px solid #92400e;border-radius:8px;margin-bottom:14px;font-size:12px;color:#fbbf24}
-.warn-card{background:#1c1917;border:1px solid #92400e;border-radius:10px;padding:14px;margin-top:6px}
-
-.toggle-wrap{display:flex;background:#111827;border-radius:7px;padding:2px;border:1px solid #1e293b}
-.tog-btn{padding:5px 11px;background:transparent;border:none;color:#64748b;border-radius:5px;font-size:12px;cursor:pointer;font-weight:500}
-.tog-btn.active{background:#1e293b;color:#e2e8f0}
-
-.kpi-grid{display:grid;grid-template-columns:repeat(4,1fr);gap:10px;margin-bottom:18px}
-.kpi{background:#111827;border-radius:10px;padding:14px;border:1px solid #1e293b}
-.kpi-l{font-size:10px;color:#64748b;font-weight:600;text-transform:uppercase;letter-spacing:.05em}
-.kpi-v{font-size:22px;font-weight:700;margin-top:4px}
-.kpi-s{font-size:11px;color:#64748b;margin-top:2px}
-
-.dash-grid{display:grid;grid-template-columns:1.7fr 1fr;gap:10px;margin-bottom:18px}
-.chart-bar{width:100%;background:linear-gradient(180deg,#818cf8,#4f46e5);border-radius:3px 3px 0 0;transition:height .5s;min-height:2px}
-.recent-item{display:flex;justify-content:space-between;align-items:center;padding:7px 0;border-bottom:1px solid #1e293b}
-
-.form-grid{display:grid;grid-template-columns:1fr 280px;gap:18px}
-.form-left{display:flex;flex-direction:column;gap:12px}
-.form-right{position:sticky;top:20px;align-self:start}
-.sum-card{background:#111827;border-radius:10px;padding:18px;border:1px solid #1e293b}
-.sum-r{display:flex;justify-content:space-between;align-items:center;padding:5px 0;font-size:13px}
-.sum-total{font-size:17px;font-weight:700;color:#818cf8;padding-top:8px;border-top:1px solid #1e293b;margin-top:4px}
-
-.inp{width:100%;padding:7px 10px;background:#0b1120;border:1px solid #1e293b;border-radius:6px;color:#e2e8f0;font-size:13px;outline:none}
-.inp:focus{border-color:#4f46e5}
-.sel{width:100%;padding:7px 10px;background:#0b1120;border:1px solid #1e293b;border-radius:6px;color:#e2e8f0;font-size:13px;outline:none;cursor:pointer}
-.search-ico{position:absolute;left:9px;top:50%;transform:translateY(-50%);color:#475569;display:flex}
-.search-inp{padding-left:30px}
-
-.dd{background:#1e293b;border:1px solid #334155;border-radius:7px;margin-top:3px;max-height:140px;overflow-y:auto}
-.dd-item{display:flex;flex-direction:column;gap:1px;padding:7px 9px;background:none;border:none;color:#e2e8f0;cursor:pointer;width:100%;text-align:left;border-bottom:1px solid #334155;font-size:12px}
-.dd-item:hover{background:#334155}
-.sel-kunde{display:flex;justify-content:space-between;align-items:center;background:#1e293b;border-radius:7px;padding:8px 10px;margin-top:5px}
-
-.vor-wrap{background:#1a1136;border:1px solid #4f46e5;border-radius:8px;padding:10px;margin-top:6px}
-.vor-chip{display:flex;flex-direction:column;gap:1px;padding:5px 9px;background:#0f172a;border:1px solid #334155;border-radius:5px;color:#e2e8f0;cursor:pointer;font-size:11px;text-align:left}
-.vor-chip:hover{border-color:#6366f1}
-
-.pos-table{margin-top:8px}
-.pos-h{display:flex;gap:4px;padding:5px 1px;font-size:9px;font-weight:600;color:#64748b;text-transform:uppercase;letter-spacing:.05em;border-bottom:1px solid #1e293b}
-.pos-r{display:flex;gap:4px;align-items:center;padding:3px 0;border-bottom:1px solid #1e293b}
-.pos-i{padding:5px 5px;background:#0b1120;border:1px solid #1e293b;border-radius:4px;color:#e2e8f0;font-size:11px;outline:none}
-
-.tabs{display:flex;gap:2px;background:#111827;border-radius:6px;padding:2px}
-.tab{padding:5px 9px;background:transparent;border:none;color:#64748b;border-radius:4px;font-size:12px;cursor:pointer;font-weight:500}
-.tab.active{background:#1e293b;color:#e2e8f0}
-
-.tbl-wrap{background:#111827;border-radius:10px;border:1px solid #1e293b;overflow:hidden}
-.tbl-h{display:flex;gap:4px;padding:8px 14px;font-size:10px;font-weight:600;color:#64748b;text-transform:uppercase;letter-spacing:.05em;background:#0f172a;border-bottom:1px solid #1e293b}
-.tbl-r{display:flex;gap:4px;padding:9px 14px;align-items:center;border-bottom:1px solid #1e293b;font-size:13px}
-.tbl-r:hover{background:#1e293b33}
-
-.kunden-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(280px,1fr));gap:10px}
-.kunde-c{display:flex;gap:10px;background:#111827;border-radius:10px;padding:14px;border:1px solid #1e293b;align-items:center}
-.kunde-av{width:36px;height:36px;border-radius:8px;background:linear-gradient(135deg,#4f46e5,#7c3aed);display:flex;align-items:center;justify-content:center;font-size:14px;font-weight:700;color:#fff;flex-shrink:0}
-
-.plan-grid{display:grid;grid-template-columns:repeat(4,1fr);gap:12px}
-.plan-card{background:#111827;border:1px solid #1e293b;border-radius:14px;padding:20px;display:flex;flex-direction:column;position:relative}
-.plan-card.popular{background:linear-gradient(160deg,#1e1b4b,#312e81);border:2px solid #6366f1}
-.pop-badge{position:absolute;top:-9px;left:50%;transform:translateX(-50%);background:linear-gradient(135deg,#6366f1,#a78bfa);color:#fff;font-size:9px;font-weight:700;padding:2px 11px;border-radius:20px}
-
-.empty{display:flex;flex-direction:column;align-items:center;justify-content:center;padding:40px 16px;text-align:center}
-.empty-ico{width:44px;height:44px;border-radius:11px;background:#1e293b;display:flex;align-items:center;justify-content:center;margin-bottom:10px;color:#64748b}
-
-.modal-overlay{position:fixed;inset:0;background:rgba(0,0,0,.6);display:flex;align-items:center;justify-content:center;z-index:1000;padding:14px}
-.modal-box{background:#fff;border-radius:14px;max-width:720px;width:100%;max-height:90vh;overflow-y:auto}
-
-.toast{position:fixed;bottom:16px;right:16px;background:#1e293b;border:1px solid #334155;border-radius:8px;padding:8px 14px;display:flex;align-items:center;gap:6px;font-size:13px;font-weight:500;animation:slideUp .25s ease;z-index:999;box-shadow:0 4px 18px rgba(0,0,0,.4)}
-
-/* ═══ ONBOARDING ═══ */
-.onboard-wrap{min-height:100vh;display:flex;flex-direction:column;align-items:center;padding:20px;background:#0b1120;width:100%}
-.onboard-progress{width:100%;max-width:600px;height:4px;background:#1e293b;border-radius:2px;overflow:hidden;margin-bottom:20px}
-.onboard-progress-fill{height:100%;background:linear-gradient(90deg,#6366f1,#a78bfa);border-radius:2px;transition:width .4s ease}
-.onboard-steps{display:flex;gap:12px;margin-bottom:28px;flex-wrap:wrap;justify-content:center}
-.onboard-step-dot{width:32px;height:32px;border-radius:50%;background:#1e293b;border:2px solid #1e293b;display:flex;align-items:center;justify-content:center;transition:all .3s}
-.onboard-step-dot.current{border-color:#6366f1;background:#1e1b4b;box-shadow:0 0 12px rgba(99,102,241,.3)}
-.onboard-step-dot.done{background:#065f46;border-color:#059669;color:#34d399}
-.onboard-card{background:#111827;border:1px solid #1e293b;border-radius:16px;padding:32px;max-width:680px;width:100%;flex:1;max-height:calc(100vh - 200px);overflow-y:auto;animation:fadeIn .3s ease}
-.onboard-center{display:flex;flex-direction:column;align-items:center;text-align:center}
-.onboard-title{font-size:22px;font-weight:800;letter-spacing:-.02em;margin-bottom:6px}
-.onboard-desc{font-size:14px;color:#64748b;margin-bottom:20px;line-height:1.6}
-.onboard-lbl{font-size:11px;font-weight:600;color:#94a3b8;margin-bottom:3px;display:block}
-.onboard-nav{display:flex;align-items:center;gap:10px;max-width:680px;width:100%;margin-top:20px}
-
-@keyframes confetti{0%{transform:translateY(0) rotate(0)}100%{transform:translateY(-20px) rotate(360deg);opacity:0}}
-
-@media(max-width:768px){
-  .mob-header{display:flex}
-  .mob-overlay{display:block}
-  .sidebar{position:fixed;left:-260px;top:0;bottom:0;transition:left .25s ease;width:230px}
-  .sidebar.open{left:0}
-  .page{padding:14px}
-  .page-head{flex-direction:column;gap:6}
-  .kpi-grid{grid-template-columns:repeat(2,1fr);gap:6}
-  .dash-grid{grid-template-columns:1fr;gap:8}
-  .form-grid{grid-template-columns:1fr}
-  .form-right{position:static}
-  .plan-grid{grid-template-columns:1fr 1fr;gap:8}
-  .tbl-h{display:none}
-  .tbl-r{flex-wrap:wrap;gap:4px;padding:10px 12px}
-  .tbl-r>span{flex:none!important}
-  .h1{font-size:19px}
-}
-@media(max-width:480px){
-  .kpi-grid{grid-template-columns:1fr}
-  .plan-grid{grid-template-columns:1fr}
-}
-`;
+// CSS removed — all styles are now Tailwind classes
