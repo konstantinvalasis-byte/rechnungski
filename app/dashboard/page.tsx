@@ -51,7 +51,6 @@ interface Rechnung {
   rabatt: number;
   zeitraumVon: string;
   zeitraumBis: string;
-  mahnStufe?: number;
   mahnstufe?: number;
 }
 
@@ -445,7 +444,7 @@ function validateRechnung(r: Rechnung, f: Firma | null): string[] {
 // DATEV
 function datevCSV(re: Rechnung[]): string {
   const h = "Umsatz;S/H;WKZ;Kurs;Basis;WKZ-B;Konto;Gegenkonto;BU;Belegdatum;Beleg1;Beleg2;Skonto;Text";
-  const rows = re.filter(r => r.status !== "angebot" && r.status !== "storniert").map(r => {
+  const rows = re.filter(r => r.status === "bezahlt").map(r => {
     const d = new Date(r.datum); return `${fcn(r.gesamt)};S;EUR;;;;;;8400;;${String(d.getDate()).padStart(2,"0")}${String(d.getMonth()+1).padStart(2,"0")};${r.nummer};;0,00;${r.kundeName}`;
   });
   return h + "\n" + rows.join("\n");
@@ -857,6 +856,7 @@ function App() {
   const [favoriten, setFavoriten] = useState<FavoritItem[]>([]);
   const [reSearch, setReSearch] = useState("");
   const [wiederkehrend, setWdk] = useState<WiederkehrendItem[]>([]);
+  const newDocTypRef = useRef<"rechnung" | "angebot">("rechnung");
 
   useEffect(() => {
     let mounted = true;
@@ -888,7 +888,12 @@ function App() {
         if (idx >= 0) updWdkList[idx] = { ...w, nextDue: (() => { const d = new Date(w.nextDue); if (w.interval === "monatlich") d.setMonth(d.getMonth()+1); else if (w.interval === "quartal") d.setMonth(d.getMonth()+3); else d.setFullYear(d.getFullYear()+1); return d.toISOString().split("T")[0]; })() };
       });
       sv("inv-rechnungen", allRe); sv("inv-wdk", updWdkList);
-      if (mounted) { setRechnungen(allRe); setWdk(updWdkList); }
+      if (mounted) {
+        setRechnungen(allRe); setWdk(updWdkList);
+        const n = due.length;
+        setToast(`${n} wiederkehrende Rechnung${n > 1 ? "en" : ""} automatisch erstellt`);
+        setTimeout(() => setToast(null), 3500);
+      }
     }
     /* eslint-enable react-hooks/set-state-in-effect */
     return () => { mounted = false; };
@@ -915,8 +920,26 @@ function App() {
   const dupRe = async (o: Rechnung) => { const nr = nxtNr(); const d = new Date().toISOString().split("T")[0]; const fdt = new Date(); fdt.setDate(fdt.getDate() + (o.zahlungsziel || 14)); await addRe({ ...o, id: uid(), nummer: nr, datum: d, faelligDatum: fdt.toISOString().split("T")[0], status: "offen" }); };
   const delRe = (rid: string) => sre(rechnungen.filter(r => r.id !== rid));
   const nxtNr = () => { const y = new Date().getFullYear(); const prefix = `RE-${y}-`; const maxNr = rechnungen.filter(r => r.nummer?.startsWith(prefix)).reduce((max, r) => { const n = parseInt(r.nummer.slice(prefix.length), 10); return isNaN(n) ? max : Math.max(max, n); }, 0); return `${prefix}${String(maxNr + 1).padStart(4, "0")}`; };
+  const nxtAnNr = () => { const y = new Date().getFullYear(); const prefix = `AN-${y}-`; const maxNr = rechnungen.filter(r => r.nummer?.startsWith(prefix)).reduce((max, r) => { const n = parseInt(r.nummer.slice(prefix.length), 10); return isNaN(n) ? max : Math.max(max, n); }, 0); return `${prefix}${String(maxNr + 1).padStart(4, "0")}`; };
   const lim = { free: { re: 5, ku: 3 }, starter: { re: 50, ku: 25 }, pro: { re: 500, ku: 999 }, enterprise: { re: 99999, ku: 99999 } }[plan] || { re: 5, ku: 3 };
-  const nav = (p: string, search?: string) => { setPg(p); setMobNav(false); if (search !== undefined) setReSearch(search); else setReSearch(""); };
+  const nav = (p: string, search?: string) => {
+    if (p !== "neue-rechnung") newDocTypRef.current = "rechnung";
+    setPg(p); setMobNav(false); const s = search ?? ""; if (search !== undefined) setReSearch(s); else setReSearch(""); window.history.pushState({ pg: p, reSearch: s }, "");
+  };
+  const navNewDoc = (typ: "rechnung" | "angebot") => {
+    newDocTypRef.current = typ;
+    setPg("neue-rechnung"); setMobNav(false); setReSearch(""); window.history.pushState({ pg: "neue-rechnung", reSearch: "" }, "");
+  };
+
+  useEffect(() => {
+    if (!loaded) return;
+    window.history.replaceState({ pg, reSearch }, "");
+    const onPop = (e: PopStateEvent) => {
+      if (e.state?.pg) { setPg(e.state.pg); setReSearch(e.state.reSearch ?? ""); setMobNav(false); }
+    };
+    window.addEventListener("popstate", onPop);
+    return () => window.removeEventListener("popstate", onPop);
+  }, [loaded]); // eslint-disable-line react-hooks/exhaustive-deps
 
   const completeOnboarding = async (firmaData: Firma) => {
     await sf(firmaData);
@@ -987,9 +1010,9 @@ function App() {
 
       {/* Main content */}
       <main className="flex-1 min-w-0 overflow-y-auto">
-        {pg === "dashboard" && <Dashboard {...{ rechnungen, kunden, firma, nav, updRe, addRe, addKu, plan, lim }} />}
-        {pg === "neue-rechnung" && <NeueRechnung {...{ firma, kunden, addKu, addRe, updRe, nextNr: nxtNr(), nav, plan, lim, canCreate: rechnungen.length < lim.re, editRechnung: editRe, onEditDone: () => setEditRe(null), favoriten, addFav, delFav }} />}
-        {pg === "rechnungen" && <RechnungenListe {...{ rechnungen, updRe, delRe, nav, dupRe, firma, onEdit: r => { setEditRe(r); setPg("neue-rechnung"); }, initialSearch: reSearch, showT }} />}
+        {pg === "dashboard" && <Dashboard {...{ rechnungen, kunden, firma, nav, navNewDoc, updRe, addRe, addKu, plan, lim }} />}
+        {pg === "neue-rechnung" && <NeueRechnung {...{ firma, kunden, addKu, addRe, updRe, nextNr: nxtNr(), nextAnNr: nxtAnNr(), nav, plan, lim, canCreate: rechnungen.length < lim.re, editRechnung: editRe, onEditDone: () => setEditRe(null), favoriten, addFav, delFav, initDocTyp: newDocTypRef.current }} />}
+        {pg === "rechnungen" && <RechnungenListe {...{ rechnungen, updRe, delRe, nav, dupRe, firma, onEdit: r => { setEditRe(r); setPg("neue-rechnung"); window.history.pushState({ pg: "neue-rechnung", reSearch: "" }, ""); }, initialSearch: reSearch, showT, nxtNr }} />}
         {pg === "kunden" && <KundenListe {...{ kunden, rechnungen, updKu, delKu }} />}
         {pg === "wiederkehrend" && <WiederkehrendPage {...{ wiederkehrend, addWdk, updWdk, delWdk, kunden, rechnungen, firma }} />}
         {pg === "abo" && <AboPage {...{ plan, spl }} />}
@@ -998,7 +1021,7 @@ function App() {
       </main>
 
       {/* Toast — premium */}
-      {toast && <div className="fixed bottom-5 right-5 bg-[#0f0f1a]/90 backdrop-blur-xl border border-white/[0.08] rounded-xl px-4 py-2.5 flex items-center gap-2 text-[13px] font-medium animate-fade-up z-[999] shadow-[0_8px_32px_rgba(0,0,0,0.5)]"><span className="text-success-500 flex">{IC.check}</span>{toast}</div>}
+      {toast && <div className="fixed bottom-5 right-5 max-md:right-4 max-md:left-4 max-md:bottom-4 bg-[#0f0f1a]/90 backdrop-blur-xl border border-white/[0.08] rounded-xl px-4 py-2.5 flex items-center gap-2 text-[13px] font-medium animate-fade-up z-[999] shadow-[0_8px_32px_rgba(0,0,0,0.5)]"><span className="text-success-500 flex">{IC.check}</span>{toast}</div>}
 
       {/* Mobile overlay */}
       {mobNav && <div className="max-md:block hidden fixed inset-0 bg-black/60 backdrop-blur-sm z-[90] transition-opacity" onClick={() => setMobNav(false)} />}
@@ -1089,6 +1112,16 @@ function OnboardingWizard({ onComplete }: { onComplete: (firma: Firma) => void }
                   </div>
                 </div>
               ))}
+              <div>
+                <div className="text-[10px] font-semibold text-slate-500 uppercase tracking-[0.12em] mb-2 pl-0.5">Andere Branche</div>
+                <input
+                  type="text"
+                  placeholder="Frei eingeben – z.B. Tätowierer, Yoga, Tierarzt …"
+                  className="w-full py-2.5 px-3 bg-white/[0.04] border border-white/[0.08] rounded-xl text-slate-200 text-[13px] outline-none focus:border-brand-500/50 focus:bg-white/[0.06] transition-all duration-200 placeholder:text-slate-600"
+                  value={Object.values(BRANCHEN_KATEGORIEN).flat().includes(form.gewerk) ? "" : form.gewerk}
+                  onChange={e => setForm({ ...form, gewerk: e.target.value })}
+                />
+              </div>
             </div>
           </div>
         )}
@@ -1200,7 +1233,7 @@ function OnboardingWizard({ onComplete }: { onComplete: (firma: Firma) => void }
 }
 
 // ═══ DASHBOARD ═══
-function Dashboard({ rechnungen, kunden, firma, nav, updRe, addRe, addKu, plan, lim }: { rechnungen: Rechnung[]; kunden: Kunde[]; firma: Firma | null; nav: (pg: string, search?: string) => void; updRe: (id: string, up: Partial<Rechnung>) => void; addRe: (r: Rechnung) => Promise<void>; addKu: (k: Omit<Kunde, "id">) => Promise<Kunde>; plan: string; lim: { re: number; ku: number } }) {
+function Dashboard({ rechnungen, kunden, firma, nav, navNewDoc, updRe, addRe, addKu, plan, lim }: { rechnungen: Rechnung[]; kunden: Kunde[]; firma: Firma | null; nav: (pg: string, search?: string) => void; navNewDoc: (typ: "rechnung" | "angebot") => void; updRe: (id: string, up: Partial<Rechnung>) => void; addRe: (r: Rechnung) => Promise<void>; addKu: (k: Omit<Kunde, "id">) => Promise<Kunde>; plan: string; lim: { re: number; ku: number } }) {
   const paid = rechnungen.filter(r => r.status === "bezahlt");
   const offen = rechnungen.filter(r => r.status === "offen");
   const ueber = offen.filter(r => new Date(r.faelligDatum) < new Date());
@@ -1314,7 +1347,7 @@ function Dashboard({ rechnungen, kunden, firma, nav, updRe, addRe, addKu, plan, 
       </div>
 
       {/* Overdue alert */}
-      {ueber.length > 0 && <div className="bg-danger-500/[0.04] border border-danger-500/15 rounded-2xl p-5 mb-5"><div className="flex items-center gap-2.5 mb-3 font-semibold text-[14px]"><span className="w-7 h-7 rounded-lg bg-danger-500/10 flex items-center justify-center text-danger-500">{IC.alert}</span>Überfällig ({ueber.length})</div>{ueber.map(r => <div key={r.id} className="flex items-center gap-3 py-2.5 text-[13px] flex-wrap border-b border-white/[0.04] last:border-0"><span className="font-semibold font-mono text-[11px] text-slate-400">{r.nummer}</span><span className="flex-1">{r.kundeName}</span><span className="font-semibold">{fc(r.gesamt)}</span><span className="text-[11px] text-danger-400 bg-danger-500/10 px-2 py-0.5 rounded-md font-medium">{Math.floor((nowMs - new Date(r.faelligDatum).getTime()) / 86400000)}d überfällig</span><button className="flex items-center gap-1.5 px-3 py-1.5 bg-white/[0.05] text-slate-300 border border-white/[0.08] rounded-lg text-[11px] cursor-pointer whitespace-nowrap hover:bg-white/[0.08] transition-all font-medium" onClick={() => updRe(r.id, { status: "gemahnt" })}>{IC.mail} Mahnen</button></div>)}</div>}
+      {ueber.length > 0 && <div className="bg-danger-500/[0.04] border border-danger-500/15 rounded-2xl p-5 mb-5"><div className="flex items-center gap-2.5 mb-3 font-semibold text-[14px]"><span className="w-7 h-7 rounded-lg bg-danger-500/10 flex items-center justify-center text-danger-500">{IC.alert}</span>Überfällig ({ueber.length})</div>{ueber.map(r => <div key={r.id} className="flex items-center gap-3 py-2.5 text-[13px] flex-wrap border-b border-white/[0.04] last:border-0"><span className="font-semibold font-mono text-[11px] text-slate-400">{r.nummer}</span><span className="flex-1">{r.kundeName}</span><span className="font-semibold">{fc(r.gesamt)}</span><span className="text-[11px] text-danger-400 bg-danger-500/10 px-2 py-0.5 rounded-md font-medium">{Math.floor((nowMs - new Date(r.faelligDatum).getTime()) / 86400000)}d überfällig</span><button className="flex items-center gap-1.5 px-3 py-1.5 bg-white/[0.05] text-slate-300 border border-white/[0.08] rounded-lg text-[11px] cursor-pointer whitespace-nowrap hover:bg-white/[0.08] transition-all font-medium" onClick={() => nav("rechnungen", r.nummer)}>{IC.alert} Mahnen</button></div>)}</div>}
 
       {/* Chart + Recent */}
       <div className="grid grid-cols-[1.7fr_1fr] max-md:grid-cols-1 gap-3 mb-5">
@@ -1361,19 +1394,19 @@ function Dashboard({ rechnungen, kunden, firma, nav, updRe, addRe, addKu, plan, 
       {/* Quick actions */}
       {!isEmpty && <div className="grid grid-cols-[repeat(auto-fit,minmax(160px,1fr))] gap-2.5 mb-5">
         {[
-          { l: "Neue Rechnung", ico: IC.doc, pg: "neue-rechnung", c: "text-brand-400" },
-          { l: "Neues Angebot", ico: IC.eye, pg: "neue-rechnung", c: "text-purple-400" },
-          { l: "Kunden", ico: IC.users, pg: "kunden", c: "text-blue-400" },
-          { l: "DATEV Export", ico: IC.dl, pg: "rechnungen", c: "text-teal-400" },
+          { l: "Neue Rechnung", ico: IC.doc, action: () => navNewDoc("rechnung"), c: "text-brand-400" },
+          { l: "Neues Angebot", ico: IC.eye, action: () => navNewDoc("angebot"), c: "text-purple-400" },
+          { l: "Kunden", ico: IC.users, action: () => nav("kunden"), c: "text-blue-400" },
+          { l: "DATEV Export", ico: IC.dl, action: () => nav("rechnungen"), c: "text-teal-400" },
         ].map((a, i) => (
-          <button key={i} onClick={() => nav(a.pg)} className="group flex items-center gap-2.5 px-4 py-3.5 bg-[#0a0a1a]/80 border border-white/[0.06] rounded-xl text-slate-200 text-[13px] font-medium cursor-pointer text-left hover:bg-white/[0.04] hover:border-white/[0.1] hover:translate-y-[-1px] transition-all duration-200">
+          <button key={i} onClick={a.action} className="group flex items-center gap-2.5 px-4 py-3.5 bg-[#0a0a1a]/80 border border-white/[0.06] rounded-xl text-slate-200 text-[13px] font-medium cursor-pointer text-left hover:bg-white/[0.04] hover:border-white/[0.1] hover:translate-y-[-1px] transition-all duration-200">
             <span className={`${a.c} flex opacity-60 group-hover:opacity-100 transition-opacity`}>{a.ico}</span>{a.l}
           </button>
         ))}
       </div>}
 
       {/* Old offers */}
-      {alteAngebote.length > 0 && <div className="bg-brand-500/[0.04] border border-brand-500/15 rounded-2xl p-5 mb-5"><div className="flex items-center gap-2.5 mb-3 font-semibold text-[14px]"><span className="w-7 h-7 rounded-lg bg-brand-500/10 flex items-center justify-center text-brand-400">{IC.eye}</span>Angebote ohne Antwort ({alteAngebote.length})</div>{alteAngebote.map(r => <div key={r.id} className="flex items-center gap-3 py-2.5 text-[13px] flex-wrap border-b border-white/[0.04] last:border-0"><span className="font-semibold font-mono text-[11px] text-slate-400">{r.nummer}</span><span className="flex-1">{r.kundeName}</span><span className="font-semibold">{fc(r.gesamt)}</span><span className="opacity-50 text-[11px]">{Math.floor((nowMs - new Date(r.datum).getTime()) / 86400000)} Tage</span><button className="flex items-center gap-1.5 px-3 py-1.5 bg-success-500/10 text-success-400 border border-success-500/20 rounded-lg text-[11px] cursor-pointer whitespace-nowrap font-medium hover:bg-success-500/15 transition-all" onClick={() => updRe(r.id, { status: "offen", typ: "rechnung" })}>→ Rechnung</button><button className="flex items-center gap-1.5 px-3 py-1.5 bg-white/[0.05] text-slate-400 border border-white/[0.08] rounded-lg text-[11px] cursor-pointer whitespace-nowrap font-medium hover:bg-white/[0.08] transition-all" onClick={() => updRe(r.id, { status: "storniert" })}>Ablehnen</button></div>)}</div>}
+      {alteAngebote.length > 0 && <div className="bg-brand-500/[0.04] border border-brand-500/15 rounded-2xl p-5 mb-5"><div className="flex items-center gap-2.5 mb-3 font-semibold text-[14px]"><span className="w-7 h-7 rounded-lg bg-brand-500/10 flex items-center justify-center text-brand-400">{IC.eye}</span>Angebote ohne Antwort ({alteAngebote.length})</div>{alteAngebote.map(r => <div key={r.id} className="flex items-center gap-3 py-2.5 text-[13px] flex-wrap border-b border-white/[0.04] last:border-0"><span className="font-semibold font-mono text-[11px] text-slate-400">{r.nummer}</span><span className="flex-1">{r.kundeName}</span><span className="font-semibold">{fc(r.gesamt)}</span><span className="opacity-50 text-[11px]">{Math.floor((nowMs - new Date(r.datum).getTime()) / 86400000)} Tage</span><button className="flex items-center gap-1.5 px-3 py-1.5 bg-success-500/10 text-success-400 border border-success-500/20 rounded-lg text-[11px] cursor-pointer whitespace-nowrap font-medium hover:bg-success-500/15 transition-all" onClick={() => { const y = new Date().getFullYear(); const prefix = `RE-${y}-`; const maxNr = rechnungen.filter(re => re.nummer?.startsWith(prefix)).reduce((mx, re) => { const n = parseInt(re.nummer.slice(prefix.length), 10); return isNaN(n) ? mx : Math.max(mx, n); }, 0); updRe(r.id, { status: "offen", typ: "rechnung", nummer: `${prefix}${String(maxNr + 1).padStart(4, "0")}` }); }}>→ Rechnung</button><button className="flex items-center gap-1.5 px-3 py-1.5 bg-white/[0.05] text-slate-400 border border-white/[0.08] rounded-lg text-[11px] cursor-pointer whitespace-nowrap font-medium hover:bg-white/[0.08] transition-all" onClick={() => updRe(r.id, { status: "storniert" })}>Ablehnen</button></div>)}</div>}
 
       {/* Quarterly tax */}
       {!firma?.kleinunternehmer && (qNetto > 0 || qMwst > 0) && (
@@ -1409,23 +1442,28 @@ function SB({ s }: { s: string }) { const m: Record<string, { cls: string; l: st
 
 // ═══ NEUE RECHNUNG (compact – same logic as v3) ═══
 // eslint-disable-next-line @typescript-eslint/no-unused-vars
-function NeueRechnung({ firma, kunden, addKu, addRe, updRe, nextNr, nav, plan: _plan, lim: _lim, canCreate, editRechnung, onEditDone, favoriten = [], addFav, delFav }: { firma: Firma | null; kunden: Kunde[]; addKu: (k: Omit<Kunde, "id">) => Promise<Kunde>; addRe: (r: Rechnung) => Promise<void>; updRe: (id: string, up: Partial<Rechnung>) => void; nextNr: string; nav: (pg: string) => void; plan: string; lim: { re: number; ku: number }; canCreate: boolean; editRechnung: Rechnung | null; onEditDone?: () => void; favoriten?: FavoritItem[]; addFav: (v: Omit<FavoritItem, "id">) => void; delFav: (id: string) => void }) {
-  const [gw, setGw] = useState(firma?.gewerk || ""); const [kS, setKS] = useState(""); const [selK, setSelK] = useState<Kunde | null>(null);
+function NeueRechnung({ firma, kunden, addKu, addRe, updRe, nextNr, nextAnNr, nav, plan: _plan, lim: _lim, canCreate, editRechnung, onEditDone, favoriten = [], addFav, delFav, initDocTyp = "rechnung" }: { firma: Firma | null; kunden: Kunde[]; addKu: (k: Omit<Kunde, "id">) => Promise<Kunde>; addRe: (r: Rechnung) => Promise<void>; updRe: (id: string, up: Partial<Rechnung>) => void; nextNr: string; nextAnNr: string; nav: (pg: string) => void; plan: string; lim: { re: number; ku: number }; canCreate: boolean; editRechnung: Rechnung | null; onEditDone?: () => void; favoriten?: FavoritItem[]; addFav: (v: Omit<FavoritItem, "id">) => void; delFav: (id: string) => void; initDocTyp?: string }) {
+  const [gw, setGw] = useState(firma?.gewerk || "");
+  const [sonstigesGw, setSonstigesGw] = useState(() => { const g = firma?.gewerk || ""; return !!g && !Object.values(BRANCHEN_KATEGORIEN).flat().includes(g); });
+  const [kS, setKS] = useState(""); const [selK, setSelK] = useState<Kunde | null>(null);
   const [neuK, setNeuK] = useState({ name: "", strasse: "", plz: "", ort: "", email: "" }); const [showN, setShowN] = useState(false);
   const [pos, setPos] = useState<Position[]>([]); const [ziel, setZiel] = useState(14); const [notiz, setNotiz] = useState("");
   const [showV, setShowV] = useState(false); const [saving, setSaving] = useState(false);
-  const [rabatt, setRabatt] = useState(0); const [typ, setTyp] = useState("rechnung");
+  const [rabatt, setRabatt] = useState(0); const [typ, setTyp] = useState(initDocTyp || "rechnung");
+  const [datum, setDatum] = useState(new Date().toISOString().split("T")[0]);
   const [zvon, setZvon] = useState(""); const [zbis, setZbis] = useState(""); const [valE, setValE] = useState<string[]>([]);
 
   useEffect(() => {
     if (!editRechnung) return;
     /* eslint-disable react-hooks/set-state-in-effect */
     setGw(editRechnung.gewerk || "");
+    setSonstigesGw(!!(editRechnung.gewerk && !Object.values(BRANCHEN_KATEGORIEN).flat().includes(editRechnung.gewerk)));
     setPos(editRechnung.positionen || []);
     setZiel(editRechnung.zahlungsziel || 14);
     setNotiz(editRechnung.notiz || "");
     setRabatt(editRechnung.rabatt || 0);
     setTyp(editRechnung.typ === "angebot" ? "angebot" : "rechnung");
+    setDatum(editRechnung.datum || new Date().toISOString().split("T")[0]);
     setZvon(editRechnung.zeitraumVon || "");
     setZbis(editRechnung.zeitraumBis || "");
     const k = kunden.find(k => k.id === editRechnung.kundeId);
@@ -1448,9 +1486,16 @@ function NeueRechnung({ firma, kunden, addKu, addRe, updRe, nextNr, nav, plan: _
     if (!canCreate) { nav("abo"); return; }
     let kunde = selK; if (showN && neuK.name) kunde = await addKu(neuK);
     if (!kunde) { setValE(["Bitte einen Kunden auswählen oder neu anlegen"]); window.scrollTo({ top: 0, behavior: "smooth" }); return; }
-    const d = new Date().toISOString().split("T")[0]; const fdt = new Date(); fdt.setDate(fdt.getDate() + ziel);
+    const cleanPos = pos.filter(p => p.beschreibung.trim() !== "");
+    const fdt = new Date(datum); fdt.setDate(fdt.getDate() + ziel);
     const r2 = (v: number) => Math.round(v * 100) / 100;
-    const re = { id: uid(), nummer: nextNr, typ, datum: d, faelligDatum: fdt.toISOString().split("T")[0], kundeId: kunde.id, kundeName: kunde.name, kundeAdresse: `${kunde.strasse}, ${kunde.plz} ${kunde.ort}`, kundeEmail: kunde.email || "", positionen: pos, netto: r2(nettoNR), mwst: r2(mwstB), gesamt: r2(brutto), zahlungsziel: ziel, notiz, status: typ === "angebot" ? "angebot" : "offen", gewerk: gw, rabatt, zeitraumVon: zvon, zeitraumBis: zbis };
+    const kundeAdresse = [kunde.strasse, [kunde.plz, kunde.ort].filter(Boolean).join(" ")].filter(Boolean).join(", ");
+    const cleanNetto = cleanPos.reduce((s, p) => s + p.menge * p.preis, 0);
+    const cleanRabattB = cleanNetto * rabatt / 100;
+    const cleanMwstB = cleanPos.reduce((s, p) => s + p.menge * p.preis * (1 - rabatt / 100) * p.mwst / 100, 0);
+    const cleanBrutto = cleanNetto - cleanRabattB + cleanMwstB;
+    const newStatus = editRechnung ? editRechnung.status : (typ === "angebot" ? "angebot" : "offen");
+    const re = { id: uid(), nummer: typ === "angebot" ? nextAnNr : nextNr, typ, datum, faelligDatum: fdt.toISOString().split("T")[0], kundeId: kunde.id, kundeName: kunde.name, kundeAdresse, kundeEmail: kunde.email || "", positionen: cleanPos, netto: r2(cleanNetto - cleanRabattB), mwst: r2(cleanMwstB), gesamt: r2(cleanBrutto), zahlungsziel: ziel, notiz, status: newStatus, gewerk: gw, rabatt, zeitraumVon: zvon, zeitraumBis: zbis };
     const errs = validateRechnung(re, firma); if (errs.length > 0) { setValE(errs); window.scrollTo({ top: 0, behavior: "smooth" }); return; }
     setSaving(true);
     if (editRechnung) {
@@ -1471,22 +1516,54 @@ function NeueRechnung({ firma, kunden, addKu, addRe, updRe, nextNr, nav, plan: _
   return (
     <div className="p-6 px-7 max-md:p-4 animate-fade-in">
       <div className="flex justify-between items-start mb-6 flex-wrap gap-2.5">
-        <div><h1 className="text-xl font-bold tracking-tight">{editRechnung ? "Rechnung bearbeiten" : typ === "angebot" ? "Neues Angebot" : "Neue Rechnung"}</h1><p className="text-[13px] text-slate-500 mt-1">Nr. {editRechnung ? editRechnung.nummer : nextNr}</p></div>
+        <div><h1 className="text-xl font-bold tracking-tight">{editRechnung ? "Rechnung bearbeiten" : typ === "angebot" ? "Neues Angebot" : "Neue Rechnung"}</h1><p className="text-[13px] text-slate-500 mt-1">Nr. {editRechnung ? editRechnung.nummer : (typ === "angebot" ? nextAnNr : nextNr)}</p></div>
         <div className="flex bg-white/[0.04] rounded-xl p-0.5 border border-white/[0.06]">
           <button className={`px-3.5 py-1.5 border-none rounded-lg text-[12px] cursor-pointer font-medium transition-all ${typ === "rechnung" ? "bg-white/[0.08] text-white" : "bg-transparent text-slate-500 hover:text-slate-300"}`} onClick={() => setTyp("rechnung")}>Rechnung</button>
           <button className={`px-3.5 py-1.5 border-none rounded-lg text-[12px] cursor-pointer font-medium transition-all ${typ === "angebot" ? "bg-white/[0.08] text-white" : "bg-transparent text-slate-500 hover:text-slate-300"}`} onClick={() => setTyp("angebot")}>Angebot</button>
         </div>
       </div>
-      {valE.length > 0 && <div className="flex items-start gap-2.5 px-4 py-3 bg-danger-500/[0.06] border border-danger-500/15 rounded-xl mb-4 text-[13px] text-danger-400">{IC.alert}<div><strong>Fehler:</strong> {valE.join(", ")}</div></div>}
+      {valE.length > 0 && <div key={valE.join()} className="animate-error-shake flex items-start gap-3 px-4 py-4 bg-danger-500/[0.1] border-2 border-danger-500/50 rounded-xl mb-5 shadow-[0_0_24px_rgba(239,68,68,0.12)]"><div className="flex items-center justify-center w-9 h-9 rounded-xl bg-danger-500/20 shrink-0 text-danger-400 text-lg">{IC.alert}</div><div><p className="text-[13px] font-bold text-danger-300 mb-1.5">Bitte überprüfe folgende Felder:</p><ul className="flex flex-col gap-1">{valE.map((e, i) => <li key={i} className="flex items-start gap-1.5 text-[13px] text-danger-400"><span className="shrink-0 mt-px">•</span>{e}</li>)}</ul></div></div>}
       <div className="grid grid-cols-[1fr_300px] max-md:grid-cols-1 gap-5">
         <div className="flex flex-col gap-3">
-          <div className="bg-[#0a0a1a]/80 rounded-2xl p-4 border border-white/[0.06]"><label className="text-[11px] font-semibold text-slate-400 mb-1.5 block tracking-wide">Branche</label><select className={sel} value={gw} onChange={e => { setGw(e.target.value); setShowV(false); }}><option value="">–</option>{Object.entries(BRANCHEN_KATEGORIEN).map(([kat, branchen]) => <optgroup key={kat} label={kat}>{branchen.map(b => <option key={b} value={b}>{b}</option>)}</optgroup>)}</select></div>
-          <div className="bg-[#0a0a1a]/80 rounded-2xl p-4 border border-white/[0.06]"><label className="text-[11px] font-semibold text-slate-400 mb-1.5 block tracking-wide">Leistungszeitraum</label><div className="flex gap-2.5 items-center"><input type="date" className={`${inp} flex-1`} value={zvon} onChange={e => setZvon(e.target.value)} /><span className="text-[13px] text-slate-500">bis</span><input type="date" className={`${inp} flex-1`} value={zbis} onChange={e => setZbis(e.target.value)} /></div></div>
+          <div className="bg-[#0a0a1a]/80 rounded-2xl p-4 border border-white/[0.06]">
+            <label className="text-[11px] font-semibold text-slate-400 mb-1.5 block tracking-wide">Branche</label>
+            <select className={sel} value={sonstigesGw ? "__sonstiges__" : gw} onChange={e => { if (e.target.value === "__sonstiges__") { setSonstigesGw(true); setGw(""); } else { setSonstigesGw(false); setGw(e.target.value); } setShowV(false); }}>
+              <option value="">–</option>
+              {Object.entries(BRANCHEN_KATEGORIEN).map(([kat, branchen]) => <optgroup key={kat} label={kat}>{branchen.map(b => <option key={b} value={b}>{b}</option>)}</optgroup>)}
+              <option value="__sonstiges__">Sonstiges / Frei eingeben …</option>
+            </select>
+            {sonstigesGw && (
+              <input
+                type="text"
+                autoFocus
+                placeholder="Eigene Branche eingeben …"
+                className="mt-2 w-full py-2.5 px-3 bg-white/[0.04] border border-white/[0.08] rounded-xl text-slate-200 text-[13px] outline-none focus:border-brand-500/50 focus:bg-white/[0.06] transition-all duration-200 placeholder:text-slate-600"
+                value={gw}
+                onChange={e => { setGw(e.target.value); setShowV(false); }}
+              />
+            )}
+          </div>
+          <div className="bg-[#0a0a1a]/80 rounded-2xl p-4 border border-white/[0.06]">
+            <div className="flex gap-3 flex-wrap">
+              <div className="flex-1 min-w-[160px]"><label className="text-[11px] font-semibold text-slate-400 mb-1.5 block tracking-wide">Rechnungsdatum</label><input type="date" className={inp} value={datum} onChange={e => setDatum(e.target.value)} /></div>
+              <div className="flex-1 min-w-[220px]"><label className="text-[11px] font-semibold text-slate-400 mb-1.5 block tracking-wide">Leistungszeitraum</label><div className="flex gap-2.5 items-center"><input type="date" className={`${inp} flex-1`} value={zvon} onChange={e => setZvon(e.target.value)} /><span className="text-[13px] text-slate-500">–</span><input type="date" className={`${inp} flex-1`} value={zbis} onChange={e => setZbis(e.target.value)} /></div></div>
+            </div>
+          </div>
           <div className="bg-[#0a0a1a]/80 rounded-2xl p-4 border border-white/[0.06]"><label className="text-[11px] font-semibold text-slate-400 mb-1.5 block tracking-wide">Kunde</label>
-            {!showN ? <><div className="relative"><span className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-600 flex">{IC.search}</span><input className={`${inp} pl-[34px]`} placeholder="Suchen..." value={kS} onChange={e => setKS(e.target.value)} /></div>
-              {kS && fK.length > 0 && !selK && <div className="bg-white/[0.04] border border-white/[0.08] rounded-xl mt-1.5 max-h-[140px] overflow-y-auto">{fK.map(k => <button key={k.id} className="flex flex-col gap-px py-2 px-3 bg-transparent border-none text-slate-200 cursor-pointer w-full text-left border-b border-white/[0.04] text-[13px] hover:bg-white/[0.04] transition-colors" onClick={() => { setSelK(k); setKS(""); }}><strong>{k.name}</strong><span className="text-[11px] opacity-50">{k.plz} {k.ort}</span></button>)}</div>}
-              {selK && <div className="flex justify-between items-center bg-brand-500/[0.06] border border-brand-500/15 rounded-xl py-2.5 px-3 mt-1.5"><div><strong>{selK.name}</strong><br /><span className="text-[12px] text-slate-500">{selK.strasse}, {selK.plz} {selK.ort}</span></div><button className="bg-transparent border-none text-slate-500 cursor-pointer p-1 rounded-lg hover:bg-white/[0.05] transition-colors" onClick={() => setSelK(null)}>✕</button></div>}
-              <button className="bg-transparent border-none text-brand-400 text-[13px] cursor-pointer p-0 mt-1.5 font-medium hover:underline" onClick={() => setShowN(true)}>+ Neuer Kunde</button>
+            {!showN ? <>
+              {selK ? (
+                <div className="flex justify-between items-center bg-brand-500/[0.06] border border-brand-500/15 rounded-xl py-2.5 px-3">
+                  <div><strong className="text-[13px]">{selK.name}</strong><br /><span className="text-[12px] text-slate-500">{selK.strasse}{selK.strasse && selK.plz ? ", " : ""}{selK.plz} {selK.ort}</span></div>
+                  <button className="bg-transparent border-none text-brand-400 text-[12px] cursor-pointer px-2 py-1 rounded-lg hover:bg-white/[0.05] transition-colors font-medium" onClick={() => { setSelK(null); setKS(""); }}>Ändern</button>
+                </div>
+              ) : (
+                <>
+                  <div className="relative"><span className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-600 flex">{IC.search}</span><input className={`${inp} pl-[34px]`} placeholder="Suchen..." value={kS} onChange={e => setKS(e.target.value)} autoFocus={false} /></div>
+                  {kS && fK.length > 0 && <div className="bg-white/[0.04] border border-white/[0.08] rounded-xl mt-1.5 max-h-[140px] overflow-y-auto">{fK.map(k => <button key={k.id} className="flex flex-col gap-px py-2 px-3 bg-transparent border-none text-slate-200 cursor-pointer w-full text-left border-b border-white/[0.04] text-[13px] hover:bg-white/[0.04] transition-colors" onClick={() => { setSelK(k); setKS(""); }}><strong>{k.name}</strong><span className="text-[11px] opacity-50">{k.plz} {k.ort}</span></button>)}</div>}
+                  {kS && fK.length === 0 && <p className="text-[12px] text-slate-600 mt-1.5 px-1">Kein Ergebnis – <button className="bg-transparent border-none text-brand-400 text-[12px] cursor-pointer p-0 font-medium hover:underline" onClick={() => { setShowN(true); setNeuK(prev => ({ ...prev, name: kS })); }}>"{kS}" anlegen</button></p>}
+                </>
+              )}
+              {!selK && <button className="bg-transparent border-none text-brand-400 text-[13px] cursor-pointer p-0 mt-1.5 font-medium hover:underline" onClick={() => setShowN(true)}>+ Neuer Kunde</button>}
             </> : <div className="flex flex-col gap-2 mt-2">
               <input className={inp} placeholder="Name *" value={neuK.name} onChange={e => setNeuK({ ...neuK, name: e.target.value })} />
               <input className={inp} placeholder="Straße" value={neuK.strasse} onChange={e => setNeuK({ ...neuK, strasse: e.target.value })} />
@@ -1498,12 +1575,35 @@ function NeueRechnung({ firma, kunden, addKu, addRe, updRe, nextNr, nav, plan: _
           <div className="bg-[#0a0a1a]/80 rounded-2xl p-4 border border-white/[0.06]">
             <div className="flex justify-between items-center flex-wrap gap-1.5">
               <label className="text-[11px] font-semibold text-slate-400 tracking-wide">Positionen</label>
-              <div className="flex gap-2">{pos.length > 0 && <div className="text-[10px] text-slate-500 flex gap-2.5"><span>Arb: {fc(arbS)}</span><span>Mat: {fc(matS)}</span></div>}{gw && <button className="flex items-center gap-1.5 px-3 py-1.5 bg-gradient-to-r from-brand-600 to-purple-600 text-white border-none rounded-lg text-[11px] font-semibold cursor-pointer hover:shadow-[0_0_16px_rgba(99,102,241,0.3)] transition-all" onClick={() => setShowV(!showV)}>{IC.star} KI</button>}</div>
+              <div className="flex gap-2">{pos.length > 0 && <div className="text-[10px] text-slate-500 flex gap-2.5"><span>Arb: {fc(arbS)}</span><span>Mat: {fc(matS)}</span></div>}{gw && <button className="flex items-center gap-1.5 px-3 py-1.5 bg-gradient-to-r from-brand-600 to-purple-600 text-white border-none rounded-lg text-[11px] font-semibold cursor-pointer hover:shadow-[0_0_16px_rgba(99,102,241,0.3)] transition-all" onClick={() => setShowV(!showV)}>{IC.star} Vorschläge</button>}</div>
             </div>
-            {favoriten.length > 0 && <div className="bg-brand-500/[0.06] border border-brand-500/15 rounded-xl p-3 mt-2 mb-2"><div className="text-[10px] text-warning-500 font-bold uppercase tracking-[0.1em] mb-1.5">★ Favoriten</div><div className="flex flex-wrap gap-1.5">{favoriten.map((v, i) => <button key={i} className="flex flex-col gap-px py-1.5 px-2.5 bg-white/[0.04] border border-white/[0.06] rounded-lg text-slate-200 cursor-pointer text-[11px] text-left hover:border-brand-500/30 transition-all" onClick={() => addP(v)}><span className="text-[12px]">{v.beschreibung}</span><span className="opacity-40 text-[10px]">{fc(v.preis)}/{v.einheit}</span><span className="ml-1 text-[10px] text-warning-500" onClick={e => { e.stopPropagation(); delFav(v.id); }} title="Entfernen">✕</span></button>)}</div></div>}
-            {showV && gw && <div className="bg-brand-500/[0.06] border border-brand-500/15 rounded-xl p-3 mt-2"><div className="flex flex-wrap gap-1.5">{((GV as Record<string, { beschreibung: string; einheit: string; preis: number; typ: "arbeit" | "material" }[]>)[gw] || []).map((v, i) => <button key={i} className="flex flex-col gap-px py-1.5 px-2.5 bg-white/[0.04] border border-white/[0.06] rounded-lg text-slate-200 cursor-pointer text-[11px] text-left hover:border-brand-500/30 transition-all" onClick={() => addP(v)}><span className="text-[12px]">{v.beschreibung}</span><span className="opacity-40 text-[10px]">{fc(v.preis)}/{v.einheit}</span><span className="ml-1 text-[10px] text-slate-500" onClick={e => { e.stopPropagation(); addFav(v); }} title="Als Favorit speichern">★</span></button>)}</div></div>}
-            {pos.length > 0 && <div className="mt-3 overflow-x-auto"><div className="flex gap-1 py-1.5 px-1 text-[9px] font-semibold text-slate-500 uppercase tracking-[0.1em] border-b border-white/[0.06] min-w-[520px]"><span style={{ flex: 2.5 }}>Beschr.</span><span style={{ flex: .6 }}>Typ</span><span style={{ flex: .6 }}>Menge</span><span style={{ flex: .6 }}>Einh.</span><span style={{ flex: .7, textAlign: "right" }}>Preis</span><span style={{ flex: .5 }}>MwSt</span><span style={{ flex: .7, textAlign: "right" }}>Sum.</span><span className="w-6" /></div>
-              {pos.map(p => <div key={p.id} className="flex gap-1 items-center py-1 border-b border-white/[0.04] min-w-[520px]"><input className={posI} style={{ flex: 2.5 }} value={p.beschreibung} onChange={e => updP(p.id, "beschreibung", e.target.value)} /><select className={posI} style={{ flex: .6 }} value={p.typ} onChange={e => updP(p.id, "typ", e.target.value)}><option value="arbeit">Arb</option><option value="material">Mat</option></select><input className={`${posI} text-center`} style={{ flex: .6 }} type="number" min=".01" step=".01" value={p.menge} onChange={e => updP(p.id, "menge", parseFloat(e.target.value) || 0)} /><input className={`${posI} text-center`} style={{ flex: .6 }} value={p.einheit} onChange={e => updP(p.id, "einheit", e.target.value)} /><input className={`${posI} text-right`} style={{ flex: .7 }} type="number" min="0" step=".01" value={p.preis} onChange={e => updP(p.id, "preis", parseFloat(e.target.value) || 0)} /><select className={posI} style={{ flex: .5 }} value={p.mwst} onChange={e => updP(p.id, "mwst", parseInt(e.target.value))}><option value={19}>19</option><option value={7}>7</option><option value={0}>0</option></select><span style={{ flex: .7, textAlign: "right", fontWeight: 600, fontSize: 11 }}>{fc(p.menge * p.preis)}</span><button className="bg-transparent border-none text-slate-500 cursor-pointer p-1 rounded-lg hover:text-slate-300 transition-colors" onClick={() => rmP(p.id)}>{IC.trash}</button></div>)}
+            {favoriten.length > 0 && <div className="bg-brand-500/[0.06] border border-brand-500/15 rounded-xl p-3 mt-2 mb-2"><div className="text-[10px] text-warning-500 font-bold uppercase tracking-[0.1em] mb-1.5">★ Favoriten</div><div className="flex flex-wrap gap-1.5">{favoriten.map((v, i) => <div key={i} className="relative group/fav"><button className="flex flex-col gap-px py-1.5 pl-2.5 pr-6 bg-white/[0.04] border border-white/[0.06] rounded-lg text-slate-200 cursor-pointer text-[11px] text-left hover:border-brand-500/30 transition-all" onClick={() => addP(v)}><span className="text-[12px]">{v.beschreibung}</span><span className="opacity-40 text-[10px]">{fc(v.preis)}/{v.einheit}</span></button><button className="absolute top-1 right-1 w-4 h-4 flex items-center justify-center text-[10px] text-warning-500 hover:text-warning-300 bg-transparent border-none cursor-pointer opacity-0 group-hover/fav:opacity-100 transition-opacity" onClick={() => delFav(v.id)} title="Entfernen">✕</button></div>)}</div></div>}
+            {showV && gw && <div className="bg-brand-500/[0.06] border border-brand-500/15 rounded-xl p-3 mt-2"><div className="flex flex-wrap gap-1.5">{((GV as Record<string, { beschreibung: string; einheit: string; preis: number; typ: "arbeit" | "material" }[]>)[gw] || []).map((v, i) => <div key={i} className="relative group/sug"><button className="flex flex-col gap-px py-1.5 pl-2.5 pr-6 bg-white/[0.04] border border-white/[0.06] rounded-lg text-slate-200 cursor-pointer text-[11px] text-left hover:border-brand-500/30 transition-all" onClick={() => addP(v)}><span className="text-[12px]">{v.beschreibung}</span><span className="opacity-40 text-[10px]">{fc(v.preis)}/{v.einheit}</span></button><button className="absolute top-1 right-1 w-4 h-4 flex items-center justify-center text-[10px] text-slate-500 hover:text-warning-400 bg-transparent border-none cursor-pointer opacity-0 group-hover/sug:opacity-100 transition-opacity" onClick={() => addFav(v)} title="Als Favorit speichern">★</button></div>)}</div></div>}
+            {pos.length > 0 && <div className="mt-3">
+              {/* Mobile: Card-Layout */}
+              <div className="flex flex-col gap-2 md:hidden">
+                {pos.map((p, idx) => <div key={p.id} className="bg-white/[0.03] border border-white/[0.06] rounded-xl p-3 flex flex-col gap-2">
+                  <div className="flex items-center gap-2">
+                    <span className="text-[10px] font-bold text-slate-600 shrink-0 w-4 text-center">{idx + 1}</span>
+                    <input className={`${posI} flex-1`} placeholder="Beschreibung" value={p.beschreibung} onChange={e => updP(p.id, "beschreibung", e.target.value)} />
+                    <button className="bg-transparent border-none text-slate-600 cursor-pointer p-1 rounded-lg hover:text-slate-300 transition-colors shrink-0" onClick={() => rmP(p.id)}>{IC.trash}</button>
+                  </div>
+                  <div className="flex gap-1.5">
+                    <div className="flex flex-col gap-1 flex-1"><span className="text-[9px] font-semibold text-slate-600 uppercase tracking-wide">Typ</span><select className={`${posI} w-full`} value={p.typ} onChange={e => updP(p.id, "typ", e.target.value)}><option value="arbeit">Arbeit</option><option value="material">Material</option></select></div>
+                    <div className="flex flex-col gap-1 flex-1"><span className="text-[9px] font-semibold text-slate-600 uppercase tracking-wide">Menge</span><input className={`${posI} text-center w-full`} type="number" min=".01" step=".01" value={p.menge} onChange={e => updP(p.id, "menge", parseFloat(e.target.value) || 0)} /></div>
+                    <div className="flex flex-col gap-1 flex-1"><span className="text-[9px] font-semibold text-slate-600 uppercase tracking-wide">Einheit</span><input className={`${posI} text-center w-full`} value={p.einheit} onChange={e => updP(p.id, "einheit", e.target.value)} /></div>
+                  </div>
+                  <div className="flex gap-1.5 items-end">
+                    <div className="flex flex-col gap-1 flex-1"><span className="text-[9px] font-semibold text-slate-600 uppercase tracking-wide">Preis (€)</span><input className={`${posI} text-right w-full`} type="number" min="0" step=".01" value={p.preis} onChange={e => updP(p.id, "preis", parseFloat(e.target.value) || 0)} /></div>
+                    <div className="flex flex-col gap-1 flex-1"><span className="text-[9px] font-semibold text-slate-600 uppercase tracking-wide">MwSt</span><select className={`${posI} w-full`} value={p.mwst} onChange={e => updP(p.id, "mwst", parseInt(e.target.value))}><option value={19}>19%</option><option value={7}>7%</option><option value={0}>0%</option></select></div>
+                    <div className="flex flex-col gap-1 flex-1 items-end"><span className="text-[9px] font-semibold text-slate-600 uppercase tracking-wide">Summe</span><span className="py-[6px] text-[12px] font-bold text-brand-400">{fc(p.menge * p.preis)}</span></div>
+                  </div>
+                </div>)}
+              </div>
+              {/* Desktop: Tabellen-Layout */}
+              <div className="hidden md:block overflow-x-auto"><div className="flex gap-1 py-1.5 px-1 text-[9px] font-semibold text-slate-500 uppercase tracking-[0.1em] border-b border-white/[0.06]"><span style={{ flex: 2.5 }}>Beschr.</span><span style={{ flex: .6 }}>Typ</span><span style={{ flex: .6 }}>Menge</span><span style={{ flex: .6 }}>Einh.</span><span style={{ flex: .7, textAlign: "right" }}>Preis</span><span style={{ flex: .5 }}>MwSt</span><span style={{ flex: .7, textAlign: "right" }}>Sum.</span><span className="w-6" /></div>
+                {pos.map(p => <div key={p.id} className="flex gap-1 items-center py-1 border-b border-white/[0.04]"><input className={posI} style={{ flex: 2.5 }} value={p.beschreibung} onChange={e => updP(p.id, "beschreibung", e.target.value)} /><select className={posI} style={{ flex: .6 }} value={p.typ} onChange={e => updP(p.id, "typ", e.target.value)}><option value="arbeit">Arb</option><option value="material">Mat</option></select><input className={`${posI} text-center`} style={{ flex: .6 }} type="number" min=".01" step=".01" value={p.menge} onChange={e => updP(p.id, "menge", parseFloat(e.target.value) || 0)} /><input className={`${posI} text-center`} style={{ flex: .6 }} value={p.einheit} onChange={e => updP(p.id, "einheit", e.target.value)} /><input className={`${posI} text-right`} style={{ flex: .7 }} type="number" min="0" step=".01" value={p.preis} onChange={e => updP(p.id, "preis", parseFloat(e.target.value) || 0)} /><select className={posI} style={{ flex: .5 }} value={p.mwst} onChange={e => updP(p.id, "mwst", parseInt(e.target.value))}><option value={19}>19</option><option value={7}>7</option><option value={0}>0</option></select><span style={{ flex: .7, textAlign: "right", fontWeight: 600, fontSize: 11 }}>{fc(p.menge * p.preis)}</span><button className="bg-transparent border-none text-slate-500 cursor-pointer p-1 rounded-lg hover:text-slate-300 transition-colors" onClick={() => rmP(p.id)}>{IC.trash}</button></div>)}
+              </div>
             </div>}
             <button className="flex items-center gap-1.5 py-2.5 bg-transparent border-2 border-dashed border-white/[0.08] rounded-xl text-slate-500 text-[13px] cursor-pointer w-full justify-center mt-2 hover:border-white/[0.15] hover:text-slate-300 transition-all" onClick={() => addP({ beschreibung: "", einheit: "Stk", preis: 0, typ: "arbeit" })}>{IC.plus} Position</button>
           </div>
@@ -1512,8 +1612,8 @@ function NeueRechnung({ firma, kunden, addKu, addRe, updRe, nextNr, nav, plan: _
         <div className="sticky top-6 self-start max-md:static">
           <div className="bg-[#0a0a1a]/80 rounded-2xl p-5 border border-white/[0.06]">
             <h3 className="text-[14px] font-bold mb-3">Zusammenfassung</h3>
-            <div className="flex justify-between items-center py-1.5 text-[13px]"><span className="text-slate-400">Nr.</span><span className="font-mono text-[11px]">{nextNr}</span></div>
-            <div className="flex justify-between items-center py-1.5 text-[13px]"><span className="text-slate-400">Ziel</span><select className="bg-white/[0.04] border border-white/[0.06] rounded-lg text-slate-200 text-[11px] py-1 px-2 cursor-pointer" value={ziel} onChange={e => setZiel(parseInt(e.target.value))}><option value={7}>7d</option><option value={14}>14d</option><option value={30}>30d</option></select></div>
+            <div className="flex justify-between items-center py-1.5 text-[13px]"><span className="text-slate-400">Nr.</span><span className="font-mono text-[11px]">{editRechnung ? editRechnung.nummer : (typ === "angebot" ? nextAnNr : nextNr)}</span></div>
+            <div className="flex justify-between items-center py-1.5 text-[13px]"><span className="text-slate-400">Ziel</span><div className="flex items-center gap-1"><input type="number" min={1} max={365} className="bg-white/[0.04] border border-white/[0.06] rounded-lg text-slate-200 text-[11px] py-1 px-2 w-14 text-center outline-none focus:border-brand-500/50 transition-colors" value={ziel} onChange={e => setZiel(Math.max(1, parseInt(e.target.value) || 14))} /><span className="text-[11px] text-slate-500">Tage</span></div></div>
             <div className="border-t border-white/[0.06] my-2.5" />
             {arbS > 0 && <div className="flex justify-between items-center py-1 text-[12px] text-slate-400"><span>Arbeit</span><span>{fc(arbS)}</span></div>}
             {matS > 0 && <div className="flex justify-between items-center py-1 text-[12px] text-slate-400"><span>Material</span><span>{fc(matS)}</span></div>}
@@ -1521,8 +1621,21 @@ function NeueRechnung({ firma, kunden, addKu, addRe, updRe, nextNr, nav, plan: _
             {rabatt > 0 && <div className="flex justify-between items-center py-1.5 text-[13px] text-danger-400"><span>-{rabatt}%</span><span>-{fc(rabattB)}</span></div>}
             <div className="flex justify-between items-center py-1.5 text-[13px]"><span>MwSt</span><span>{fc(mwstB)}</span></div>
             <div className="flex justify-between items-center py-2 text-[18px] font-extrabold text-brand-400 pt-3 border-t border-white/[0.06] mt-1.5"><span>Brutto</span><span>{fc(brutto)}</span></div>
-            {valE.length > 0 && <div className="flex items-start gap-2 mt-3 px-3 py-2.5 bg-danger-500/[0.08] border border-danger-500/20 rounded-xl text-[12px] text-danger-400"><span className="flex shrink-0 mt-0.5">{IC.alert}</span><span>{valE.join(", ")}</span></div>}
-            <button className="flex items-center gap-1.5 w-full justify-center mt-4 px-4 py-2.5 bg-gradient-to-r from-brand-600 to-brand-500 text-white border-none rounded-xl text-[13px] font-semibold cursor-pointer hover:shadow-[0_0_24px_rgba(99,102,241,0.3)] hover:translate-y-[-1px] transition-all duration-200" style={{ opacity: (pos.length === 0 || (!selK && !neuK.name)) ? .4 : 1 }} disabled={pos.length === 0 || (!selK && !neuK.name) || saving} onClick={doSave}>{saving ? "..." : editRechnung ? "Speichern" : "Erstellen"}</button>
+            {valE.length > 0 && <div key={valE.join()} className="animate-error-shake flex items-start gap-2 mt-3 px-3 py-3 bg-danger-500/[0.12] border-2 border-danger-500/50 rounded-xl text-[12px] text-danger-300 shadow-[0_0_16px_rgba(239,68,68,0.1)]"><span className="flex shrink-0 mt-0.5 text-danger-400">{IC.alert}</span><ul className="flex flex-col gap-0.5">{valE.map((e, i) => <li key={i}>• {e}</li>)}</ul></div>}
+            {pos.filter(p => p.beschreibung.trim()).length > 0 && firma && (
+              <button className="flex items-center gap-1.5 w-full justify-center mt-3 px-4 py-2 bg-white/[0.04] text-slate-400 border border-white/[0.08] rounded-xl text-[12px] font-medium cursor-pointer hover:bg-white/[0.07] hover:text-slate-200 transition-all duration-200" onClick={() => {
+                const previewKunde = selK || (neuK.name ? { id: "", ...neuK } as Kunde : null);
+                if (!previewKunde || !firma) return;
+                const kundeAdresse = [previewKunde.strasse, [previewKunde.plz, previewKunde.ort].filter(Boolean).join(" ")].filter(Boolean).join(", ");
+                const cleanPos = pos.filter(p => p.beschreibung.trim() !== "");
+                const pNetto = cleanPos.reduce((s, p) => s + p.menge * p.preis, 0);
+                const pRabattB = pNetto * rabatt / 100;
+                const pMwstB = cleanPos.reduce((s, p) => s + p.menge * p.preis * (1 - rabatt / 100) * p.mwst / 100, 0);
+                const preRe: Rechnung = { id: "preview", nummer: nextNr, typ, datum, faelligDatum: "", kundeId: previewKunde.id, kundeName: previewKunde.name, kundeAdresse, kundeEmail: "", positionen: cleanPos, netto: pNetto - pRabattB, mwst: pMwstB, gesamt: pNetto - pRabattB + pMwstB, zahlungsziel: ziel, notiz, status: "offen", gewerk: gw, rabatt, zeitraumVon: zvon, zeitraumBis: zbis };
+                openAsPdf(generatePdfHtml(preRe, firma));
+              }}>{IC.eye} Vorschau</button>
+            )}
+            <button className="flex items-center gap-1.5 w-full justify-center mt-2 px-4 py-2.5 bg-gradient-to-r from-brand-600 to-brand-500 text-white border-none rounded-xl text-[13px] font-semibold cursor-pointer hover:shadow-[0_0_24px_rgba(99,102,241,0.3)] hover:translate-y-[-1px] transition-all duration-200" style={{ opacity: (pos.length === 0 || (!selK && !neuK.name)) ? .4 : 1 }} disabled={pos.length === 0 || (!selK && !neuK.name) || saving} onClick={doSave}>{saving ? "..." : editRechnung ? "Speichern" : "Erstellen"}</button>
           </div>
         </div>
       </div>
@@ -1531,9 +1644,10 @@ function NeueRechnung({ firma, kunden, addKu, addRe, updRe, nextNr, nav, plan: _
 }
 
 // ═══ RECHNUNGEN MIT PDF ═══
-function RechnungenListe({ rechnungen, updRe, delRe, nav, dupRe, firma, onEdit, initialSearch = "", showT }: { rechnungen: Rechnung[]; updRe: (id: string, up: Partial<Rechnung>) => void; delRe: (id: string) => void; nav: (pg: string) => void; dupRe: (r: Rechnung) => Promise<void>; firma: Firma | null; onEdit: (r: Rechnung) => void; initialSearch?: string; showT: (msg: string) => void }) {
+function RechnungenListe({ rechnungen, updRe, delRe, nav, dupRe, firma, onEdit, initialSearch = "", showT, nxtNr }: { rechnungen: Rechnung[]; updRe: (id: string, up: Partial<Rechnung>) => void; delRe: (id: string) => void; nav: (pg: string) => void; dupRe: (r: Rechnung) => Promise<void>; firma: Firma | null; onEdit: (r: Rechnung) => void; initialSearch?: string; showT: (msg: string) => void; nxtNr: () => string }) {
   const [filter, setFilter] = useState("alle"); const [search, setSearch] = useState(initialSearch);
   const [mahnM, setMahnM] = useState<Rechnung | null>(null); const [mahnS, setMahnS] = useState(1);
+  const [bezahltConfirm, setBezahltConfirm] = useState<Rechnung | null>(null);
   const [stornierConfirm, setStornierConfirm] = useState<Rechnung | null>(null);
   const [deleteConfirm, setDeleteConfirm] = useState<Rechnung | null>(null);
   const [emailM, setEmailM] = useState<Rechnung | null>(null);
@@ -1598,9 +1712,9 @@ function RechnungenListe({ rechnungen, updRe, delRe, nav, dupRe, firma, onEdit, 
   const fl = rechnungen.filter(r => filter === "alle" || r.status === filter).filter(r => r.kundeName?.toLowerCase().includes(search.toLowerCase()) || r.nummer?.includes(search)).sort((a, b) => new Date(b.datum).getTime() - new Date(a.datum).getTime());
   const exportDatev = () => { const csv = datevCSV(rechnungen); const b = new Blob([csv], { type: "text/csv" }); const a = document.createElement("a"); a.href = URL.createObjectURL(b); a.download = `DATEV_${new Date().toISOString().split("T")[0]}.csv`; a.click(); };
 
-  const sbtn = "flex items-center gap-1.5 px-3 py-1.5 bg-white/[0.05] text-slate-300 border border-white/[0.08] rounded-lg text-[11px] cursor-pointer whitespace-nowrap hover:bg-white/[0.08] transition-all font-medium";
-  const sbtnG = "flex items-center gap-1.5 px-3 py-1.5 bg-success-500/10 text-success-400 border border-success-500/20 rounded-lg text-[11px] cursor-pointer whitespace-nowrap font-medium hover:bg-success-500/15 transition-all";
-  const dbtn = "px-2.5 py-1.5 bg-danger-500/10 text-danger-400 border border-danger-500/20 rounded-lg text-[11px] cursor-pointer font-medium hover:bg-danger-500/15 transition-all";
+  const sbtn = "flex items-center gap-1.5 px-3 py-2 bg-white/[0.05] text-slate-300 border border-white/[0.08] rounded-lg text-[11px] cursor-pointer whitespace-nowrap hover:bg-white/[0.08] transition-all font-medium";
+  const sbtnG = "flex items-center gap-1.5 px-3 py-2 bg-success-500/10 text-success-400 border border-success-500/20 rounded-lg text-[11px] cursor-pointer whitespace-nowrap font-medium hover:bg-success-500/15 transition-all";
+  const dbtn = "px-2.5 py-2 bg-danger-500/10 text-danger-400 border border-danger-500/20 rounded-lg text-[11px] cursor-pointer font-medium hover:bg-danger-500/15 transition-all";
   const inp = "w-full py-2.5 px-3 bg-white/[0.04] border border-white/[0.08] rounded-xl text-slate-200 text-[13px] outline-none focus:border-brand-500/50 focus:bg-white/[0.06] transition-all duration-200 placeholder:text-slate-600";
 
   return (
@@ -1628,9 +1742,9 @@ function RechnungenListe({ rechnungen, updRe, delRe, nav, dupRe, firma, onEdit, 
             <span className="flex gap-1.5 justify-end flex-wrap max-md:w-full" style={{ flex: 2 }}>
               {firma && <button className="flex items-center gap-1 px-2.5 py-1.5 bg-brand-500/10 text-brand-300 border border-brand-500/20 rounded-lg text-[11px] cursor-pointer whitespace-nowrap font-medium hover:bg-brand-500/15 transition-all" onClick={() => downloadPdf(r, firma)}>{IC.pdf} PDF</button>}
               {firma && <button className="flex items-center gap-1 px-2.5 py-1.5 bg-cyan-500/10 text-cyan-300 border border-cyan-500/20 rounded-lg text-[11px] cursor-pointer whitespace-nowrap font-medium hover:bg-cyan-500/15 transition-all" onClick={() => openEmailModal(r, "rechnung")} title="Per E-Mail senden">{IC.mail}</button>}
-              {r.status === "offen" && <button className={sbtnG} onClick={() => updRe(r.id, { status: "bezahlt" })}>{IC.check}</button>}
+              {r.status === "offen" && <button className={sbtnG} onClick={() => setBezahltConfirm(r)} title="Als bezahlt markieren">{IC.check} Bezahlt</button>}
               {(r.status === "offen" || r.status === "gemahnt") && firma && <button className={sbtn} onClick={() => { setMahnM(r); setMahnS(r.mahnstufe ? Math.min(r.mahnstufe + 1, 3) : (r.status === "gemahnt" ? 2 : 1)); }} title="Mahnung erstellen">🔔</button>}
-              {r.status === "angebot" && <button className={sbtnG} onClick={() => updRe(r.id, { status: "offen", typ: "rechnung" })}>→RE</button>}
+              {r.status === "angebot" && <button className={sbtnG} onClick={() => updRe(r.id, { status: "offen", typ: "rechnung", nummer: nxtNr() })}>→RE</button>}
               {r.status !== "storniert" && <button className={sbtn} onClick={() => onEdit(r)} title="Bearbeiten">✏️</button>}
               <button className={sbtn} onClick={() => dupRe(r)}>{IC.copy}</button>
               {r.status !== "storniert" && r.status !== "bezahlt" && <button className={dbtn} onClick={() => setStornierConfirm(r)}>Storno</button>}
@@ -1638,26 +1752,29 @@ function RechnungenListe({ rechnungen, updRe, delRe, nav, dupRe, firma, onEdit, 
             </span>
           </div>)}</div>}
 
-      {mahnM && firma && <div className="fixed inset-0 bg-black/70 backdrop-blur-sm flex items-center justify-center z-[1000] p-4" onClick={() => setMahnM(null)}><div className="bg-[#0f0f1a] border border-white/[0.08] rounded-2xl max-w-[560px] w-full max-h-[90vh] overflow-y-auto shadow-[0_24px_80px_rgba(0,0,0,0.6)]" onClick={e => e.stopPropagation()}><div className="p-6"><h2 className="text-[16px] font-bold mb-3">Zahlungserinnerung</h2><div className="flex gap-1 mb-4 bg-white/[0.04] rounded-xl p-0.5 w-fit border border-white/[0.06]">{[1, 2, 3].map(s => <button key={s} className={`px-3 py-1.5 border-none rounded-lg text-[12px] cursor-pointer font-medium transition-all ${mahnS === s ? "bg-white/[0.08] text-white" : "bg-transparent text-slate-500"}`} onClick={() => setMahnS(s)}>{s}. Mahnung</button>)}</div><textarea className="w-full min-h-[180px] p-4 bg-white/[0.04] border border-white/[0.08] rounded-xl text-[13px] font-sans text-slate-200 resize-y outline-none" value={mahnung(mahnM, firma, mahnS)} readOnly /><div className="flex gap-2 mt-4 justify-end flex-wrap"><button className="flex items-center gap-1.5 px-3 py-1.5 bg-brand-500/10 text-brand-300 border border-brand-500/20 rounded-lg text-[11px] cursor-pointer font-medium" onClick={() => { openAsPdf(generateMahnungPdfHtml(mahnM, firma, mahnS)); updRe(mahnM.id, { status: "gemahnt", mahnstufe: mahnS }); setMahnM(null); }}>{IC.pdf} PDF</button><button className="flex items-center gap-1.5 px-3 py-1.5 bg-cyan-500/10 text-cyan-300 border border-cyan-500/20 rounded-lg text-[11px] cursor-pointer font-medium hover:bg-cyan-500/15 transition-all" onClick={() => { setMahnM(null); openEmailModal(mahnM, "mahnung", mahnS); }}>{IC.mail} Per E-Mail</button><button className="flex items-center gap-1.5 px-5 py-2.5 bg-gradient-to-r from-brand-600 to-brand-500 text-white border-none rounded-xl text-[13px] font-semibold cursor-pointer hover:shadow-[0_0_24px_rgba(99,102,241,0.3)] transition-all" onClick={() => { navigator.clipboard.writeText(mahnung(mahnM, firma, mahnS)); updRe(mahnM.id, { status: "gemahnt", mahnstufe: mahnS }); setMahnM(null); }}>Kopieren</button><button className={sbtn} onClick={() => setMahnM(null)}>Schließen</button></div></div></div></div>}
+      {mahnM && firma && <div className="fixed inset-0 bg-black/70 backdrop-blur-sm flex items-center justify-center z-[1000] p-4" onClick={() => setMahnM(null)}><div className="bg-[#0f0f1a] border border-white/[0.08] rounded-2xl max-w-[560px] w-full max-h-[90vh] overflow-y-auto shadow-[0_24px_80px_rgba(0,0,0,0.6)]" onClick={e => e.stopPropagation()}><div className="p-6 max-md:p-4"><div className="flex items-center justify-between mb-3"><h2 className="text-[16px] font-bold">Zahlungserinnerung</h2><button className="bg-transparent border-none text-slate-500 cursor-pointer p-1.5 rounded-lg hover:bg-white/[0.06] hover:text-slate-200 transition-colors" onClick={() => setMahnM(null)}>{IC.x}</button></div><div className="flex gap-1 mb-4 bg-white/[0.04] rounded-xl p-0.5 w-fit border border-white/[0.06]">{[1, 2, 3].map(s => <button key={s} className={`px-3 py-1.5 border-none rounded-lg text-[12px] cursor-pointer font-medium transition-all ${mahnS === s ? "bg-white/[0.08] text-white" : "bg-transparent text-slate-500"}`} onClick={() => setMahnS(s)}>{s}. Mahnung</button>)}</div><textarea className="w-full min-h-[180px] p-4 bg-white/[0.04] border border-white/[0.08] rounded-xl text-[13px] font-sans text-slate-200 resize-y outline-none" value={mahnung(mahnM, firma, mahnS)} readOnly /><div className="flex gap-2 mt-4 justify-end flex-wrap"><button className="flex items-center gap-1.5 px-3 py-1.5 bg-brand-500/10 text-brand-300 border border-brand-500/20 rounded-lg text-[11px] cursor-pointer font-medium" onClick={() => { openAsPdf(generateMahnungPdfHtml(mahnM, firma, mahnS)); setMahnM(null); }}>{IC.pdf} PDF</button><button className="flex items-center gap-1.5 px-3 py-1.5 bg-cyan-500/10 text-cyan-300 border border-cyan-500/20 rounded-lg text-[11px] cursor-pointer font-medium hover:bg-cyan-500/15 transition-all" onClick={() => { setMahnM(null); openEmailModal(mahnM, "mahnung", mahnS); }}>{IC.mail} Per E-Mail</button><button className="flex items-center gap-1.5 px-5 py-2.5 bg-gradient-to-r from-brand-600 to-brand-500 text-white border-none rounded-xl text-[13px] font-semibold cursor-pointer hover:shadow-[0_0_24px_rgba(99,102,241,0.3)] transition-all" onClick={() => { navigator.clipboard.writeText(mahnung(mahnM, firma, mahnS)); setMahnM(null); if (showT) showT("Text kopiert"); }}>Kopieren</button><button className={sbtn} onClick={() => setMahnM(null)}>Schließen</button></div></div></div></div>}
 
-      {stornierConfirm && <div className="fixed inset-0 bg-black/70 backdrop-blur-sm flex items-center justify-center z-[1000] p-4" onClick={() => setStornierConfirm(null)}><div className="bg-[#0f0f1a] border border-white/[0.08] rounded-2xl max-w-[400px] w-full max-h-[90vh] overflow-y-auto shadow-[0_24px_80px_rgba(0,0,0,0.6)]" onClick={e => e.stopPropagation()}><div className="p-6"><h2 className="text-[16px] font-bold mb-3">Rechnung stornieren?</h2><p className="text-[13px] text-slate-400 mb-5 leading-relaxed"><strong className="text-slate-200">{stornierConfirm.nummer}</strong> – {stornierConfirm.kundeName}<br />Betrag: {fc(stornierConfirm.gesamt)}<br /><br />Die Rechnung wird als storniert markiert und aus allen Auswertungen ausgeschlossen.</p><div className="flex gap-2 justify-end"><button className={dbtn} onClick={() => { updRe(stornierConfirm.id, { status: "storniert" }); setStornierConfirm(null); }}>Ja, stornieren</button><button className={sbtn} onClick={() => setStornierConfirm(null)}>Abbrechen</button></div></div></div></div>}
+      {bezahltConfirm && <div className="fixed inset-0 bg-black/70 backdrop-blur-sm flex items-center justify-center z-[1000] p-4" onClick={() => setBezahltConfirm(null)}><div className="bg-[#0f0f1a] border border-white/[0.08] rounded-2xl max-w-[400px] w-full shadow-[0_24px_80px_rgba(0,0,0,0.6)]" onClick={e => e.stopPropagation()}><div className="p-6"><div className="flex items-center justify-between mb-3"><h2 className="text-[16px] font-bold">Rechnung als bezahlt markieren?</h2><button className="bg-transparent border-none text-slate-500 cursor-pointer p-1.5 rounded-lg hover:bg-white/[0.06] transition-colors" onClick={() => setBezahltConfirm(null)}>{IC.x}</button></div><p className="text-[13px] text-slate-400 mb-5 leading-relaxed"><strong className="text-slate-200">{bezahltConfirm.nummer}</strong> – {bezahltConfirm.kundeName}<br />Betrag: <strong className="text-success-400">{fc(bezahltConfirm.gesamt)}</strong></p><div className="flex gap-2 justify-end"><button className={sbtnG} onClick={() => { updRe(bezahltConfirm.id, { status: "bezahlt" }); setBezahltConfirm(null); if (showT) showT("Als bezahlt markiert ✓"); }}>{IC.check} Ja, bezahlt</button><button className={sbtn} onClick={() => setBezahltConfirm(null)}>Abbrechen</button></div></div></div></div>}
 
-      {deleteConfirm && <div className="fixed inset-0 bg-black/70 backdrop-blur-sm flex items-center justify-center z-[1000] p-4" onClick={() => setDeleteConfirm(null)}><div className="bg-[#0f0f1a] border border-white/[0.08] rounded-2xl max-w-[400px] w-full max-h-[90vh] overflow-y-auto shadow-[0_24px_80px_rgba(0,0,0,0.6)]" onClick={e => e.stopPropagation()}><div className="p-6"><h2 className="text-[16px] font-bold mb-3">Rechnung endgültig löschen?</h2><p className="text-[13px] text-slate-400 mb-5 leading-relaxed"><strong className="text-slate-200">{deleteConfirm.nummer}</strong> – {deleteConfirm.kundeName}<br />Betrag: {fc(deleteConfirm.gesamt)}<br /><br /><span className="text-danger-400">Die Rechnung wird unwiderruflich gelöscht und kann nicht wiederhergestellt werden.</span></p><div className="flex gap-2 justify-end"><button className={dbtn} onClick={() => { delRe(deleteConfirm.id); setDeleteConfirm(null); }}>Endgültig löschen</button><button className={sbtn} onClick={() => setDeleteConfirm(null)}>Abbrechen</button></div></div></div></div>}
+      {stornierConfirm && <div className="fixed inset-0 bg-black/70 backdrop-blur-sm flex items-center justify-center z-[1000] p-4" onClick={() => setStornierConfirm(null)}><div className="bg-[#0f0f1a] border border-white/[0.08] rounded-2xl max-w-[400px] w-full max-h-[90vh] overflow-y-auto shadow-[0_24px_80px_rgba(0,0,0,0.6)]" onClick={e => e.stopPropagation()}><div className="p-6 max-md:p-4"><div className="flex items-center justify-between mb-3"><h2 className="text-[16px] font-bold">Rechnung stornieren?</h2><button className="bg-transparent border-none text-slate-500 cursor-pointer p-1.5 rounded-lg hover:bg-white/[0.06] hover:text-slate-200 transition-colors" onClick={() => setStornierConfirm(null)}>{IC.x}</button></div><p className="text-[13px] text-slate-400 mb-5 leading-relaxed"><strong className="text-slate-200">{stornierConfirm.nummer}</strong> – {stornierConfirm.kundeName}<br />Betrag: {fc(stornierConfirm.gesamt)}<br /><br />Die Rechnung wird als storniert markiert und aus allen Auswertungen ausgeschlossen.</p><div className="flex gap-2 justify-end"><button className={dbtn} onClick={() => { updRe(stornierConfirm.id, { status: "storniert" }); setStornierConfirm(null); }}>Ja, stornieren</button><button className={sbtn} onClick={() => setStornierConfirm(null)}>Abbrechen</button></div></div></div></div>}
+
+      {deleteConfirm && <div className="fixed inset-0 bg-black/70 backdrop-blur-sm flex items-center justify-center z-[1000] p-4" onClick={() => setDeleteConfirm(null)}><div className="bg-[#0f0f1a] border border-white/[0.08] rounded-2xl max-w-[400px] w-full max-h-[90vh] overflow-y-auto shadow-[0_24px_80px_rgba(0,0,0,0.6)]" onClick={e => e.stopPropagation()}><div className="p-6 max-md:p-4"><div className="flex items-center justify-between mb-3"><h2 className="text-[16px] font-bold">Rechnung endgültig löschen?</h2><button className="bg-transparent border-none text-slate-500 cursor-pointer p-1.5 rounded-lg hover:bg-white/[0.06] hover:text-slate-200 transition-colors" onClick={() => setDeleteConfirm(null)}>{IC.x}</button></div><p className="text-[13px] text-slate-400 mb-5 leading-relaxed"><strong className="text-slate-200">{deleteConfirm.nummer}</strong> – {deleteConfirm.kundeName}<br />Betrag: {fc(deleteConfirm.gesamt)}<br /><br /><span className="text-danger-400">Die Rechnung wird unwiderruflich gelöscht und kann nicht wiederhergestellt werden.</span></p><div className="flex gap-2 justify-end"><button className={dbtn} onClick={() => { delRe(deleteConfirm.id); setDeleteConfirm(null); }}>Endgültig löschen</button><button className={sbtn} onClick={() => setDeleteConfirm(null)}>Abbrechen</button></div></div></div></div>}
 
       {/* ── E-MAIL MODAL ── */}
       {emailM && firma && (
         <div className="fixed inset-0 bg-black/70 backdrop-blur-sm flex items-center justify-center z-[1000] p-4" onClick={() => !emailSending && setEmailM(null)}>
-          <div className="bg-[#0f0f1a] border border-white/[0.08] rounded-2xl max-w-[500px] w-full shadow-[0_24px_80px_rgba(0,0,0,0.6)]" onClick={e => e.stopPropagation()}>
-            <div className="p-6">
+          <div className="bg-[#0f0f1a] border border-white/[0.08] rounded-2xl max-w-[500px] w-full shadow-[0_24px_80px_rgba(0,0,0,0.6)] max-h-[90vh] overflow-y-auto" onClick={e => e.stopPropagation()}>
+            <div className="p-6 max-md:p-4">
               {/* Header */}
-              <div className="flex items-center gap-3 mb-5">
-                <div className="w-9 h-9 rounded-xl bg-cyan-500/10 border border-cyan-500/20 flex items-center justify-center text-cyan-400">{IC.mail}</div>
-                <div>
+              <div className="flex items-start gap-3 mb-5">
+                <div className="w-9 h-9 rounded-xl bg-cyan-500/10 border border-cyan-500/20 flex items-center justify-center text-cyan-400 shrink-0">{IC.mail}</div>
+                <div className="flex-1 min-w-0">
                   <h2 className="text-[16px] font-bold leading-tight">
                     {emailType === "mahnung" ? `${emailMahnS}. Mahnung per E-Mail` : emailM.typ === "angebot" ? "Angebot per E-Mail senden" : "Rechnung per E-Mail senden"}
                   </h2>
-                  <p className="text-[12px] text-slate-500 mt-0.5">{emailM.nummer} · {emailM.kundeName} · {fc(emailM.gesamt)}</p>
+                  <p className="text-[12px] text-slate-500 mt-0.5 truncate">{emailM.nummer} · {emailM.kundeName} · {fc(emailM.gesamt)}</p>
                 </div>
+                <button className="bg-transparent border-none text-slate-500 cursor-pointer p-1.5 rounded-lg hover:bg-white/[0.06] hover:text-slate-200 transition-colors shrink-0" onClick={() => !emailSending && setEmailM(null)}>{IC.x}</button>
               </div>
 
               {/* Typ-Wechsler (wenn Mahnung möglich) */}
@@ -1764,9 +1881,9 @@ function KundenListe({ kunden, rechnungen, updKu, delKu }: { kunden: Kunde[]; re
           </div>
         ); })}</div>}
 
-      {editK && <div className="fixed inset-0 bg-black/70 backdrop-blur-sm flex items-center justify-center z-[1000] p-4" onClick={() => setEditK(null)}><div className="bg-[#0f0f1a] border border-white/[0.08] rounded-2xl max-w-[440px] w-full max-h-[90vh] overflow-y-auto shadow-[0_24px_80px_rgba(0,0,0,0.6)]" onClick={e => e.stopPropagation()}><div className="p-6"><h2 className="text-[16px] font-bold mb-4">Kunde bearbeiten</h2><div className="flex flex-col gap-2.5"><input className={mInp} placeholder="Name *" value={editForm.name} onChange={e => setEditForm({ ...editForm, name: e.target.value })} /><input className={mInp} placeholder="Straße" value={editForm.strasse} onChange={e => setEditForm({ ...editForm, strasse: e.target.value })} /><div className="flex gap-2"><input className={`${mInp} !w-[100px]`} placeholder="PLZ" value={editForm.plz} onChange={e => setEditForm({ ...editForm, plz: e.target.value })} /><input className={`${mInp} flex-1`} placeholder="Ort" value={editForm.ort} onChange={e => setEditForm({ ...editForm, ort: e.target.value })} /></div><input className={mInp} placeholder="E-Mail" value={editForm.email} onChange={e => setEditForm({ ...editForm, email: e.target.value })} /><input className={mInp} placeholder="Telefon" value={editForm.telefon} onChange={e => setEditForm({ ...editForm, telefon: e.target.value })} /></div><div className="flex gap-2 mt-5 justify-end"><button className="flex items-center gap-1.5 px-5 py-2.5 bg-gradient-to-r from-brand-600 to-brand-500 text-white border-none rounded-xl text-[13px] font-semibold cursor-pointer hover:shadow-[0_0_24px_rgba(99,102,241,0.3)] transition-all" onClick={() => { if (!editForm.name) return; updKu(editK.id, editForm); setEditK(null); }}>Speichern</button><button className="flex items-center gap-1.5 px-3.5 py-2 bg-white/[0.05] text-slate-300 border border-white/[0.08] rounded-xl text-[12px] cursor-pointer font-medium hover:bg-white/[0.08] transition-all" onClick={() => setEditK(null)}>Abbrechen</button></div></div></div></div>}
+      {editK && <div className="fixed inset-0 bg-black/70 backdrop-blur-sm flex items-center justify-center z-[1000] p-4" onClick={() => setEditK(null)}><div className="bg-[#0f0f1a] border border-white/[0.08] rounded-2xl max-w-[440px] w-full max-h-[90vh] overflow-y-auto shadow-[0_24px_80px_rgba(0,0,0,0.6)]" onClick={e => e.stopPropagation()}><div className="p-6 max-md:p-4"><div className="flex items-center justify-between mb-4"><h2 className="text-[16px] font-bold">Kunde bearbeiten</h2><button className="bg-transparent border-none text-slate-500 cursor-pointer p-1.5 rounded-lg hover:bg-white/[0.06] hover:text-slate-200 transition-colors" onClick={() => setEditK(null)}>{IC.x}</button></div><div className="flex flex-col gap-2.5"><input className={mInp} placeholder="Name *" value={editForm.name} onChange={e => setEditForm({ ...editForm, name: e.target.value })} /><input className={mInp} placeholder="Straße" value={editForm.strasse} onChange={e => setEditForm({ ...editForm, strasse: e.target.value })} /><div className="flex gap-2"><input className={`${mInp} !w-[100px]`} placeholder="PLZ" value={editForm.plz} onChange={e => setEditForm({ ...editForm, plz: e.target.value })} /><input className={`${mInp} flex-1`} placeholder="Ort" value={editForm.ort} onChange={e => setEditForm({ ...editForm, ort: e.target.value })} /></div><input className={mInp} placeholder="E-Mail" value={editForm.email} onChange={e => setEditForm({ ...editForm, email: e.target.value })} /><input className={mInp} placeholder="Telefon" value={editForm.telefon} onChange={e => setEditForm({ ...editForm, telefon: e.target.value })} /></div><div className="flex gap-2 mt-5 justify-end"><button className="flex items-center gap-1.5 px-5 py-2.5 bg-gradient-to-r from-brand-600 to-brand-500 text-white border-none rounded-xl text-[13px] font-semibold cursor-pointer hover:shadow-[0_0_24px_rgba(99,102,241,0.3)] transition-all" onClick={() => { if (!editForm.name) return; updKu(editK.id, editForm); setEditK(null); }}>Speichern</button><button className="flex items-center gap-1.5 px-3.5 py-2 bg-white/[0.05] text-slate-300 border border-white/[0.08] rounded-xl text-[12px] cursor-pointer font-medium hover:bg-white/[0.08] transition-all" onClick={() => setEditK(null)}>Abbrechen</button></div></div></div></div>}
 
-      {delConfirm && <div className="fixed inset-0 bg-black/70 backdrop-blur-sm flex items-center justify-center z-[1000] p-4" onClick={() => setDelConfirm(null)}><div className="bg-[#0f0f1a] border border-white/[0.08] rounded-2xl max-w-[400px] w-full max-h-[90vh] overflow-y-auto shadow-[0_24px_80px_rgba(0,0,0,0.6)]" onClick={e => e.stopPropagation()}><div className="p-6"><h2 className="text-[16px] font-bold mb-3">Kunde löschen?</h2><p className="text-[13px] text-slate-400 mb-5 leading-relaxed"><strong className="text-slate-200">{delConfirm.name}</strong>{hasOpenRE(delConfirm.id) ? <><br /><span className="text-danger-400">Dieser Kunde hat noch offene Rechnungen!</span></> : ""}<br /><br />Alle Kundendaten werden gelöscht. Rechnungen bleiben erhalten.</p><div className="flex gap-2 justify-end"><button className="px-3 py-1.5 bg-danger-500/10 text-danger-400 border border-danger-500/20 rounded-lg text-[11px] cursor-pointer font-medium hover:bg-danger-500/15 transition-all" onClick={() => { delKu(delConfirm.id); setDelConfirm(null); }}>Löschen</button><button className="flex items-center gap-1.5 px-3.5 py-2 bg-white/[0.05] text-slate-300 border border-white/[0.08] rounded-xl text-[12px] cursor-pointer font-medium hover:bg-white/[0.08] transition-all" onClick={() => setDelConfirm(null)}>Abbrechen</button></div></div></div></div>}
+      {delConfirm && <div className="fixed inset-0 bg-black/70 backdrop-blur-sm flex items-center justify-center z-[1000] p-4" onClick={() => setDelConfirm(null)}><div className="bg-[#0f0f1a] border border-white/[0.08] rounded-2xl max-w-[400px] w-full max-h-[90vh] overflow-y-auto shadow-[0_24px_80px_rgba(0,0,0,0.6)]" onClick={e => e.stopPropagation()}><div className="p-6 max-md:p-4"><div className="flex items-center justify-between mb-3"><h2 className="text-[16px] font-bold">Kunde löschen?</h2><button className="bg-transparent border-none text-slate-500 cursor-pointer p-1.5 rounded-lg hover:bg-white/[0.06] hover:text-slate-200 transition-colors" onClick={() => setDelConfirm(null)}>{IC.x}</button></div><p className="text-[13px] text-slate-400 mb-5 leading-relaxed"><strong className="text-slate-200">{delConfirm.name}</strong>{hasOpenRE(delConfirm.id) ? <><br /><span className="text-danger-400">Dieser Kunde hat noch offene Rechnungen!</span></> : ""}<br /><br />Alle Kundendaten werden gelöscht. Rechnungen bleiben erhalten.</p><div className="flex gap-2 justify-end"><button className="px-3 py-1.5 bg-danger-500/10 text-danger-400 border border-danger-500/20 rounded-lg text-[11px] cursor-pointer font-medium hover:bg-danger-500/15 transition-all" onClick={() => { delKu(delConfirm.id); setDelConfirm(null); }}>Löschen</button><button className="flex items-center gap-1.5 px-3.5 py-2 bg-white/[0.05] text-slate-300 border border-white/[0.08] rounded-xl text-[12px] cursor-pointer font-medium hover:bg-white/[0.08] transition-all" onClick={() => setDelConfirm(null)}>Abbrechen</button></div></div></div></div>}
     </div>
   );
 }
@@ -1789,7 +1906,7 @@ function WiederkehrendPage({ wiederkehrend, addWdk, updWdk, delWdk, kunden, rech
   };
 
   const doAdd = () => {
-    if (!form.name || !form.kundeName) return;
+    if (!form.name || !form.kundeName || form.positionen.length === 0) return;
     addWdk(form); setShowForm(false); setForm(emptyForm); setSelK(null); setKS("");
   };
 
@@ -1810,7 +1927,7 @@ function WiederkehrendPage({ wiederkehrend, addWdk, updWdk, delWdk, kunden, rech
           <div><label className={lbl}>Aus vorhandener Rechnung übernehmen</label><select className={sel} onChange={e => e.target.value && calcFromRe(e.target.value)}><option value="">– Manuell eingeben –</option>{rechnungen.filter(r => r.status !== "storniert").map(r => <option key={r.id} value={r.id}>{r.nummer} – {r.kundeName} ({fc(r.gesamt)})</option>)}</select></div>
           <div><label className={lbl}>Kunde *</label>
             {!selK ? <><div className="relative"><span className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-600 flex">{IC.search}</span><input className={`${inp} pl-[34px]`} placeholder="Suchen..." value={kS} onChange={e => setKS(e.target.value)} /></div>
-              {kS && fK.length > 0 && <div className="bg-white/[0.04] border border-white/[0.08] rounded-xl mt-1.5 max-h-[140px] overflow-y-auto">{fK.map(k => <button key={k.id} className="flex flex-col gap-px py-2 px-3 bg-transparent border-none text-slate-200 cursor-pointer w-full text-left border-b border-white/[0.04] text-[13px] hover:bg-white/[0.04] transition-colors" onClick={() => { setSelK(k); setForm({...form, kundeId: k.id, kundeName: k.name, kundeAdresse: `${k.strasse || ""}, ${k.plz || ""} ${k.ort || ""}`, kundeEmail: k.email || ""}); setKS(""); }}><strong>{k.name}</strong></button>)}</div>}</>
+              {kS && fK.length > 0 && <div className="bg-white/[0.04] border border-white/[0.08] rounded-xl mt-1.5 max-h-[140px] overflow-y-auto">{fK.map(k => <button key={k.id} className="flex flex-col gap-px py-2 px-3 bg-transparent border-none text-slate-200 cursor-pointer w-full text-left border-b border-white/[0.04] text-[13px] hover:bg-white/[0.04] transition-colors" onClick={() => { setSelK(k); setForm({...form, kundeId: k.id, kundeName: k.name, kundeAdresse: [k.strasse, [k.plz, k.ort].filter(Boolean).join(" ")].filter(Boolean).join(", "), kundeEmail: k.email || ""}); setKS(""); }}><strong>{k.name}</strong></button>)}</div>}</>
               : <div className="flex justify-between items-center bg-brand-500/[0.06] border border-brand-500/15 rounded-xl py-2.5 px-3 mt-1.5"><div><strong>{selK.name}</strong></div><button className="bg-transparent border-none text-slate-500 cursor-pointer p-1 rounded-lg hover:bg-white/[0.05] transition-colors" onClick={() => { setSelK(null); setForm({...form, kundeId: "", kundeName: ""}); }}>✕</button></div>}
           </div>
           <div className="flex gap-3">
@@ -1818,18 +1935,21 @@ function WiederkehrendPage({ wiederkehrend, addWdk, updWdk, delWdk, kunden, rech
             <div className="flex-1"><label className={lbl}>Erste Fälligkeit</label><input type="date" className={inp} value={form.nextDue} onChange={e => setForm({...form, nextDue: e.target.value})} /></div>
           </div>
           {form.positionen.length > 0 && <div className="text-[13px] text-slate-400 py-2.5 px-3.5 bg-white/[0.03] rounded-xl border border-white/[0.06]">{form.positionen.length} Position(en) übernommen · {fc(form.gesamt)}</div>}
-          <div className="flex gap-2"><button className="flex items-center gap-1.5 px-5 py-2.5 bg-gradient-to-r from-brand-600 to-brand-500 text-white border-none rounded-xl text-[13px] font-semibold cursor-pointer hover:shadow-[0_0_24px_rgba(99,102,241,0.3)] transition-all" onClick={doAdd}>Speichern</button><button className="flex items-center gap-1.5 px-3.5 py-2 bg-white/[0.05] text-slate-300 border border-white/[0.08] rounded-xl text-[12px] cursor-pointer font-medium hover:bg-white/[0.08] transition-all" onClick={() => setShowForm(false)}>Abbrechen</button></div>
+          {form.positionen.length === 0 && form.kundeName && <p className="text-[12px] text-warning-500 -mt-1">Bitte Positionen über „Aus vorhandener Rechnung übernehmen" hinzufügen.</p>}
+          <div className="flex gap-2"><button className="flex items-center gap-1.5 px-5 py-2.5 bg-gradient-to-r from-brand-600 to-brand-500 text-white border-none rounded-xl text-[13px] font-semibold cursor-pointer hover:shadow-[0_0_24px_rgba(99,102,241,0.3)] transition-all disabled:opacity-40 disabled:cursor-not-allowed" disabled={!form.name || !form.kundeName || form.positionen.length === 0} onClick={doAdd}>Speichern</button><button className="flex items-center gap-1.5 px-3.5 py-2 bg-white/[0.05] text-slate-300 border border-white/[0.08] rounded-xl text-[12px] cursor-pointer font-medium hover:bg-white/[0.08] transition-all" onClick={() => setShowForm(false)}>Abbrechen</button></div>
         </div>
       </div>}
 
       {wiederkehrend.length === 0 && !showForm ? <div className="flex flex-col items-center justify-center py-12 text-center"><div className="w-12 h-12 rounded-xl bg-white/[0.04] border border-white/[0.06] flex items-center justify-center mb-3 text-2xl">🔄</div><h2 className="text-lg font-bold">Noch keine Vorlagen</h2><p className="text-[13px] text-slate-500 mt-2 max-w-[400px] leading-relaxed">Erstelle Vorlagen für Wartungsverträge, monatliche Retainer oder Abonnements.</p></div> :
         <div className="flex flex-col gap-3">
-          {wiederkehrend.map(w => <div key={w.id} className={`bg-[#0a0a1a]/80 rounded-2xl p-5 border border-white/[0.06] flex gap-3 items-center hover:border-white/[0.1] transition-all ${w.aktiv ? "" : "opacity-40"}`}>
-            <div className="flex-1"><div className="font-semibold text-[14px]">{w.name}</div><div className="text-[13px] text-slate-500 mt-0.5">{w.kundeName} · {intervals[w.interval]} · Nächste: {fd(w.nextDue)}</div></div>
-            <div className="font-extrabold text-[16px] whitespace-nowrap">{fc(w.gesamt)}</div>
-            <div className="flex gap-2">
-              <button className="flex items-center gap-1.5 px-3 py-1.5 bg-white/[0.05] text-slate-300 border border-white/[0.08] rounded-lg text-[11px] cursor-pointer font-medium hover:bg-white/[0.08] transition-all" onClick={() => updWdk(w.id, { aktiv: !w.aktiv })}>{w.aktiv ? "Pausieren" : "Aktivieren"}</button>
-              <button className="px-2.5 py-1.5 bg-danger-500/10 text-danger-400 border border-danger-500/20 rounded-lg text-[11px] cursor-pointer hover:bg-danger-500/15 transition-all" onClick={() => delWdk(w.id)}>{IC.trash}</button>
+          {wiederkehrend.map(w => <div key={w.id} className={`bg-[#0a0a1a]/80 rounded-2xl p-5 border border-white/[0.06] flex gap-3 items-center hover:border-white/[0.1] transition-all max-md:flex-wrap ${w.aktiv ? "" : "opacity-40"}`}>
+            <div className="flex-1 min-w-0"><div className="font-semibold text-[14px] truncate">{w.name}</div><div className="text-[13px] text-slate-500 mt-0.5">{w.kundeName} · {intervals[w.interval]} · Nächste: {fd(w.nextDue)}</div></div>
+            <div className="flex items-center gap-3 max-md:w-full max-md:justify-between">
+              <div className="font-extrabold text-[16px] whitespace-nowrap">{fc(w.gesamt)}</div>
+              <div className="flex gap-2">
+                <button className="flex items-center gap-1.5 px-3 py-2 bg-white/[0.05] text-slate-300 border border-white/[0.08] rounded-lg text-[11px] cursor-pointer font-medium hover:bg-white/[0.08] transition-all" onClick={() => updWdk(w.id, { aktiv: !w.aktiv })}>{w.aktiv ? "Pausieren" : "Aktivieren"}</button>
+                <button className="px-2.5 py-2 bg-danger-500/10 text-danger-400 border border-danger-500/20 rounded-lg text-[11px] cursor-pointer hover:bg-danger-500/15 transition-all" onClick={() => delWdk(w.id)}>{IC.trash}</button>
+              </div>
             </div>
           </div>)}
         </div>}
@@ -1864,8 +1984,10 @@ function SupabasePage() {
     <div className="p-6 px-7 max-md:p-4 animate-fade-in">
       <div className="flex justify-between items-start mb-6"><div><h1 className="text-xl font-bold tracking-tight">Backend-Integration</h1><p className="text-[13px] text-slate-500 mt-1">Supabase Setup für Produktion</p></div></div>
 
-      <div className="flex gap-0.5 bg-white/[0.04] rounded-xl p-0.5 mb-6 border border-white/[0.06] w-fit">
-        {[{ id: "intro", l: "Übersicht" }, { id: "sql", l: "1. SQL Schema" }, { id: "code", l: "2. JS Client" }, { id: "deploy", l: "3. Deployment" }].map(t => <button key={t.id} className={`px-3 py-1.5 border-none rounded-lg text-[12px] cursor-pointer font-medium transition-all ${tab === t.id ? "bg-white/[0.08] text-white" : "bg-transparent text-slate-500 hover:text-slate-300"}`} onClick={() => setTab(t.id)}>{t.l}</button>)}
+      <div className="overflow-x-auto mb-6 -mx-1 px-1">
+        <div className="flex gap-0.5 bg-white/[0.04] rounded-xl p-0.5 border border-white/[0.06] w-max">
+          {[{ id: "intro", l: "Übersicht" }, { id: "sql", l: "1. SQL Schema" }, { id: "code", l: "2. JS Client" }, { id: "deploy", l: "3. Deployment" }].map(t => <button key={t.id} className={`px-3 py-1.5 border-none rounded-lg text-[12px] cursor-pointer font-medium transition-all whitespace-nowrap ${tab === t.id ? "bg-white/[0.08] text-white" : "bg-transparent text-slate-500 hover:text-slate-300"}`} onClick={() => setTab(t.id)}>{t.l}</button>)}
+        </div>
       </div>
 
       {tab === "intro" && (
@@ -1950,13 +2072,13 @@ function SettingsPage({ firma, sf, rechnungen, kunden, sre, skn, favoriten, setF
             : <div className="w-[100px] h-[56px] rounded-xl border-2 border-dashed border-white/[0.1] flex items-center justify-center text-slate-600 cursor-pointer hover:border-brand-500/30 hover:bg-brand-500/[0.03] transition-all" onClick={() => fRef.current?.click()}>{IC.img}</div>}
           <button className={sbtn} onClick={() => fRef.current?.click()}>{form.logo ? "Ändern" : "Hochladen"}</button><input ref={fRef} type="file" accept="image/png,image/jpeg" className="hidden" onChange={handleLogo} /></div></div>
         <div className="bg-[#0a0a1a]/80 rounded-2xl p-4 border border-white/[0.06]"><h3 className="text-[14px] font-bold mb-3">Firmendaten</h3><div className="flex flex-col gap-2">
-          <div className="flex gap-[7px]"><FI l="Firma *" v={form.name} k="name" f={form} s={setForm} /><FI l="Inhaber" v={form.inhaber} k="inhaber" f={form} s={setForm} /></div>
+          <div className="flex gap-[7px] max-md:flex-col"><FI l="Firma *" v={form.name} k="name" f={form} s={setForm} /><FI l="Inhaber" v={form.inhaber} k="inhaber" f={form} s={setForm} /></div>
           <FI l="Straße *" v={form.strasse} k="strasse" f={form} s={setForm} />
           <div className="flex gap-[7px]"><FI l="PLZ *" v={form.plz} k="plz" f={form} s={setForm} w={100} /><FI l="Ort *" v={form.ort} k="ort" f={form} s={setForm} /></div>
-          <div className="flex gap-[7px]"><FI l="Tel" v={form.telefon} k="telefon" f={form} s={setForm} /><FI l="E-Mail" v={form.email} k="email" f={form} s={setForm} /></div>
+          <div className="flex gap-[7px] max-md:flex-col"><FI l="Tel" v={form.telefon} k="telefon" f={form} s={setForm} /><FI l="E-Mail" v={form.email} k="email" f={form} s={setForm} /></div>
         </div></div>
-        <div className="bg-[#0a0a1a]/80 rounded-2xl p-4 border border-white/[0.06]"><h3 className="text-[14px] font-bold mb-3">Steuern (§14 Pflicht)</h3><div className="flex gap-2 mb-2.5"><FI l="Steuernr." v={form.steuernr} k="steuernr" f={form} s={setForm} /><FI l="USt-ID" v={form.ustid} k="ustid" f={form} s={setForm} /></div><label className="flex items-center gap-2.5 cursor-pointer text-[13px]"><input type="checkbox" className="w-4 h-4 rounded accent-brand-500" checked={!!form.kleinunternehmer} onChange={e => setForm({ ...form, kleinunternehmer: e.target.checked })} /><span>Kleinunternehmer nach §19 UStG (kein MwSt-Ausweis)</span></label></div>
-        <div className="bg-[#0a0a1a]/80 rounded-2xl p-4 border border-white/[0.06]"><h3 className="text-[14px] font-bold mb-3">Bank</h3><div className="flex flex-col gap-2"><FI l="Bank" v={form.bankName} k="bankName" f={form} s={setForm} /><div className="flex gap-2"><FI l="IBAN" v={form.iban} k="iban" f={form} s={setForm} /><FI l="BIC" v={form.bic} k="bic" f={form} s={setForm} w={140} /></div></div></div>
+        <div className="bg-[#0a0a1a]/80 rounded-2xl p-4 border border-white/[0.06]"><h3 className="text-[14px] font-bold mb-3">Steuern (§14 Pflicht)</h3><div className="flex gap-2 mb-2.5 max-md:flex-col"><FI l="Steuernr." v={form.steuernr} k="steuernr" f={form} s={setForm} /><FI l="USt-ID" v={form.ustid} k="ustid" f={form} s={setForm} /></div><label className="flex items-center gap-2.5 cursor-pointer text-[13px]"><input type="checkbox" className="w-4 h-4 rounded accent-brand-500" checked={!!form.kleinunternehmer} onChange={e => setForm({ ...form, kleinunternehmer: e.target.checked })} /><span>Kleinunternehmer nach §19 UStG (kein MwSt-Ausweis)</span></label></div>
+        <div className="bg-[#0a0a1a]/80 rounded-2xl p-4 border border-white/[0.06]"><h3 className="text-[14px] font-bold mb-3">Bank</h3><div className="flex flex-col gap-2"><FI l="Bank" v={form.bankName} k="bankName" f={form} s={setForm} /><div className="flex gap-2 max-md:flex-col"><FI l="IBAN" v={form.iban} k="iban" f={form} s={setForm} /><FI l="BIC" v={form.bic} k="bic" f={form} s={setForm} w={140} /></div></div></div>
         <button className="flex items-center gap-1.5 px-5 py-2.5 bg-gradient-to-r from-brand-600 to-brand-500 text-white border-none rounded-xl text-[13px] font-semibold cursor-pointer w-fit hover:shadow-[0_0_24px_rgba(99,102,241,0.3)] hover:translate-y-[-1px] transition-all duration-200" onClick={() => { if (!form.name) return; sf(form); }}>Speichern</button>
         <div className="bg-[#0a0a1a]/80 rounded-2xl p-4 border border-white/[0.06]"><h3 className="text-[14px] font-bold mb-3">{IC.dl} Datensicherung</h3>
           <p className="text-xs text-slate-500 mb-2.5 leading-relaxed">Exportiere alle Daten als JSON-Backup oder importiere ein vorhandenes Backup.</p>
