@@ -1446,11 +1446,12 @@ function NeueRechnung({ firma, kunden, addKu, addRe, updRe, nextNr, nav, plan: _
 
   const doSave = async () => {
     if (!canCreate) { nav("abo"); return; }
-    let kunde = selK; if (showN && neuK.name) kunde = await addKu(neuK); if (!kunde) return;
+    let kunde = selK; if (showN && neuK.name) kunde = await addKu(neuK);
+    if (!kunde) { setValE(["Bitte einen Kunden auswählen oder neu anlegen"]); window.scrollTo({ top: 0, behavior: "smooth" }); return; }
     const d = new Date().toISOString().split("T")[0]; const fdt = new Date(); fdt.setDate(fdt.getDate() + ziel);
     const r2 = (v: number) => Math.round(v * 100) / 100;
     const re = { id: uid(), nummer: nextNr, typ, datum: d, faelligDatum: fdt.toISOString().split("T")[0], kundeId: kunde.id, kundeName: kunde.name, kundeAdresse: `${kunde.strasse}, ${kunde.plz} ${kunde.ort}`, kundeEmail: kunde.email || "", positionen: pos, netto: r2(nettoNR), mwst: r2(mwstB), gesamt: r2(brutto), zahlungsziel: ziel, notiz, status: typ === "angebot" ? "angebot" : "offen", gewerk: gw, rabatt, zeitraumVon: zvon, zeitraumBis: zbis };
-    const errs = validateRechnung(re, firma); if (errs.length > 0) { setValE(errs); return; }
+    const errs = validateRechnung(re, firma); if (errs.length > 0) { setValE(errs); window.scrollTo({ top: 0, behavior: "smooth" }); return; }
     setSaving(true);
     if (editRechnung) {
       updRe(editRechnung.id, { ...re, id: editRechnung.id, nummer: editRechnung.nummer });
@@ -1520,6 +1521,7 @@ function NeueRechnung({ firma, kunden, addKu, addRe, updRe, nextNr, nav, plan: _
             {rabatt > 0 && <div className="flex justify-between items-center py-1.5 text-[13px] text-danger-400"><span>-{rabatt}%</span><span>-{fc(rabattB)}</span></div>}
             <div className="flex justify-between items-center py-1.5 text-[13px]"><span>MwSt</span><span>{fc(mwstB)}</span></div>
             <div className="flex justify-between items-center py-2 text-[18px] font-extrabold text-brand-400 pt-3 border-t border-white/[0.06] mt-1.5"><span>Brutto</span><span>{fc(brutto)}</span></div>
+            {valE.length > 0 && <div className="flex items-start gap-2 mt-3 px-3 py-2.5 bg-danger-500/[0.08] border border-danger-500/20 rounded-xl text-[12px] text-danger-400"><span className="flex shrink-0 mt-0.5">{IC.alert}</span><span>{valE.join(", ")}</span></div>}
             <button className="flex items-center gap-1.5 w-full justify-center mt-4 px-4 py-2.5 bg-gradient-to-r from-brand-600 to-brand-500 text-white border-none rounded-xl text-[13px] font-semibold cursor-pointer hover:shadow-[0_0_24px_rgba(99,102,241,0.3)] hover:translate-y-[-1px] transition-all duration-200" style={{ opacity: (pos.length === 0 || (!selK && !neuK.name)) ? .4 : 1 }} disabled={pos.length === 0 || (!selK && !neuK.name) || saving} onClick={doSave}>{saving ? "..." : editRechnung ? "Speichern" : "Erstellen"}</button>
           </div>
         </div>
