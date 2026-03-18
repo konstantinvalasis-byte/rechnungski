@@ -1,20 +1,34 @@
 "use client";
 import { useState, useEffect, useRef, type ReactNode } from "react";
+import {
+  Zap,
+  Palette,
+  Camera,
+  Monitor,
+  Dumbbell,
+  UtensilsCrossed,
+  Leaf,
+  Heart,
+  Globe,
+  Music,
+  Sparkles,
+  ArrowRight,
+} from "lucide-react";
 
 // ─── Data ────────────────────────────────────────────────
 const BRANCHES = [
-  { name: "Elektriker", icon: "⚡", gradient: "from-amber-100 to-amber-300" },
-  { name: "Grafikdesign", icon: "🎨", gradient: "from-pink-100 to-pink-300" },
-  { name: "Fotografie", icon: "📸", gradient: "from-indigo-100 to-indigo-300" },
-  { name: "IT-Beratung", icon: "💻", gradient: "from-emerald-100 to-emerald-300" },
-  { name: "Personal Training", icon: "💪", gradient: "from-red-100 to-red-300" },
-  { name: "Catering", icon: "🍽️", gradient: "from-orange-100 to-orange-300" },
-  { name: "Gartenbau", icon: "🌿", gradient: "from-green-100 to-green-300" },
-  { name: "Massage", icon: "💆", gradient: "from-violet-100 to-violet-300" },
-  { name: "Webentwicklung", icon: "🌐", gradient: "from-blue-100 to-blue-300" },
-  { name: "DJ & Events", icon: "🎵", gradient: "from-fuchsia-100 to-fuchsia-300" },
-  { name: "Reinigung", icon: "✨", gradient: "from-teal-100 to-teal-300" },
-  { name: "+ 20 weitere", icon: "→", gradient: "from-slate-100 to-slate-300" },
+  { name: "Elektriker", icon: Zap, gradient: "from-amber-50 to-amber-100", iconColor: "text-amber-600" },
+  { name: "Grafikdesign", icon: Palette, gradient: "from-pink-50 to-pink-100", iconColor: "text-pink-600" },
+  { name: "Fotografie", icon: Camera, gradient: "from-indigo-50 to-indigo-100", iconColor: "text-indigo-600" },
+  { name: "IT-Beratung", icon: Monitor, gradient: "from-emerald-50 to-emerald-100", iconColor: "text-emerald-600" },
+  { name: "Personal Training", icon: Dumbbell, gradient: "from-red-50 to-red-100", iconColor: "text-red-500" },
+  { name: "Catering", icon: UtensilsCrossed, gradient: "from-orange-50 to-orange-100", iconColor: "text-orange-600" },
+  { name: "Gartenbau", icon: Leaf, gradient: "from-green-50 to-green-100", iconColor: "text-green-600" },
+  { name: "Massage", icon: Heart, gradient: "from-violet-50 to-violet-100", iconColor: "text-violet-600" },
+  { name: "Webentwicklung", icon: Globe, gradient: "from-blue-50 to-blue-100", iconColor: "text-blue-600" },
+  { name: "DJ & Events", icon: Music, gradient: "from-fuchsia-50 to-fuchsia-100", iconColor: "text-fuchsia-600" },
+  { name: "Reinigung", icon: Sparkles, gradient: "from-teal-50 to-teal-100", iconColor: "text-teal-600" },
+  { name: "+ 20 weitere", icon: ArrowRight, gradient: "from-slate-50 to-slate-100", iconColor: "text-slate-500" },
 ];
 
 const STEPS = [
@@ -511,15 +525,20 @@ export default function LandingPage() {
             </p>
           </div>
           <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 gap-3">
-            {BRANCHES.map((branch) => (
-              <div
-                key={branch.name}
-                className={`group relative bg-gradient-to-br ${branch.gradient} rounded-2xl p-6 flex flex-col items-center gap-3 cursor-pointer border border-transparent hover:border-white/60 hover:shadow-lg hover:shadow-slate-200/50 hover:-translate-y-1 transition-all duration-300`}
-              >
-                <span className="text-3xl group-hover:scale-110 transition-transform duration-300">{branch.icon}</span>
-                <span className="text-sm font-bold text-slate-700">{branch.name}</span>
-              </div>
-            ))}
+            {BRANCHES.map((branch) => {
+              const Icon = branch.icon;
+              return (
+                <div
+                  key={branch.name}
+                  className={`group relative bg-gradient-to-br ${branch.gradient} rounded-2xl p-6 flex flex-col items-center gap-3 cursor-pointer border border-transparent hover:border-white/60 hover:shadow-lg hover:shadow-slate-200/50 hover:-translate-y-1 transition-all duration-300`}
+                >
+                  <div className="w-10 h-10 flex items-center justify-center rounded-xl bg-white/60 backdrop-blur-sm group-hover:scale-110 transition-transform duration-300">
+                    <Icon className={`w-5 h-5 ${branch.iconColor} stroke-[1.75]`} />
+                  </div>
+                  <span className="text-sm font-bold text-slate-700">{branch.name}</span>
+                </div>
+              );
+            })}
           </div>
         </div>
       </FadeIn>
@@ -570,19 +589,22 @@ export default function LandingPage() {
                     <div className="animate-fade-in">
                       <div className="text-[11px] font-bold text-brand-400 uppercase tracking-widest mb-4">Branche wählen</div>
                       <div className="grid grid-cols-3 gap-2">
-                        {BRANCHES.slice(0, 6).map((b, i) => (
-                          <div
-                            key={b.name}
-                            className={`flex flex-col items-center gap-2 p-3 rounded-xl border transition-all ${
-                              i === 0
-                                ? "border-brand-500 bg-brand-500/10 text-brand-200"
-                                : "border-slate-800 bg-slate-900 text-slate-500 hover:border-slate-700"
-                            }`}
-                          >
-                            <span className="text-xl">{b.icon}</span>
-                            <span className="text-[11px] font-medium">{b.name}</span>
-                          </div>
-                        ))}
+                        {BRANCHES.slice(0, 6).map((b, i) => {
+                          const BIcon = b.icon;
+                          return (
+                            <div
+                              key={b.name}
+                              className={`flex flex-col items-center gap-2 p-3 rounded-xl border transition-all ${
+                                i === 0
+                                  ? "border-brand-500 bg-brand-500/10 text-brand-200"
+                                  : "border-slate-800 bg-slate-900 text-slate-500 hover:border-slate-700"
+                              }`}
+                            >
+                              <BIcon className={`w-5 h-5 ${i === 0 ? "text-brand-300" : "text-slate-500"} stroke-[1.75]`} />
+                              <span className="text-[11px] font-medium">{b.name}</span>
+                            </div>
+                          );
+                        })}
                       </div>
                     </div>
                   )}

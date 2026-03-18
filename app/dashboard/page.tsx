@@ -1,11 +1,105 @@
-// @ts-nocheck
 "use client";
-import { useState, useEffect, useRef, useCallback, Component } from "react";
+import { useState, useEffect, useRef, Component } from "react";
 
-class ErrorBoundary extends Component {
-  state = { hasError: false };
+interface Firma {
+  name: string;
+  inhaber?: string;
+  strasse?: string;
+  plz?: string;
+  ort?: string;
+  telefon?: string;
+  email?: string;
+  web?: string;
+  steuernr?: string;
+  ustid?: string;
+  bankName?: string;
+  iban?: string;
+  bic?: string;
+  gewerk?: string;
+  logo?: string;
+  kleinunternehmer?: boolean;
+}
+
+interface Position {
+  id: string;
+  beschreibung: string;
+  einheit: string;
+  menge: number;
+  preis: number;
+  mwst: number;
+  typ: "arbeit" | "material";
+}
+
+interface Rechnung {
+  id: string;
+  nummer: string;
+  typ?: string;
+  datum: string;
+  faelligDatum: string;
+  kundeId: string;
+  kundeName: string;
+  kundeAdresse: string;
+  kundeEmail: string;
+  positionen: Position[];
+  netto: number;
+  mwst: number;
+  gesamt: number;
+  zahlungsziel: number;
+  notiz: string;
+  status: string;
+  gewerk: string;
+  rabatt: number;
+  zeitraumVon: string;
+  zeitraumBis: string;
+  mahnStufe?: number;
+  mahnstufe?: number;
+}
+
+interface Kunde {
+  id: string;
+  name: string;
+  strasse?: string;
+  plz?: string;
+  ort?: string;
+  email?: string;
+  telefon?: string;
+}
+
+interface FavoritItem {
+  id: string;
+  beschreibung: string;
+  einheit: string;
+  preis: number;
+  mwst?: number;
+  typ: "arbeit" | "material";
+}
+
+interface WiederkehrendItem {
+  id: string;
+  kundeId: string;
+  kundeName: string;
+  kundeAdresse: string;
+  kundeEmail: string;
+  positionen: Position[];
+  netto: number;
+  mwst: number;
+  gesamt: number;
+  zahlungsziel: number;
+  notiz: string;
+  gewerk: string;
+  rabatt: number;
+  interval: "monatlich" | "quartal" | "jaehrlich";
+  nextDue: string;
+  aktiv: boolean;
+  name?: string;
+}
+
+interface ErrorBoundaryState { hasError: boolean; }
+
+class ErrorBoundary extends Component<{ children: React.ReactNode }, ErrorBoundaryState> {
+  state: ErrorBoundaryState = { hasError: false };
   static getDerivedStateFromError() { return { hasError: true }; }
-  componentDidCatch(e, i) { console.error("RechnungsKI:", e, i); }
+  componentDidCatch(e: Error, i: React.ErrorInfo) { console.error("RechnungsKI:", e, i); }
   render() {
     if (this.state.hasError) return (
       <div className="flex flex-col items-center justify-center h-screen bg-[#050510] text-slate-200 gap-5 p-6">
@@ -287,13 +381,12 @@ const GV = {
     { beschreibung: "Anfahrt", einheit: "Pauschal", preis: 30, typ: "arbeit" },
   ],
 };
-const GEWERKE = Object.keys(GV);
 const uid = () => Date.now().toString(36) + Math.random().toString(36).slice(2, 7);
-const fc = v => new Intl.NumberFormat("de-DE", { style: "currency", currency: "EUR" }).format(v);
-const fd = d => d ? new Date(d).toLocaleDateString("de-DE", { day: "2-digit", month: "2-digit", year: "numeric" }) : "–";
-const fcn = v => v.toFixed(2).replace(".", ",");
-const he = s => s == null ? "" : String(s).replace(/&/g,"&amp;").replace(/</g,"&lt;").replace(/>/g,"&gt;").replace(/"/g,"&quot;").replace(/'/g,"&#39;");
-const safeSrc = s => s && /^data:image\/(jpeg|png|gif|webp|svg\+xml);base64,/.test(s) ? s : null;
+const fc = (v: number): string => new Intl.NumberFormat("de-DE", { style: "currency", currency: "EUR" }).format(v);
+const fd = (d: string): string => d ? new Date(d).toLocaleDateString("de-DE", { day: "2-digit", month: "2-digit", year: "numeric" }) : "–";
+const fcn = (v: number): string => v.toFixed(2).replace(".", ",");
+const he = (s: unknown): string => s == null ? "" : String(s).replace(/&/g,"&amp;").replace(/</g,"&lt;").replace(/>/g,"&gt;").replace(/"/g,"&quot;").replace(/'/g,"&#39;");
+const safeSrc = (s: unknown): string | null => s && /^data:image\/(jpeg|png|gif|webp|svg\+xml);base64,/.test(String(s)) ? String(s) : null;
 
 // ═══════════════════════════════════════════════════════════
 // ICONS
@@ -326,21 +419,21 @@ const IC = {
 // ═══════════════════════════════════════════════════════════
 // STORAGE (local – wird durch Supabase ersetzt)
 // ═══════════════════════════════════════════════════════════
-function ld(k, fb) { try { const r = localStorage.getItem(k); return r ? JSON.parse(r) : fb; } catch { return fb; } }
-function sv(k, v) { try { const s = JSON.stringify(v); if (s.length > 4000000) { console.warn("RechnungsKI: Datenmenge zu groß –", k); return; } localStorage.setItem(k, s); } catch (e) { console.error("RechnungsKI: Speicherfehler:", k, e); } }
+function ld(k: string, fb: unknown): unknown { try { const r = localStorage.getItem(k); return r ? JSON.parse(r) : fb; } catch { return fb; } }
+function sv(k: string, v: unknown): void { try { const s = JSON.stringify(v); if (s.length > 4000000) { console.warn("RechnungsKI: Datenmenge zu groß –", k); return; } localStorage.setItem(k, s); } catch (e) { console.error("RechnungsKI: Speicherfehler:", k, e); } }
 
 // ═══════════════════════════════════════════════════════════
 // §14 UStG VALIDATION
 // ═══════════════════════════════════════════════════════════
-function validateFirma(f) {
-  const e = [];
+function validateFirma(f: Firma | null): string[] {
+  const e: string[] = [];
   if (!f?.name) e.push("Firmenname");
   if (!f?.strasse) e.push("Anschrift");
   if (!f?.plz || !f?.ort) e.push("PLZ/Ort");
   if (!f?.steuernr && !f?.ustid) e.push("Steuernr./USt-ID (§14)");
   return e;
 }
-function validateRechnung(r, f) {
+function validateRechnung(r: Rechnung, f: Firma | null): string[] {
   const e = validateFirma(f);
   if (!r.kundeName) e.push("Kundenname");
   if (!r.kundeAdresse || r.kundeAdresse.includes("undefined")) e.push("Kundenadresse");
@@ -350,7 +443,7 @@ function validateRechnung(r, f) {
 }
 
 // DATEV
-function datevCSV(re, f) {
+function datevCSV(re: Rechnung[]): string {
   const h = "Umsatz;S/H;WKZ;Kurs;Basis;WKZ-B;Konto;Gegenkonto;BU;Belegdatum;Beleg1;Beleg2;Skonto;Text";
   const rows = re.filter(r => r.status !== "angebot" && r.status !== "storniert").map(r => {
     const d = new Date(r.datum); return `${fcn(r.gesamt)};S;EUR;;;;;;8400;;${String(d.getDate()).padStart(2,"0")}${String(d.getMonth()+1).padStart(2,"0")};${r.nummer};;0,00;${r.kundeName}`;
@@ -359,8 +452,8 @@ function datevCSV(re, f) {
 }
 
 // Mahnung
-function mahnung(r, f, s = 1) {
-  const t = { 1: `Sehr geehrte Damen und Herren,\n\nwir erinnern freundlich an die Zahlung unserer Rechnung ${r.nummer} vom ${fd(r.datum)} über ${fc(r.gesamt)}.\n\nZahlungsziel: ${fd(r.faelligDatum)}. Bitte überweisen Sie innerhalb von 7 Tagen.\n\nBank: ${f.bankName || "–"}\nIBAN: ${f.iban || "–"}\n\nMit freundlichen Grüßen\n${f.name}`, 2: `Sehr geehrte Damen und Herren,\n\nbis heute liegt kein Zahlungseingang für Rechnung ${r.nummer} über ${fc(r.gesamt)} vor.\n\nBitte begleichen Sie den Betrag innerhalb von 5 Werktagen.\n\nMit freundlichen Grüßen\n${f.name}`, 3: `LETZTE MAHNUNG\n\nRechnung ${r.nummer} über ${fc(r.gesamt)}.\n\nBei Nichtzahlung innerhalb 3 Werktagen erfolgt Übergabe an Inkasso.\n\n${f.name}` };
+function mahnung(r: Rechnung, f: Firma, s: number = 1): string {
+  const t: Record<number, string> = { 1: `Sehr geehrte Damen und Herren,\n\nwir erinnern freundlich an die Zahlung unserer Rechnung ${r.nummer} vom ${fd(r.datum)} über ${fc(r.gesamt)}.\n\nZahlungsziel: ${fd(r.faelligDatum)}. Bitte überweisen Sie innerhalb von 7 Tagen.\n\nBank: ${f.bankName || "–"}\nIBAN: ${f.iban || "–"}\n\nMit freundlichen Grüßen\n${f.name}`, 2: `Sehr geehrte Damen und Herren,\n\nbis heute liegt kein Zahlungseingang für Rechnung ${r.nummer} über ${fc(r.gesamt)} vor.\n\nBitte begleichen Sie den Betrag innerhalb von 5 Werktagen.\n\nMit freundlichen Grüßen\n${f.name}`, 3: `LETZTE MAHNUNG\n\nRechnung ${r.nummer} über ${fc(r.gesamt)}.\n\nBei Nichtzahlung innerhalb 3 Werktagen erfolgt Übergabe an Inkasso.\n\n${f.name}` };
   return t[s] || t[1];
 }
 
@@ -368,7 +461,7 @@ function mahnung(r, f, s = 1) {
 // PDF GENERATOR (pure JS, no dependencies)
 // Uses window.print() on a styled hidden iframe for real PDF
 // ═══════════════════════════════════════════════════════════
-function generatePdfHtml(rechnung, firma) {
+function generatePdfHtml(rechnung: Rechnung, firma: Firma): string {
   const pos = rechnung.positionen || [];
   const arbeit = pos.filter(p => p.typ === "arbeit").reduce((s, p) => s + p.menge * p.preis, 0);
   const mat = pos.filter(p => p.typ === "material").reduce((s, p) => s + p.menge * p.preis, 0);
@@ -389,7 +482,6 @@ function generatePdfHtml(rechnung, firma) {
 
   const nettoVR = pos.reduce((s, p) => s + p.menge * p.preis, 0);
   const rabattB = nettoVR * (rechnung.rabatt || 0) / 100;
-  const nettoNR = nettoVR - rabattB;
   const mwstB = pos.reduce((s, p) => s + p.menge * p.preis * (1 - (rechnung.rabatt || 0) / 100) * p.mwst / 100, 0);
 
   return `<!DOCTYPE html><html><head><meta charset="utf-8"><style>
@@ -458,7 +550,7 @@ function generatePdfHtml(rechnung, firma) {
   </body></html>`;
 }
 
-function generateMahnungPdfHtml(rechnung, firma, stufe) {
+function generateMahnungPdfHtml(rechnung: Rechnung, firma: Firma, stufe: number): string {
   const text = mahnung(rechnung, firma, stufe);
   const stufenLabel = { 1: "Zahlungserinnerung", 2: "Zweite Mahnung", 3: "Letzte Mahnung" }[stufe] || "Mahnung";
   return `<!DOCTYPE html><html><head><meta charset="utf-8"><style>
@@ -480,21 +572,80 @@ function generateMahnungPdfHtml(rechnung, firma, stufe) {
   </body></html>`;
 }
 
-function printHtmlInIframe(html) {
+async function openAsPdf(html: string) {
+  const [{ default: jsPDF }, { default: html2canvas }] = await Promise.all([
+    import("jspdf"),
+    import("html2canvas"),
+  ]);
+
   const iframe = document.createElement("iframe");
-  Object.assign(iframe.style, { position: "fixed", top: "-9999px", left: "-9999px", width: "800px", height: "1100px", border: "none" });
-  const cleanup = () => { if (document.body.contains(iframe)) document.body.removeChild(iframe); };
-  iframe.addEventListener("load", () => {
-    try { iframe.contentWindow.focus(); iframe.contentWindow.print(); } catch(e) { console.error("PDF-Druck Fehler:", e); }
-    setTimeout(cleanup, 2000);
-  });
+  Object.assign(iframe.style, { position: "fixed", top: "0", left: "-9999px", width: "794px", height: "1123px", border: "none", visibility: "hidden" });
   document.body.appendChild(iframe);
-  iframe.contentDocument.write(html);
-  iframe.contentDocument.close();
+
+  await new Promise<void>(resolve => {
+    iframe.onload = () => resolve();
+    iframe.contentDocument!.write(html);
+    iframe.contentDocument!.close();
+  });
+
+  await new Promise(r => setTimeout(r, 400)); // Fonts laden lassen
+
+  try {
+    const canvas = await html2canvas(iframe.contentDocument!.body, {
+      scale: 2, useCORS: true, backgroundColor: "#ffffff",
+      width: 794, scrollX: 0, scrollY: 0, windowWidth: 794,
+    });
+
+    const pdf = new jsPDF({ orientation: "portrait", unit: "mm", format: "a4" });
+    const pW = pdf.internal.pageSize.getWidth();
+    const pH = pdf.internal.pageSize.getHeight();
+    const imgH = canvas.height * (pW / canvas.width);
+    const imgData = canvas.toDataURL("image/jpeg", 0.95);
+
+    pdf.addImage(imgData, "JPEG", 0, 0, pW, imgH);
+    let pos = -pH;
+    let remaining = imgH - pH;
+    while (remaining > 0) {
+      pdf.addPage();
+      pdf.addImage(imgData, "JPEG", 0, pos, pW, imgH);
+      pos -= pH;
+      remaining -= pH;
+    }
+
+    window.open(URL.createObjectURL(pdf.output("blob")), "_blank");
+  } finally {
+    document.body.removeChild(iframe);
+  }
 }
 
-function downloadPdf(rechnung, firma) {
-  printHtmlInIframe(generatePdfHtml(rechnung, firma));
+function downloadPdf(rechnung: Rechnung, firma: Firma): void {
+  openAsPdf(generatePdfHtml(rechnung, firma));
+}
+
+async function generatePdfBase64(html: string): Promise<string> {
+  const [{ default: jsPDF }, { default: html2canvas }] = await Promise.all([
+    import("jspdf"),
+    import("html2canvas"),
+  ]);
+  const iframe = document.createElement("iframe");
+  Object.assign(iframe.style, { position: "fixed", top: "0", left: "-9999px", width: "794px", height: "1123px", border: "none", visibility: "hidden" });
+  document.body.appendChild(iframe);
+  await new Promise<void>(resolve => { iframe.onload = () => resolve(); iframe.contentDocument!.write(html); iframe.contentDocument!.close(); });
+  await new Promise(r => setTimeout(r, 400));
+  try {
+    const canvas = await html2canvas(iframe.contentDocument!.body, { scale: 2, useCORS: true, backgroundColor: "#ffffff", width: 794, scrollX: 0, scrollY: 0, windowWidth: 794 });
+    const pdf = new jsPDF({ orientation: "portrait", unit: "mm", format: "a4" });
+    const pW = pdf.internal.pageSize.getWidth();
+    const pH = pdf.internal.pageSize.getHeight();
+    const imgH = canvas.height * (pW / canvas.width);
+    const imgData = canvas.toDataURL("image/jpeg", 0.95);
+    pdf.addImage(imgData, "JPEG", 0, 0, pW, imgH);
+    let pos = -pH; let remaining = imgH - pH;
+    while (remaining > 0) { pdf.addPage(); pdf.addImage(imgData, "JPEG", 0, pos, pW, imgH); pos -= pH; remaining -= pH; }
+    return pdf.output("datauristring").split(",")[1];
+  } finally {
+    document.body.removeChild(iframe);
+  }
 }
 
 // ═══════════════════════════════════════════════════════════
@@ -695,71 +846,79 @@ const SUPABASE_JS_CODE = [
 // ═══════════════════════════════════════════════════════════
 function App() {
   const [pg, setPg] = useState("dashboard");
-  const [firma, setFirma] = useState(null);
-  const [kunden, setKunden] = useState([]);
-  const [rechnungen, setRechnungen] = useState([]);
+  const [firma, setFirma] = useState<Firma | null>(null);
+  const [kunden, setKunden] = useState<Kunde[]>([]);
+  const [rechnungen, setRechnungen] = useState<Rechnung[]>([]);
   const [plan, setPlan] = useState("free");
   const [loaded, setLoaded] = useState(false);
-  const [toast, setToast] = useState(null);
+  const [toast, setToast] = useState<string | null>(null);
   const [mobNav, setMobNav] = useState(false);
-  const [editRe, setEditRe] = useState(null);
-  const [favoriten, setFavoriten] = useState([]);
+  const [editRe, setEditRe] = useState<Rechnung | null>(null);
+  const [favoriten, setFavoriten] = useState<FavoritItem[]>([]);
+  const [reSearch, setReSearch] = useState("");
+  const [wiederkehrend, setWdk] = useState<WiederkehrendItem[]>([]);
 
   useEffect(() => {
     let mounted = true;
-    const f = ld("inv-firma", null), k = ld("inv-kunden", []), r = ld("inv-rechnungen", []), p = ld("inv-plan", "free"), ob = ld("inv-onboarded", false), fav = ld("inv-favoriten", []), wdk = ld("inv-wdk", []);
+    const f = ld("inv-firma", null) as Firma | null;
+    const k = ld("inv-kunden", []) as Kunde[];
+    const r = ld("inv-rechnungen", []) as Rechnung[];
+    const p = ld("inv-plan", "free") as string;
+    const ob = ld("inv-onboarded", false) as boolean;
+    const fav = ld("inv-favoriten", []) as FavoritItem[];
+    const wdk = ld("inv-wdk", []) as WiederkehrendItem[];
     if (!mounted) return;
+    /* eslint-disable react-hooks/set-state-in-effect */
     setFirma(f); setKunden(k); setRechnungen(r); setPlan(p); setFavoriten(fav); setWdk(wdk); setLoaded(true);
     if (!ob || !f) setPg("onboarding");
     // Auto-create due recurring invoices (runs only once on mount)
     const today = new Date().toISOString().split("T")[0];
-    const due = wdk.filter(w => w.aktiv && w.nextDue <= today);
+    const due = wdk.filter((w: WiederkehrendItem) => w.aktiv && w.nextDue <= today);
     if (due.length > 0) {
       const y = new Date().getFullYear();
       const allRe = [...r];
       const updWdkList = [...wdk];
-      due.forEach(w => {
+      due.forEach((w: WiederkehrendItem) => {
         const prefix = `RE-${y}-`;
         const maxNr = allRe.filter(re => re.nummer?.startsWith(prefix)).reduce((mx, re) => { const n = parseInt(re.nummer.slice(prefix.length), 10); return isNaN(n) ? mx : Math.max(mx, n); }, 0);
         const nr = `${prefix}${String(maxNr + 1).padStart(4,"0")}`;
         const fdt = new Date(); fdt.setDate(fdt.getDate() + (w.zahlungsziel || 14));
         allRe.push({ id: uid(), nummer: nr, datum: today, faelligDatum: fdt.toISOString().split("T")[0], kundeId: w.kundeId, kundeName: w.kundeName, kundeAdresse: w.kundeAdresse || "", kundeEmail: w.kundeEmail || "", positionen: w.positionen || [], netto: w.netto || 0, mwst: w.mwst || 0, gesamt: w.gesamt || 0, zahlungsziel: w.zahlungsziel || 14, notiz: w.notiz || "", status: "offen", gewerk: w.gewerk || "", rabatt: w.rabatt || 0, zeitraumVon: "", zeitraumBis: "" });
-        const idx = updWdkList.findIndex(x => x.id === w.id);
+        const idx = updWdkList.findIndex((x: WiederkehrendItem) => x.id === w.id);
         if (idx >= 0) updWdkList[idx] = { ...w, nextDue: (() => { const d = new Date(w.nextDue); if (w.interval === "monatlich") d.setMonth(d.getMonth()+1); else if (w.interval === "quartal") d.setMonth(d.getMonth()+3); else d.setFullYear(d.getFullYear()+1); return d.toISOString().split("T")[0]; })() };
       });
       sv("inv-rechnungen", allRe); sv("inv-wdk", updWdkList);
       if (mounted) { setRechnungen(allRe); setWdk(updWdkList); }
     }
+    /* eslint-enable react-hooks/set-state-in-effect */
     return () => { mounted = false; };
   }, []);
 
-  const sf = f => { setFirma(f); sv("inv-firma", f); showT("Gespeichert!"); };
-  const skn = k => { setKunden(k); sv("inv-kunden", k); };
-  const sre = r => { setRechnungen(r); sv("inv-rechnungen", r); };
-  const spl = p => { setPlan(p); sv("inv-plan", p); showT(`Plan: ${p.toUpperCase()}`); };
-  const showT = m => { setToast(m); setTimeout(() => setToast(null), 2800); };
+  const sf = (f: Firma | null) => { setFirma(f); sv("inv-firma", f); showT("Gespeichert!"); };
+  const skn = (k: Kunde[]) => { setKunden(k); sv("inv-kunden", k); };
+  const sre = (r: Rechnung[]) => { setRechnungen(r); sv("inv-rechnungen", r); };
+  const spl = (p: string) => { setPlan(p); sv("inv-plan", p); showT(`Plan: ${p.toUpperCase()}`); };
+  const showT = (m: string) => { setToast(m); setTimeout(() => setToast(null), 2800); };
 
-  const addRe = async r => { await sre([...rechnungen, r]); showT("Erstellt!"); };
-  const delKu = kid => skn(kunden.filter(k => k.id !== kid));
-  const updKu = (kid, up) => skn(kunden.map(k => k.id === kid ? { ...k, ...up } : k));
-  const addFav = pos => { const exists = favoriten.find(f => f.beschreibung === pos.beschreibung); if (exists) return; const nf = [...favoriten, { ...pos, id: uid() }]; setFavoriten(nf); sv("inv-favoriten", nf); showT("Favorit gespeichert!"); };
-  const delFav = fid => { const nf = favoriten.filter(f => f.id !== fid); setFavoriten(nf); sv("inv-favoriten", nf); };
+  const addRe = async (r: Rechnung) => { await sre([...rechnungen, r]); showT("Erstellt!"); };
+  const delKu = (kid: string) => skn(kunden.filter(k => k.id !== kid));
+  const updKu = (kid: string, up: Partial<Kunde>) => skn(kunden.map(k => k.id === kid ? { ...k, ...up } : k));
+  const addFav = (pos: Omit<FavoritItem, "id">) => { const exists = favoriten.find(f => f.beschreibung === pos.beschreibung); if (exists) return; const nf = [...favoriten, { ...pos, id: uid() }]; setFavoriten(nf); sv("inv-favoriten", nf); showT("Favorit gespeichert!"); };
+  const delFav = (fid: string) => { const nf = favoriten.filter(f => f.id !== fid); setFavoriten(nf); sv("inv-favoriten", nf); };
 
-  const [wiederkehrend, setWdk] = useState([]);
-  const saveWdk = w => { setWdk(w); sv("inv-wdk", w); };
-  const addWdk = w => saveWdk([...wiederkehrend, { ...w, id: uid() }]);
-  const updWdk = (id, up) => saveWdk(wiederkehrend.map(w => w.id === id ? { ...w, ...up } : w));
-  const delWdk = id => saveWdk(wiederkehrend.filter(w => w.id !== id));
-  const calcNextDue = (dateStr, interval) => { const d = new Date(dateStr); if (interval === "monatlich") d.setMonth(d.getMonth() + 1); else if (interval === "quartal") d.setMonth(d.getMonth() + 3); else d.setFullYear(d.getFullYear() + 1); return d.toISOString().split("T")[0]; };
-  const updRe = async (rid, up) => { await sre(rechnungen.map(r => r.id === rid ? { ...r, ...up } : r)); };
-  const addKu = async k => { const ex = kunden.find(x => x.name === k.name && x.strasse === k.strasse); if (ex) return ex; const nk = { ...k, id: uid() }; await skn([...kunden, nk]); return nk; };
-  const dupRe = async o => { const nr = nxtNr(); const d = new Date().toISOString().split("T")[0]; const fdt = new Date(); fdt.setDate(fdt.getDate() + (o.zahlungsziel || 14)); await addRe({ ...o, id: uid(), nummer: nr, datum: d, faelligDatum: fdt.toISOString().split("T")[0], status: "offen" }); };
-  const delRe = rid => sre(rechnungen.filter(r => r.id !== rid));
+  const saveWdk = (w: WiederkehrendItem[]) => { setWdk(w); sv("inv-wdk", w); };
+  const addWdk = (w: Omit<WiederkehrendItem, "id">) => saveWdk([...wiederkehrend, { ...w, id: uid() }]);
+  const updWdk = (id: string, up: Partial<WiederkehrendItem>) => saveWdk(wiederkehrend.map(w => w.id === id ? { ...w, ...up } : w));
+  const delWdk = (id: string) => saveWdk(wiederkehrend.filter(w => w.id !== id));
+  const updRe = async (rid: string, up: Partial<Rechnung>) => { await sre(rechnungen.map(r => r.id === rid ? { ...r, ...up } : r)); };
+  const addKu = async (k: Omit<Kunde, "id">): Promise<Kunde> => { const ex = kunden.find(x => x.name === k.name && x.strasse === k.strasse); if (ex) return ex; const nk = { ...k, id: uid() }; await skn([...kunden, nk]); return nk; };
+  const dupRe = async (o: Rechnung) => { const nr = nxtNr(); const d = new Date().toISOString().split("T")[0]; const fdt = new Date(); fdt.setDate(fdt.getDate() + (o.zahlungsziel || 14)); await addRe({ ...o, id: uid(), nummer: nr, datum: d, faelligDatum: fdt.toISOString().split("T")[0], status: "offen" }); };
+  const delRe = (rid: string) => sre(rechnungen.filter(r => r.id !== rid));
   const nxtNr = () => { const y = new Date().getFullYear(); const prefix = `RE-${y}-`; const maxNr = rechnungen.filter(r => r.nummer?.startsWith(prefix)).reduce((max, r) => { const n = parseInt(r.nummer.slice(prefix.length), 10); return isNaN(n) ? max : Math.max(max, n); }, 0); return `${prefix}${String(maxNr + 1).padStart(4, "0")}`; };
   const lim = { free: { re: 5, ku: 3 }, starter: { re: 50, ku: 25 }, pro: { re: 500, ku: 999 }, enterprise: { re: 99999, ku: 99999 } }[plan] || { re: 5, ku: 3 };
-  const nav = p => { setPg(p); setMobNav(false); };
+  const nav = (p: string, search?: string) => { setPg(p); setMobNav(false); if (search !== undefined) setReSearch(search); else setReSearch(""); };
 
-  const completeOnboarding = async (firmaData) => {
+  const completeOnboarding = async (firmaData: Firma) => {
     await sf(firmaData);
     await sv("inv-onboarded", true);
     setPg("dashboard");
@@ -830,7 +989,7 @@ function App() {
       <main className="flex-1 min-w-0 overflow-y-auto">
         {pg === "dashboard" && <Dashboard {...{ rechnungen, kunden, firma, nav, updRe, addRe, addKu, plan, lim }} />}
         {pg === "neue-rechnung" && <NeueRechnung {...{ firma, kunden, addKu, addRe, updRe, nextNr: nxtNr(), nav, plan, lim, canCreate: rechnungen.length < lim.re, editRechnung: editRe, onEditDone: () => setEditRe(null), favoriten, addFav, delFav }} />}
-        {pg === "rechnungen" && <RechnungenListe {...{ rechnungen, updRe, delRe, nav, dupRe, firma, onEdit: r => { setEditRe(r); setPg("neue-rechnung"); } }} />}
+        {pg === "rechnungen" && <RechnungenListe {...{ rechnungen, updRe, delRe, nav, dupRe, firma, onEdit: r => { setEditRe(r); setPg("neue-rechnung"); }, initialSearch: reSearch, showT }} />}
         {pg === "kunden" && <KundenListe {...{ kunden, rechnungen, updKu, delKu }} />}
         {pg === "wiederkehrend" && <WiederkehrendPage {...{ wiederkehrend, addWdk, updWdk, delWdk, kunden, rechnungen, firma }} />}
         {pg === "abo" && <AboPage {...{ plan, spl }} />}
@@ -850,13 +1009,13 @@ function App() {
 export default function AppWrapper() { return <ErrorBoundary><App /></ErrorBoundary>; }
 
 // ═══ ONBOARDING WIZARD ═══
-function OnboardingWizard({ onComplete }) {
+function OnboardingWizard({ onComplete }: { onComplete: (firma: Firma) => void }) {
   const [step, setStep] = useState(0); // 0=welcome, 1=branche, 2=firma, 3=steuer, 4=bank, 5=logo, 6=fertig
-  const [brancheKat, setBrancheKat] = useState("");
+  const [, setBrancheKat] = useState("");
   const [form, setForm] = useState({ name: "", inhaber: "", strasse: "", plz: "", ort: "", telefon: "", email: "", web: "", steuernr: "", ustid: "", bankName: "", iban: "", bic: "", gewerk: "", logo: "" });
   const [logoErr, setLogoErr] = useState("");
-  const fRef = useRef();
-  const handleLogo = e => { const f = e.target.files[0]; if (!f) return; if (f.size > 2000000) { setLogoErr("Datei zu groß – max. 2 MB erlaubt."); return; } setLogoErr(""); const img = new Image(); const url = URL.createObjectURL(f); img.onload = () => { const c = document.createElement("canvas"); const MAX = 400; let w = img.width, h = img.height; if (w > MAX) { h = h * MAX / w; w = MAX; } c.width = w; c.height = h; c.getContext("2d").drawImage(img, 0, 0, w, h); const compressed = c.toDataURL("image/jpeg", 0.75); setForm(prev => ({ ...prev, logo: compressed })); URL.revokeObjectURL(url); }; img.src = url; };
+  const fRef = useRef<HTMLInputElement>(null);
+  const handleLogo = (e: React.ChangeEvent<HTMLInputElement>) => { const f = e.target.files?.[0]; if (!f) return; if (f.size > 2000000) { setLogoErr("Datei zu groß – max. 2 MB erlaubt."); return; } setLogoErr(""); const img = new Image(); const url = URL.createObjectURL(f); img.onload = () => { const c = document.createElement("canvas"); const MAX = 400; let w = img.width, h = img.height; if (w > MAX) { h = h * MAX / w; w = MAX; } c.width = w; c.height = h; c.getContext("2d")!.drawImage(img, 0, 0, w, h); const compressed = c.toDataURL("image/jpeg", 0.75); setForm(prev => ({ ...prev, logo: compressed })); URL.revokeObjectURL(url); }; img.src = url; };
 
   const canNext = () => {
     if (step === 1) return !!form.gewerk;
@@ -1041,7 +1200,7 @@ function OnboardingWizard({ onComplete }) {
 }
 
 // ═══ DASHBOARD ═══
-function Dashboard({ rechnungen, kunden, firma, nav, updRe, addRe, addKu, plan, lim }) {
+function Dashboard({ rechnungen, kunden, firma, nav, updRe, addRe, addKu, plan, lim }: { rechnungen: Rechnung[]; kunden: Kunde[]; firma: Firma | null; nav: (pg: string, search?: string) => void; updRe: (id: string, up: Partial<Rechnung>) => void; addRe: (r: Rechnung) => Promise<void>; addKu: (k: Omit<Kunde, "id">) => Promise<Kunde>; plan: string; lim: { re: number; ku: number } }) {
   const paid = rechnungen.filter(r => r.status === "bezahlt");
   const offen = rechnungen.filter(r => r.status === "offen");
   const ueber = offen.filter(r => new Date(r.faelligDatum) < new Date());
@@ -1055,7 +1214,8 @@ function Dashboard({ rechnungen, kunden, firma, nav, updRe, addRe, addKu, plan, 
   const qPaid = paid.filter(r => { const d = new Date(r.datum); return d >= qStart && d <= qEnd; });
   const qNetto = qPaid.reduce((s, r) => s + (r.netto || 0), 0); const qMwst = qPaid.reduce((s, r) => s + (r.mwst || 0), 0);
   // Angebots-Follow-up
-  const alteAngebote = rechnungen.filter(r => r.status === "angebot" && new Date(r.datum) < new Date(Date.now() - 7 * 24 * 60 * 60 * 1000));
+  const nowMs = now.getTime();
+  const alteAngebote = rechnungen.filter(r => r.status === "angebot" && new Date(r.datum) < new Date(nowMs - 7 * 24 * 60 * 60 * 1000));
   // Leer-Zustand
   const isEmpty = rechnungen.length === 0 && kunden.length === 0;
 
@@ -1080,11 +1240,11 @@ function Dashboard({ rechnungen, kunden, firma, nav, updRe, addRe, addKu, plan, 
     const maxNr = rechnungen.filter(r => r.nummer?.startsWith(prefix)).reduce((mx, r) => { const n = parseInt(r.nummer.slice(prefix.length), 10); return isNaN(n) ? mx : Math.max(mx, n); }, 0);
     const re = {
       id: uid(), nummer: `${prefix}${String(maxNr + 1).padStart(4, "0")}`, datum: heute, faelligDatum: faellig.toISOString().split("T")[0],
-      kundeId: musterKunde.id, kundeName: musterKunde.name, kundeAdresse: `${musterKunde.strasse}, ${musterKunde.plz} ${musterKunde.ort}`, kundeEmail: musterKunde.email,
+      kundeId: musterKunde.id, kundeName: musterKunde.name, kundeAdresse: `${musterKunde.strasse}, ${musterKunde.plz} ${musterKunde.ort}`, kundeEmail: musterKunde.email || "",
       positionen, netto, mwst, gesamt: netto + mwst, zahlungsziel: 14, notiz: "Leistungszeitraum: siehe Auftragsbestätigung AB-2026-003.\nZahlbar innerhalb 14 Tagen ohne Abzug.", status: "offen", gewerk: firma?.gewerk || "", rabatt: 0, zeitraumVon: "", zeitraumBis: "", typ: "rechnung",
     };
-    await addRe(re);
-    if (firma) downloadPdf(re, firma);
+    await addRe(re as Rechnung);
+    if (firma) downloadPdf(re as Rechnung, firma);
     nav("rechnungen");
   };
 
@@ -1136,25 +1296,25 @@ function Dashboard({ rechnungen, kunden, firma, nav, updRe, addRe, addKu, plan, 
       {/* KPI cards */}
       <div className="grid grid-cols-4 max-md:grid-cols-2 max-[480px]:grid-cols-1 gap-3 mb-5">
         {[
-          { l: "Umsatz", v: fc(totalUmsatz), s: `${paid.length} bezahlt`, c: "text-success-500", gc: "from-success-500/10 to-success-600/5", glow: "rgba(16,185,129,0.06)", ico: IC.euro },
-          { l: "Offen", v: fc(offenSum), s: `${offen.length} Rechnungen`, c: "text-warning-500", gc: "from-warning-500/10 to-warning-600/5", glow: "rgba(245,158,11,0.06)", ico: IC.doc },
-          { l: "Überfällig", v: ueber.length, s: ueber.length ? "Jetzt mahnen" : "Alles im Griff", c: "text-danger-500", gc: "from-danger-500/10 to-danger-600/5", glow: "rgba(239,68,68,0.06)", ico: IC.alert },
-          { l: "Kunden", v: kunden.length, c: "text-brand-400", gc: "from-brand-500/10 to-brand-600/5", glow: "rgba(99,102,241,0.06)", s: "gespeichert", ico: IC.users },
+          { l: "Umsatz", v: fc(totalUmsatz), s: `${paid.length} bezahlt`, c: "text-success-500", gc: "from-success-500/10 to-success-600/5", glow: "rgba(16,185,129,0.06)", ico: IC.euro, link: "rechnungen" },
+          { l: "Offen", v: fc(offenSum), s: `${offen.length} Rechnungen`, c: "text-warning-500", gc: "from-warning-500/10 to-warning-600/5", glow: "rgba(245,158,11,0.06)", ico: IC.doc, link: "rechnungen" },
+          { l: "Überfällig", v: ueber.length, s: ueber.length ? "Jetzt mahnen" : "Alles im Griff", c: "text-danger-500", gc: "from-danger-500/10 to-danger-600/5", glow: "rgba(239,68,68,0.06)", ico: IC.alert, link: "rechnungen" },
+          { l: "Kunden", v: kunden.length, c: "text-brand-400", gc: "from-brand-500/10 to-brand-600/5", glow: "rgba(99,102,241,0.06)", s: "gespeichert", ico: IC.users, link: "kunden" },
         ].map((k, i) => (
-          <div key={i} className={`group relative bg-[#0a0a1a]/80 rounded-2xl p-4 border border-white/[0.06] overflow-hidden hover:border-white/[0.1] transition-all duration-300`}>
+          <button key={i} onClick={() => nav(k.link)} className={`group relative bg-[#0a0a1a]/80 rounded-2xl p-4 border border-white/[0.06] overflow-hidden hover:border-white/[0.1] hover:scale-[1.02] active:scale-[0.99] transition-all duration-200 text-left w-full cursor-pointer`}>
             <div className={`absolute inset-0 bg-gradient-to-br ${k.gc} opacity-0 group-hover:opacity-100 transition-opacity duration-500`} />
             <div className={`absolute top-3 right-3 opacity-[0.06] ${k.c}`}><svg width="44" height="44" viewBox="0 0 24 24" fill="currentColor">{k.ico.props.children}</svg></div>
             <div className="relative z-10">
               <div className="text-[10px] text-slate-500 font-semibold uppercase tracking-[0.1em]">{k.l}</div>
               <div className={`text-[24px] font-extrabold mt-1.5 tracking-tight ${k.l === "Überfällig" && ueber.length > 0 ? "text-danger-500" : ""}`}>{k.v}</div>
-              <div className="text-[11px] text-slate-500 mt-1">{k.s}</div>
+              <div className="text-[11px] text-slate-500 mt-1 flex items-center gap-1">{k.s}<span className="opacity-0 group-hover:opacity-60 transition-opacity ml-auto text-slate-400">→</span></div>
             </div>
-          </div>
+          </button>
         ))}
       </div>
 
       {/* Overdue alert */}
-      {ueber.length > 0 && <div className="bg-danger-500/[0.04] border border-danger-500/15 rounded-2xl p-5 mb-5"><div className="flex items-center gap-2.5 mb-3 font-semibold text-[14px]"><span className="w-7 h-7 rounded-lg bg-danger-500/10 flex items-center justify-center text-danger-500">{IC.alert}</span>Überfällig ({ueber.length})</div>{ueber.map(r => <div key={r.id} className="flex items-center gap-3 py-2.5 text-[13px] flex-wrap border-b border-white/[0.04] last:border-0"><span className="font-semibold font-mono text-[11px] text-slate-400">{r.nummer}</span><span className="flex-1">{r.kundeName}</span><span className="font-semibold">{fc(r.gesamt)}</span><span className="text-[11px] text-danger-400 bg-danger-500/10 px-2 py-0.5 rounded-md font-medium">{Math.floor((Date.now() - new Date(r.faelligDatum)) / 86400000)}d überfällig</span><button className="flex items-center gap-1.5 px-3 py-1.5 bg-white/[0.05] text-slate-300 border border-white/[0.08] rounded-lg text-[11px] cursor-pointer whitespace-nowrap hover:bg-white/[0.08] transition-all font-medium" onClick={() => updRe(r.id, { status: "gemahnt" })}>{IC.mail} Mahnen</button></div>)}</div>}
+      {ueber.length > 0 && <div className="bg-danger-500/[0.04] border border-danger-500/15 rounded-2xl p-5 mb-5"><div className="flex items-center gap-2.5 mb-3 font-semibold text-[14px]"><span className="w-7 h-7 rounded-lg bg-danger-500/10 flex items-center justify-center text-danger-500">{IC.alert}</span>Überfällig ({ueber.length})</div>{ueber.map(r => <div key={r.id} className="flex items-center gap-3 py-2.5 text-[13px] flex-wrap border-b border-white/[0.04] last:border-0"><span className="font-semibold font-mono text-[11px] text-slate-400">{r.nummer}</span><span className="flex-1">{r.kundeName}</span><span className="font-semibold">{fc(r.gesamt)}</span><span className="text-[11px] text-danger-400 bg-danger-500/10 px-2 py-0.5 rounded-md font-medium">{Math.floor((nowMs - new Date(r.faelligDatum).getTime()) / 86400000)}d überfällig</span><button className="flex items-center gap-1.5 px-3 py-1.5 bg-white/[0.05] text-slate-300 border border-white/[0.08] rounded-lg text-[11px] cursor-pointer whitespace-nowrap hover:bg-white/[0.08] transition-all font-medium" onClick={() => updRe(r.id, { status: "gemahnt" })}>{IC.mail} Mahnen</button></div>)}</div>}
 
       {/* Chart + Recent */}
       <div className="grid grid-cols-[1.7fr_1fr] max-md:grid-cols-1 gap-3 mb-5">
@@ -1187,13 +1347,13 @@ function Dashboard({ rechnungen, kunden, firma, nav, updRe, addRe, addKu, plan, 
               <button className="bg-transparent border-none text-brand-400 text-[13px] cursor-pointer p-0 mt-1.5 font-medium hover:underline" onClick={() => nav("neue-rechnung")}>Erste Rechnung erstellen →</button>
             </div>
           ) : [...rechnungen].reverse().slice(0, 5).map(r => (
-            <div key={r.id} className="flex justify-between items-center py-2 border-b border-white/[0.04] last:border-0 group">
+            <button key={r.id} onClick={() => nav("rechnungen", r.nummer)} className="flex justify-between items-center py-2 border-b border-white/[0.04] last:border-0 group w-full text-left cursor-pointer bg-transparent hover:bg-white/[0.03] rounded-lg px-1.5 -mx-1.5 transition-colors">
               <div className="flex items-center gap-2.5">
                 <div className="w-8 h-8 rounded-lg bg-gradient-to-br from-brand-500/20 to-brand-600/10 flex items-center justify-center text-[11px] font-bold text-brand-400 shrink-0 border border-brand-500/10">{r.kundeName?.charAt(0)?.toUpperCase()}</div>
                 <div><div className="font-semibold text-[13px] group-hover:text-white transition-colors">{r.kundeName}</div><div className="text-[11px] text-slate-500">{r.nummer} · {fd(r.datum)}</div></div>
               </div>
               <div className="text-right"><div className="font-semibold text-[13px]">{fc(r.gesamt)}</div><SB s={r.status} /></div>
-            </div>
+            </button>
           ))}
         </div>
       </div>
@@ -1213,24 +1373,24 @@ function Dashboard({ rechnungen, kunden, firma, nav, updRe, addRe, addKu, plan, 
       </div>}
 
       {/* Old offers */}
-      {alteAngebote.length > 0 && <div className="bg-brand-500/[0.04] border border-brand-500/15 rounded-2xl p-5 mb-5"><div className="flex items-center gap-2.5 mb-3 font-semibold text-[14px]"><span className="w-7 h-7 rounded-lg bg-brand-500/10 flex items-center justify-center text-brand-400">{IC.eye}</span>Angebote ohne Antwort ({alteAngebote.length})</div>{alteAngebote.map(r => <div key={r.id} className="flex items-center gap-3 py-2.5 text-[13px] flex-wrap border-b border-white/[0.04] last:border-0"><span className="font-semibold font-mono text-[11px] text-slate-400">{r.nummer}</span><span className="flex-1">{r.kundeName}</span><span className="font-semibold">{fc(r.gesamt)}</span><span className="opacity-50 text-[11px]">{Math.floor((Date.now() - new Date(r.datum)) / 86400000)} Tage</span><button className="flex items-center gap-1.5 px-3 py-1.5 bg-success-500/10 text-success-400 border border-success-500/20 rounded-lg text-[11px] cursor-pointer whitespace-nowrap font-medium hover:bg-success-500/15 transition-all" onClick={() => updRe(r.id, { status: "offen", typ: "rechnung" })}>→ Rechnung</button><button className="flex items-center gap-1.5 px-3 py-1.5 bg-white/[0.05] text-slate-400 border border-white/[0.08] rounded-lg text-[11px] cursor-pointer whitespace-nowrap font-medium hover:bg-white/[0.08] transition-all" onClick={() => updRe(r.id, { status: "storniert" })}>Ablehnen</button></div>)}</div>}
+      {alteAngebote.length > 0 && <div className="bg-brand-500/[0.04] border border-brand-500/15 rounded-2xl p-5 mb-5"><div className="flex items-center gap-2.5 mb-3 font-semibold text-[14px]"><span className="w-7 h-7 rounded-lg bg-brand-500/10 flex items-center justify-center text-brand-400">{IC.eye}</span>Angebote ohne Antwort ({alteAngebote.length})</div>{alteAngebote.map(r => <div key={r.id} className="flex items-center gap-3 py-2.5 text-[13px] flex-wrap border-b border-white/[0.04] last:border-0"><span className="font-semibold font-mono text-[11px] text-slate-400">{r.nummer}</span><span className="flex-1">{r.kundeName}</span><span className="font-semibold">{fc(r.gesamt)}</span><span className="opacity-50 text-[11px]">{Math.floor((nowMs - new Date(r.datum).getTime()) / 86400000)} Tage</span><button className="flex items-center gap-1.5 px-3 py-1.5 bg-success-500/10 text-success-400 border border-success-500/20 rounded-lg text-[11px] cursor-pointer whitespace-nowrap font-medium hover:bg-success-500/15 transition-all" onClick={() => updRe(r.id, { status: "offen", typ: "rechnung" })}>→ Rechnung</button><button className="flex items-center gap-1.5 px-3 py-1.5 bg-white/[0.05] text-slate-400 border border-white/[0.08] rounded-lg text-[11px] cursor-pointer whitespace-nowrap font-medium hover:bg-white/[0.08] transition-all" onClick={() => updRe(r.id, { status: "storniert" })}>Ablehnen</button></div>)}</div>}
 
       {/* Quarterly tax */}
       {!firma?.kleinunternehmer && (qNetto > 0 || qMwst > 0) && (
         <div className="bg-[#0a0a1a]/80 rounded-2xl p-5 border border-white/[0.06] mb-5">
           <h3 className="text-[14px] font-semibold mb-4">Q{q + 1}/{now.getFullYear()} – Steuerübersicht</h3>
-          <div className="grid grid-cols-3 gap-3 mt-2">
-            <div className="p-4 bg-white/[0.02] rounded-xl border border-white/[0.06]">
-              <div className="text-[10px] text-slate-500 uppercase tracking-[0.1em] font-medium">Nettoumsatz</div>
-              <div className="text-[22px] font-extrabold mt-1.5 tracking-tight">{fc(qNetto)}</div>
+          <div className="grid grid-cols-3 gap-2 sm:gap-3 mt-2">
+            <div className="p-2.5 sm:p-4 bg-white/[0.02] rounded-xl border border-white/[0.06] min-w-0">
+              <div className="text-[9px] sm:text-[10px] text-slate-500 uppercase tracking-[0.08em] font-medium truncate">Nettoumsatz</div>
+              <div className="text-[13px] sm:text-[22px] font-extrabold mt-1 sm:mt-1.5 tracking-tight truncate">{fc(qNetto)}</div>
             </div>
-            <div className="p-4 bg-danger-500/[0.03] rounded-xl border border-danger-500/10">
-              <div className="text-[10px] text-slate-500 uppercase tracking-[0.1em] font-medium">MwSt-Schuld</div>
-              <div className="text-[22px] font-extrabold mt-1.5 text-danger-400 tracking-tight">{fc(qMwst)}</div>
+            <div className="p-2.5 sm:p-4 bg-danger-500/[0.03] rounded-xl border border-danger-500/10 min-w-0">
+              <div className="text-[9px] sm:text-[10px] text-slate-500 uppercase tracking-[0.08em] font-medium truncate">MwSt-Schuld</div>
+              <div className="text-[13px] sm:text-[22px] font-extrabold mt-1 sm:mt-1.5 text-danger-400 tracking-tight truncate">{fc(qMwst)}</div>
             </div>
-            <div className="p-4 bg-success-500/[0.03] rounded-xl border border-success-500/10">
-              <div className="text-[10px] text-slate-500 uppercase tracking-[0.1em] font-medium">Bruttoeinnahmen</div>
-              <div className="text-[22px] font-extrabold mt-1.5 text-success-400 tracking-tight">{fc(qNetto + qMwst)}</div>
+            <div className="p-2.5 sm:p-4 bg-success-500/[0.03] rounded-xl border border-success-500/10 min-w-0">
+              <div className="text-[9px] sm:text-[10px] text-slate-500 uppercase tracking-[0.08em] font-medium truncate">Brutto</div>
+              <div className="text-[13px] sm:text-[22px] font-extrabold mt-1 sm:mt-1.5 text-success-400 tracking-tight truncate">{fc(qNetto + qMwst)}</div>
             </div>
           </div>
           <p className="text-[11px] text-slate-500 mt-3">Nur bezahlte Rechnungen · {qStart.toLocaleDateString("de-DE")} – {qEnd.toLocaleDateString("de-DE")}</p>
@@ -1245,19 +1405,21 @@ function Dashboard({ rechnungen, kunden, firma, nav, updRe, addRe, addKu, plan, 
   );
 }
 
-function SB({ s }) { const m = { offen: { cls: "bg-warning-500/15 text-warning-500 border-warning-500/20", l: "Offen" }, bezahlt: { cls: "bg-success-500/15 text-success-500 border-success-500/20", l: "Bezahlt" }, gemahnt: { cls: "bg-danger-500/15 text-danger-500 border-danger-500/20", l: "Gemahnt" }, storniert: { cls: "bg-white/[0.06] text-slate-500 border-white/[0.08]", l: "Storniert" }, angebot: { cls: "bg-brand-500/15 text-brand-400 border-brand-500/20", l: "Angebot" } }; const v = m[s] || m.offen; return <span className={`text-[10px] font-semibold px-2 py-0.5 rounded-md whitespace-nowrap border ${v.cls}`}>{v.l}</span>; }
+function SB({ s }: { s: string }) { const m: Record<string, { cls: string; l: string }> = { offen: { cls: "bg-warning-500/15 text-warning-500 border-warning-500/20", l: "Offen" }, bezahlt: { cls: "bg-success-500/15 text-success-500 border-success-500/20", l: "Bezahlt" }, gemahnt: { cls: "bg-danger-500/15 text-danger-500 border-danger-500/20", l: "Gemahnt" }, storniert: { cls: "bg-white/[0.06] text-slate-500 border-white/[0.08]", l: "Storniert" }, angebot: { cls: "bg-brand-500/15 text-brand-400 border-brand-500/20", l: "Angebot" } }; const v = m[s] || m.offen; return <span className={`text-[10px] font-semibold px-2 py-0.5 rounded-md whitespace-nowrap border ${v.cls}`}>{v.l}</span>; }
 
 // ═══ NEUE RECHNUNG (compact – same logic as v3) ═══
-function NeueRechnung({ firma, kunden, addKu, addRe, updRe, nextNr, nav, plan, lim, canCreate, editRechnung, onEditDone, favoriten = [], addFav, delFav }) {
-  const [gw, setGw] = useState(firma?.gewerk || ""); const [kS, setKS] = useState(""); const [selK, setSelK] = useState(null);
+// eslint-disable-next-line @typescript-eslint/no-unused-vars
+function NeueRechnung({ firma, kunden, addKu, addRe, updRe, nextNr, nav, plan: _plan, lim: _lim, canCreate, editRechnung, onEditDone, favoriten = [], addFav, delFav }: { firma: Firma | null; kunden: Kunde[]; addKu: (k: Omit<Kunde, "id">) => Promise<Kunde>; addRe: (r: Rechnung) => Promise<void>; updRe: (id: string, up: Partial<Rechnung>) => void; nextNr: string; nav: (pg: string) => void; plan: string; lim: { re: number; ku: number }; canCreate: boolean; editRechnung: Rechnung | null; onEditDone?: () => void; favoriten?: FavoritItem[]; addFav: (v: Omit<FavoritItem, "id">) => void; delFav: (id: string) => void }) {
+  const [gw, setGw] = useState(firma?.gewerk || ""); const [kS, setKS] = useState(""); const [selK, setSelK] = useState<Kunde | null>(null);
   const [neuK, setNeuK] = useState({ name: "", strasse: "", plz: "", ort: "", email: "" }); const [showN, setShowN] = useState(false);
-  const [pos, setPos] = useState([]); const [ziel, setZiel] = useState(14); const [notiz, setNotiz] = useState("");
+  const [pos, setPos] = useState<Position[]>([]); const [ziel, setZiel] = useState(14); const [notiz, setNotiz] = useState("");
   const [showV, setShowV] = useState(false); const [saving, setSaving] = useState(false);
   const [rabatt, setRabatt] = useState(0); const [typ, setTyp] = useState("rechnung");
-  const [zvon, setZvon] = useState(""); const [zbis, setZbis] = useState(""); const [valE, setValE] = useState([]);
+  const [zvon, setZvon] = useState(""); const [zbis, setZbis] = useState(""); const [valE, setValE] = useState<string[]>([]);
 
   useEffect(() => {
     if (!editRechnung) return;
+    /* eslint-disable react-hooks/set-state-in-effect */
     setGw(editRechnung.gewerk || "");
     setPos(editRechnung.positionen || []);
     setZiel(editRechnung.zahlungsziel || 14);
@@ -1268,12 +1430,13 @@ function NeueRechnung({ firma, kunden, addKu, addRe, updRe, nextNr, nav, plan, l
     setZbis(editRechnung.zeitraumBis || "");
     const k = kunden.find(k => k.id === editRechnung.kundeId);
     if (k) setSelK(k);
-  }, [editRechnung]);
+    /* eslint-enable react-hooks/set-state-in-effect */
+  }, [editRechnung, kunden]);
 
   const fK = kunden.filter(k => k.name.toLowerCase().includes(kS.toLowerCase()));
-  const addP = p => setPos([...pos, { ...p, id: uid(), menge: p.menge || 1, mwst: firma?.kleinunternehmer ? 0 : 19, typ: p.typ || "arbeit" }]);
-  const updP = (pid, f, v) => setPos(pos.map(p => p.id === pid ? { ...p, [f]: v } : p));
-  const rmP = pid => setPos(pos.filter(p => p.id !== pid));
+  const addP = (p: Partial<Position> & { beschreibung: string; einheit: string; preis: number; typ?: "arbeit" | "material" }) => setPos([...pos, { beschreibung: p.beschreibung, einheit: p.einheit, preis: p.preis, typ: p.typ || "arbeit", id: uid(), menge: p.menge || 1, mwst: firma?.kleinunternehmer ? 0 : (p.mwst ?? 19) }]);
+  const updP = (pid: string, f: string, v: string | number) => setPos(pos.map(p => p.id === pid ? { ...p, [f]: v } : p));
+  const rmP = (pid: string) => setPos(pos.filter(p => p.id !== pid));
   const netto = pos.reduce((s, p) => s + p.menge * p.preis, 0);
   const rabattB = netto * rabatt / 100; const nettoNR = netto - rabattB;
   const mwstB = pos.reduce((s, p) => s + p.menge * p.preis * (1 - rabatt / 100) * p.mwst / 100, 0);
@@ -1337,7 +1500,7 @@ function NeueRechnung({ firma, kunden, addKu, addRe, updRe, nextNr, nav, plan, l
               <div className="flex gap-2">{pos.length > 0 && <div className="text-[10px] text-slate-500 flex gap-2.5"><span>Arb: {fc(arbS)}</span><span>Mat: {fc(matS)}</span></div>}{gw && <button className="flex items-center gap-1.5 px-3 py-1.5 bg-gradient-to-r from-brand-600 to-purple-600 text-white border-none rounded-lg text-[11px] font-semibold cursor-pointer hover:shadow-[0_0_16px_rgba(99,102,241,0.3)] transition-all" onClick={() => setShowV(!showV)}>{IC.star} KI</button>}</div>
             </div>
             {favoriten.length > 0 && <div className="bg-brand-500/[0.06] border border-brand-500/15 rounded-xl p-3 mt-2 mb-2"><div className="text-[10px] text-warning-500 font-bold uppercase tracking-[0.1em] mb-1.5">★ Favoriten</div><div className="flex flex-wrap gap-1.5">{favoriten.map((v, i) => <button key={i} className="flex flex-col gap-px py-1.5 px-2.5 bg-white/[0.04] border border-white/[0.06] rounded-lg text-slate-200 cursor-pointer text-[11px] text-left hover:border-brand-500/30 transition-all" onClick={() => addP(v)}><span className="text-[12px]">{v.beschreibung}</span><span className="opacity-40 text-[10px]">{fc(v.preis)}/{v.einheit}</span><span className="ml-1 text-[10px] text-warning-500" onClick={e => { e.stopPropagation(); delFav(v.id); }} title="Entfernen">✕</span></button>)}</div></div>}
-            {showV && gw && <div className="bg-brand-500/[0.06] border border-brand-500/15 rounded-xl p-3 mt-2"><div className="flex flex-wrap gap-1.5">{(GV[gw] || []).map((v, i) => <button key={i} className="flex flex-col gap-px py-1.5 px-2.5 bg-white/[0.04] border border-white/[0.06] rounded-lg text-slate-200 cursor-pointer text-[11px] text-left hover:border-brand-500/30 transition-all" onClick={() => addP(v)}><span className="text-[12px]">{v.beschreibung}</span><span className="opacity-40 text-[10px]">{fc(v.preis)}/{v.einheit}</span><span className="ml-1 text-[10px] text-slate-500" onClick={e => { e.stopPropagation(); addFav(v); }} title="Als Favorit speichern">★</span></button>)}</div></div>}
+            {showV && gw && <div className="bg-brand-500/[0.06] border border-brand-500/15 rounded-xl p-3 mt-2"><div className="flex flex-wrap gap-1.5">{((GV as Record<string, { beschreibung: string; einheit: string; preis: number; typ: "arbeit" | "material" }[]>)[gw] || []).map((v, i) => <button key={i} className="flex flex-col gap-px py-1.5 px-2.5 bg-white/[0.04] border border-white/[0.06] rounded-lg text-slate-200 cursor-pointer text-[11px] text-left hover:border-brand-500/30 transition-all" onClick={() => addP(v)}><span className="text-[12px]">{v.beschreibung}</span><span className="opacity-40 text-[10px]">{fc(v.preis)}/{v.einheit}</span><span className="ml-1 text-[10px] text-slate-500" onClick={e => { e.stopPropagation(); addFav(v); }} title="Als Favorit speichern">★</span></button>)}</div></div>}
             {pos.length > 0 && <div className="mt-3 overflow-x-auto"><div className="flex gap-1 py-1.5 px-1 text-[9px] font-semibold text-slate-500 uppercase tracking-[0.1em] border-b border-white/[0.06] min-w-[520px]"><span style={{ flex: 2.5 }}>Beschr.</span><span style={{ flex: .6 }}>Typ</span><span style={{ flex: .6 }}>Menge</span><span style={{ flex: .6 }}>Einh.</span><span style={{ flex: .7, textAlign: "right" }}>Preis</span><span style={{ flex: .5 }}>MwSt</span><span style={{ flex: .7, textAlign: "right" }}>Sum.</span><span className="w-6" /></div>
               {pos.map(p => <div key={p.id} className="flex gap-1 items-center py-1 border-b border-white/[0.04] min-w-[520px]"><input className={posI} style={{ flex: 2.5 }} value={p.beschreibung} onChange={e => updP(p.id, "beschreibung", e.target.value)} /><select className={posI} style={{ flex: .6 }} value={p.typ} onChange={e => updP(p.id, "typ", e.target.value)}><option value="arbeit">Arb</option><option value="material">Mat</option></select><input className={`${posI} text-center`} style={{ flex: .6 }} type="number" min=".01" step=".01" value={p.menge} onChange={e => updP(p.id, "menge", parseFloat(e.target.value) || 0)} /><input className={`${posI} text-center`} style={{ flex: .6 }} value={p.einheit} onChange={e => updP(p.id, "einheit", e.target.value)} /><input className={`${posI} text-right`} style={{ flex: .7 }} type="number" min="0" step=".01" value={p.preis} onChange={e => updP(p.id, "preis", parseFloat(e.target.value) || 0)} /><select className={posI} style={{ flex: .5 }} value={p.mwst} onChange={e => updP(p.id, "mwst", parseInt(e.target.value))}><option value={19}>19</option><option value={7}>7</option><option value={0}>0</option></select><span style={{ flex: .7, textAlign: "right", fontWeight: 600, fontSize: 11 }}>{fc(p.menge * p.preis)}</span><button className="bg-transparent border-none text-slate-500 cursor-pointer p-1 rounded-lg hover:text-slate-300 transition-colors" onClick={() => rmP(p.id)}>{IC.trash}</button></div>)}
             </div>}
@@ -1366,13 +1529,72 @@ function NeueRechnung({ firma, kunden, addKu, addRe, updRe, nextNr, nav, plan, l
 }
 
 // ═══ RECHNUNGEN MIT PDF ═══
-function RechnungenListe({ rechnungen, updRe, delRe, nav, dupRe, firma, onEdit }) {
-  const [filter, setFilter] = useState("alle"); const [search, setSearch] = useState("");
-  const [mahnM, setMahnM] = useState(null); const [mahnS, setMahnS] = useState(1);
-  const [stornierConfirm, setStornierConfirm] = useState(null);
-  const [deleteConfirm, setDeleteConfirm] = useState(null);
-  const fl = rechnungen.filter(r => filter === "alle" || r.status === filter).filter(r => r.kundeName?.toLowerCase().includes(search.toLowerCase()) || r.nummer?.includes(search)).sort((a, b) => new Date(b.datum) - new Date(a.datum));
-  const exportDatev = () => { const csv = datevCSV(rechnungen, firma); const b = new Blob([csv], { type: "text/csv" }); const a = document.createElement("a"); a.href = URL.createObjectURL(b); a.download = `DATEV_${new Date().toISOString().split("T")[0]}.csv`; a.click(); };
+function RechnungenListe({ rechnungen, updRe, delRe, nav, dupRe, firma, onEdit, initialSearch = "", showT }: { rechnungen: Rechnung[]; updRe: (id: string, up: Partial<Rechnung>) => void; delRe: (id: string) => void; nav: (pg: string) => void; dupRe: (r: Rechnung) => Promise<void>; firma: Firma | null; onEdit: (r: Rechnung) => void; initialSearch?: string; showT: (msg: string) => void }) {
+  const [filter, setFilter] = useState("alle"); const [search, setSearch] = useState(initialSearch);
+  const [mahnM, setMahnM] = useState<Rechnung | null>(null); const [mahnS, setMahnS] = useState(1);
+  const [stornierConfirm, setStornierConfirm] = useState<Rechnung | null>(null);
+  const [deleteConfirm, setDeleteConfirm] = useState<Rechnung | null>(null);
+  const [emailM, setEmailM] = useState<Rechnung | null>(null);
+  const [emailTo, setEmailTo] = useState("");
+  const [emailSubject, setEmailSubject] = useState("");
+  const [emailCC, setEmailCC] = useState(false);
+  const [emailType, setEmailType] = useState<"rechnung"|"mahnung">("rechnung");
+  const [emailMahnS, setEmailMahnS] = useState(1);
+  const [emailSending, setEmailSending] = useState(false);
+  const [emailErr, setEmailErr] = useState("");
+
+  const openEmailModal = (r: Rechnung, type: "rechnung"|"mahnung" = "rechnung", mahnStufe = 1) => {
+    const isAngebot = r.typ === "angebot";
+    const prefix = type === "mahnung" ? `${mahnStufe}. Mahnung zu Rechnung` : isAngebot ? "Angebot" : "Rechnung";
+    setEmailM(r);
+    setEmailTo(r.kundeEmail || "");
+    setEmailSubject(`${prefix} ${r.nummer} von ${firma?.name || ""}`);
+    setEmailCC(false);
+    setEmailType(type);
+    setEmailMahnS(mahnStufe);
+    setEmailErr("");
+  };
+
+  const sendEmail = async () => {
+    if (!emailTo || !emailM || !firma) return;
+    setEmailSending(true); setEmailErr("");
+    try {
+      const html = emailType === "mahnung"
+        ? generateMahnungPdfHtml(emailM, firma, emailMahnS)
+        : generatePdfHtml(emailM, firma);
+      const pdfBase64 = await generatePdfBase64(html);
+      const res = await fetch("/api/send-email", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          to: emailTo,
+          ccSelf: emailCC,
+          firmaEmail: firma.email,
+          subject: emailSubject,
+          type: emailType === "mahnung" ? "mahnung" : emailM.typ === "angebot" ? "angebot" : "rechnung",
+          rechnungNummer: emailM.nummer,
+          kundeName: emailM.kundeName,
+          gesamt: emailM.gesamt,
+          faelligDatum: emailM.faelligDatum,
+          firmaName: firma.name,
+          mahnStufe: emailMahnS,
+          pdfBase64,
+          pdfName: `${emailM.nummer}.pdf`,
+        }),
+      });
+      const data = await res.json();
+      if (!res.ok) throw new Error(data.error || "Fehler beim Senden");
+      if (emailType === "mahnung") updRe(emailM.id, { status: "gemahnt", mahnstufe: emailMahnS });
+      setEmailM(null);
+      if (showT) showT("E-Mail erfolgreich gesendet ✓");
+    } catch (err: unknown) {
+      setEmailErr(err instanceof Error ? err.message : "Unbekannter Fehler");
+    } finally {
+      setEmailSending(false);
+    }
+  };
+  const fl = rechnungen.filter(r => filter === "alle" || r.status === filter).filter(r => r.kundeName?.toLowerCase().includes(search.toLowerCase()) || r.nummer?.includes(search)).sort((a, b) => new Date(b.datum).getTime() - new Date(a.datum).getTime());
+  const exportDatev = () => { const csv = datevCSV(rechnungen); const b = new Blob([csv], { type: "text/csv" }); const a = document.createElement("a"); a.href = URL.createObjectURL(b); a.download = `DATEV_${new Date().toISOString().split("T")[0]}.csv`; a.click(); };
 
   const sbtn = "flex items-center gap-1.5 px-3 py-1.5 bg-white/[0.05] text-slate-300 border border-white/[0.08] rounded-lg text-[11px] cursor-pointer whitespace-nowrap hover:bg-white/[0.08] transition-all font-medium";
   const sbtnG = "flex items-center gap-1.5 px-3 py-1.5 bg-success-500/10 text-success-400 border border-success-500/20 rounded-lg text-[11px] cursor-pointer whitespace-nowrap font-medium hover:bg-success-500/15 transition-all";
@@ -1403,8 +1625,9 @@ function RechnungenListe({ rechnungen, updRe, delRe, nav, dupRe, firma, onEdit }
             <span className="text-center max-md:hidden" style={{ flex: .6 }}><SB s={r.status} /></span>
             <span className="flex gap-1.5 justify-end flex-wrap max-md:w-full" style={{ flex: 2 }}>
               {firma && <button className="flex items-center gap-1 px-2.5 py-1.5 bg-brand-500/10 text-brand-300 border border-brand-500/20 rounded-lg text-[11px] cursor-pointer whitespace-nowrap font-medium hover:bg-brand-500/15 transition-all" onClick={() => downloadPdf(r, firma)}>{IC.pdf} PDF</button>}
+              {firma && <button className="flex items-center gap-1 px-2.5 py-1.5 bg-cyan-500/10 text-cyan-300 border border-cyan-500/20 rounded-lg text-[11px] cursor-pointer whitespace-nowrap font-medium hover:bg-cyan-500/15 transition-all" onClick={() => openEmailModal(r, "rechnung")} title="Per E-Mail senden">{IC.mail}</button>}
               {r.status === "offen" && <button className={sbtnG} onClick={() => updRe(r.id, { status: "bezahlt" })}>{IC.check}</button>}
-              {(r.status === "offen" || r.status === "gemahnt") && firma && <button className={sbtn} onClick={() => { setMahnM(r); setMahnS(r.mahnstufe ? Math.min(r.mahnstufe + 1, 3) : (r.status === "gemahnt" ? 2 : 1)); }}>{IC.mail}</button>}
+              {(r.status === "offen" || r.status === "gemahnt") && firma && <button className={sbtn} onClick={() => { setMahnM(r); setMahnS(r.mahnstufe ? Math.min(r.mahnstufe + 1, 3) : (r.status === "gemahnt" ? 2 : 1)); }} title="Mahnung erstellen">🔔</button>}
               {r.status === "angebot" && <button className={sbtnG} onClick={() => updRe(r.id, { status: "offen", typ: "rechnung" })}>→RE</button>}
               {r.status !== "storniert" && <button className={sbtn} onClick={() => onEdit(r)} title="Bearbeiten">✏️</button>}
               <button className={sbtn} onClick={() => dupRe(r)}>{IC.copy}</button>
@@ -1413,25 +1636,105 @@ function RechnungenListe({ rechnungen, updRe, delRe, nav, dupRe, firma, onEdit }
             </span>
           </div>)}</div>}
 
-      {mahnM && firma && <div className="fixed inset-0 bg-black/70 backdrop-blur-sm flex items-center justify-center z-[1000] p-4" onClick={() => setMahnM(null)}><div className="bg-[#0f0f1a] border border-white/[0.08] rounded-2xl max-w-[560px] w-full max-h-[90vh] overflow-y-auto shadow-[0_24px_80px_rgba(0,0,0,0.6)]" onClick={e => e.stopPropagation()}><div className="p-6"><h2 className="text-[16px] font-bold mb-3">Zahlungserinnerung</h2><div className="flex gap-1 mb-4 bg-white/[0.04] rounded-xl p-0.5 w-fit border border-white/[0.06]">{[1, 2, 3].map(s => <button key={s} className={`px-3 py-1.5 border-none rounded-lg text-[12px] cursor-pointer font-medium transition-all ${mahnS === s ? "bg-white/[0.08] text-white" : "bg-transparent text-slate-500"}`} onClick={() => setMahnS(s)}>{s}. Mahnung</button>)}</div><textarea className="w-full min-h-[180px] p-4 bg-white/[0.04] border border-white/[0.08] rounded-xl text-[13px] font-sans text-slate-200 resize-y outline-none" value={mahnung(mahnM, firma, mahnS)} readOnly /><div className="flex gap-2 mt-4 justify-end"><button className="flex items-center gap-1.5 px-3 py-1.5 bg-brand-500/10 text-brand-300 border border-brand-500/20 rounded-lg text-[11px] cursor-pointer font-medium" onClick={() => { printHtmlInIframe(generateMahnungPdfHtml(mahnM, firma, mahnS)); updRe(mahnM.id, { status: "gemahnt", mahnstufe: mahnS }); setMahnM(null); }}>{IC.pdf} PDF</button><button className="flex items-center gap-1.5 px-5 py-2.5 bg-gradient-to-r from-brand-600 to-brand-500 text-white border-none rounded-xl text-[13px] font-semibold cursor-pointer hover:shadow-[0_0_24px_rgba(99,102,241,0.3)] transition-all" onClick={() => { navigator.clipboard.writeText(mahnung(mahnM, firma, mahnS)); updRe(mahnM.id, { status: "gemahnt", mahnstufe: mahnS }); setMahnM(null); }}>Kopieren</button><button className={sbtn} onClick={() => setMahnM(null)}>Schließen</button></div></div></div></div>}
+      {mahnM && firma && <div className="fixed inset-0 bg-black/70 backdrop-blur-sm flex items-center justify-center z-[1000] p-4" onClick={() => setMahnM(null)}><div className="bg-[#0f0f1a] border border-white/[0.08] rounded-2xl max-w-[560px] w-full max-h-[90vh] overflow-y-auto shadow-[0_24px_80px_rgba(0,0,0,0.6)]" onClick={e => e.stopPropagation()}><div className="p-6"><h2 className="text-[16px] font-bold mb-3">Zahlungserinnerung</h2><div className="flex gap-1 mb-4 bg-white/[0.04] rounded-xl p-0.5 w-fit border border-white/[0.06]">{[1, 2, 3].map(s => <button key={s} className={`px-3 py-1.5 border-none rounded-lg text-[12px] cursor-pointer font-medium transition-all ${mahnS === s ? "bg-white/[0.08] text-white" : "bg-transparent text-slate-500"}`} onClick={() => setMahnS(s)}>{s}. Mahnung</button>)}</div><textarea className="w-full min-h-[180px] p-4 bg-white/[0.04] border border-white/[0.08] rounded-xl text-[13px] font-sans text-slate-200 resize-y outline-none" value={mahnung(mahnM, firma, mahnS)} readOnly /><div className="flex gap-2 mt-4 justify-end flex-wrap"><button className="flex items-center gap-1.5 px-3 py-1.5 bg-brand-500/10 text-brand-300 border border-brand-500/20 rounded-lg text-[11px] cursor-pointer font-medium" onClick={() => { openAsPdf(generateMahnungPdfHtml(mahnM, firma, mahnS)); updRe(mahnM.id, { status: "gemahnt", mahnstufe: mahnS }); setMahnM(null); }}>{IC.pdf} PDF</button><button className="flex items-center gap-1.5 px-3 py-1.5 bg-cyan-500/10 text-cyan-300 border border-cyan-500/20 rounded-lg text-[11px] cursor-pointer font-medium hover:bg-cyan-500/15 transition-all" onClick={() => { setMahnM(null); openEmailModal(mahnM, "mahnung", mahnS); }}>{IC.mail} Per E-Mail</button><button className="flex items-center gap-1.5 px-5 py-2.5 bg-gradient-to-r from-brand-600 to-brand-500 text-white border-none rounded-xl text-[13px] font-semibold cursor-pointer hover:shadow-[0_0_24px_rgba(99,102,241,0.3)] transition-all" onClick={() => { navigator.clipboard.writeText(mahnung(mahnM, firma, mahnS)); updRe(mahnM.id, { status: "gemahnt", mahnstufe: mahnS }); setMahnM(null); }}>Kopieren</button><button className={sbtn} onClick={() => setMahnM(null)}>Schließen</button></div></div></div></div>}
 
       {stornierConfirm && <div className="fixed inset-0 bg-black/70 backdrop-blur-sm flex items-center justify-center z-[1000] p-4" onClick={() => setStornierConfirm(null)}><div className="bg-[#0f0f1a] border border-white/[0.08] rounded-2xl max-w-[400px] w-full max-h-[90vh] overflow-y-auto shadow-[0_24px_80px_rgba(0,0,0,0.6)]" onClick={e => e.stopPropagation()}><div className="p-6"><h2 className="text-[16px] font-bold mb-3">Rechnung stornieren?</h2><p className="text-[13px] text-slate-400 mb-5 leading-relaxed"><strong className="text-slate-200">{stornierConfirm.nummer}</strong> – {stornierConfirm.kundeName}<br />Betrag: {fc(stornierConfirm.gesamt)}<br /><br />Die Rechnung wird als storniert markiert und aus allen Auswertungen ausgeschlossen.</p><div className="flex gap-2 justify-end"><button className={dbtn} onClick={() => { updRe(stornierConfirm.id, { status: "storniert" }); setStornierConfirm(null); }}>Ja, stornieren</button><button className={sbtn} onClick={() => setStornierConfirm(null)}>Abbrechen</button></div></div></div></div>}
 
       {deleteConfirm && <div className="fixed inset-0 bg-black/70 backdrop-blur-sm flex items-center justify-center z-[1000] p-4" onClick={() => setDeleteConfirm(null)}><div className="bg-[#0f0f1a] border border-white/[0.08] rounded-2xl max-w-[400px] w-full max-h-[90vh] overflow-y-auto shadow-[0_24px_80px_rgba(0,0,0,0.6)]" onClick={e => e.stopPropagation()}><div className="p-6"><h2 className="text-[16px] font-bold mb-3">Rechnung endgültig löschen?</h2><p className="text-[13px] text-slate-400 mb-5 leading-relaxed"><strong className="text-slate-200">{deleteConfirm.nummer}</strong> – {deleteConfirm.kundeName}<br />Betrag: {fc(deleteConfirm.gesamt)}<br /><br /><span className="text-danger-400">Die Rechnung wird unwiderruflich gelöscht und kann nicht wiederhergestellt werden.</span></p><div className="flex gap-2 justify-end"><button className={dbtn} onClick={() => { delRe(deleteConfirm.id); setDeleteConfirm(null); }}>Endgültig löschen</button><button className={sbtn} onClick={() => setDeleteConfirm(null)}>Abbrechen</button></div></div></div></div>}
+
+      {/* ── E-MAIL MODAL ── */}
+      {emailM && firma && (
+        <div className="fixed inset-0 bg-black/70 backdrop-blur-sm flex items-center justify-center z-[1000] p-4" onClick={() => !emailSending && setEmailM(null)}>
+          <div className="bg-[#0f0f1a] border border-white/[0.08] rounded-2xl max-w-[500px] w-full shadow-[0_24px_80px_rgba(0,0,0,0.6)]" onClick={e => e.stopPropagation()}>
+            <div className="p-6">
+              {/* Header */}
+              <div className="flex items-center gap-3 mb-5">
+                <div className="w-9 h-9 rounded-xl bg-cyan-500/10 border border-cyan-500/20 flex items-center justify-center text-cyan-400">{IC.mail}</div>
+                <div>
+                  <h2 className="text-[16px] font-bold leading-tight">
+                    {emailType === "mahnung" ? `${emailMahnS}. Mahnung per E-Mail` : emailM.typ === "angebot" ? "Angebot per E-Mail senden" : "Rechnung per E-Mail senden"}
+                  </h2>
+                  <p className="text-[12px] text-slate-500 mt-0.5">{emailM.nummer} · {emailM.kundeName} · {fc(emailM.gesamt)}</p>
+                </div>
+              </div>
+
+              {/* Typ-Wechsler (wenn Mahnung möglich) */}
+              {(emailM.status === "offen" || emailM.status === "gemahnt") && (
+                <div className="flex gap-1 mb-4 bg-white/[0.04] rounded-xl p-0.5 w-fit border border-white/[0.06]">
+                  <button className={`px-3 py-1.5 border-none rounded-lg text-[12px] cursor-pointer font-medium transition-all ${emailType === "rechnung" ? "bg-white/[0.08] text-white" : "bg-transparent text-slate-500"}`} onClick={() => { setEmailType("rechnung"); setEmailSubject(`${emailM.typ === "angebot" ? "Angebot" : "Rechnung"} ${emailM.nummer} von ${firma.name}`); }}>{emailM.typ === "angebot" ? "Angebot" : "Rechnung"}</button>
+                  <button className={`px-3 py-1.5 border-none rounded-lg text-[12px] cursor-pointer font-medium transition-all ${emailType === "mahnung" ? "bg-white/[0.08] text-white" : "bg-transparent text-slate-500"}`} onClick={() => { setEmailType("mahnung"); const ms = emailM.mahnstufe ? Math.min(emailM.mahnstufe + 1, 3) : (emailM.status === "gemahnt" ? 2 : 1); setEmailMahnS(ms); setEmailSubject(`${ms}. Mahnung zu Rechnung ${emailM.nummer} – ${firma.name}`); }}>Mahnung</button>
+                </div>
+              )}
+
+              {/* Mahnstufe-Wähler */}
+              {emailType === "mahnung" && (
+                <div className="flex gap-1 mb-4 bg-white/[0.04] rounded-xl p-0.5 w-fit border border-white/[0.06]">
+                  {[1, 2, 3].map(s => (
+                    <button key={s} className={`px-3 py-1.5 border-none rounded-lg text-[12px] cursor-pointer font-medium transition-all ${emailMahnS === s ? "bg-white/[0.08] text-white" : "bg-transparent text-slate-500"}`} onClick={() => { setEmailMahnS(s); setEmailSubject(`${s}. Mahnung zu Rechnung ${emailM.nummer} – ${firma.name}`); }}>{s}. Mahnung</button>
+                  ))}
+                </div>
+              )}
+
+              {/* Felder */}
+              <div className="flex flex-col gap-3">
+                <div>
+                  <label className="text-[10px] font-semibold text-slate-500 uppercase tracking-wider mb-1.5 block">Empfänger *</label>
+                  <input className={inp} type="email" placeholder="kunde@beispiel.de" value={emailTo} onChange={e => setEmailTo(e.target.value)} disabled={emailSending} />
+                </div>
+                <div>
+                  <label className="text-[10px] font-semibold text-slate-500 uppercase tracking-wider mb-1.5 block">Betreff</label>
+                  <input className={inp} placeholder="Betreff..." value={emailSubject} onChange={e => setEmailSubject(e.target.value)} disabled={emailSending} />
+                </div>
+                <label className="flex items-center gap-2.5 cursor-pointer group mt-1">
+                  <div className={`w-4.5 h-4.5 rounded-md border flex items-center justify-center transition-all text-[10px] ${emailCC ? "bg-brand-500 border-brand-500 text-white" : "border-white/[0.15] bg-transparent"}`} onClick={() => !emailSending && setEmailCC(!emailCC)}>
+                    {emailCC && "✓"}
+                  </div>
+                  <span className="text-[13px] text-slate-400 group-hover:text-slate-300 transition-colors">Kopie an mich senden{firma.email ? ` (${firma.email})` : ""}</span>
+                </label>
+              </div>
+
+              {/* Anhang-Hinweis */}
+              <div className="flex items-center gap-2 mt-4 px-3 py-2 bg-white/[0.03] border border-white/[0.06] rounded-lg">
+                <span className="text-slate-500 flex">{IC.pdf}</span>
+                <span className="text-[12px] text-slate-500">{emailM.nummer}.pdf <span className="text-slate-600">– wird automatisch als Anhang beigefügt</span></span>
+              </div>
+
+              {/* Fehler */}
+              {emailErr && <div className="mt-3 px-3 py-2 bg-danger-500/10 border border-danger-500/20 rounded-lg text-[12px] text-danger-400">{emailErr}</div>}
+
+              {/* Aktionen */}
+              <div className="flex gap-2 mt-5 justify-end">
+                <button className={sbtn} onClick={() => setEmailM(null)} disabled={emailSending}>Abbrechen</button>
+                <button
+                  className="flex items-center gap-2 px-5 py-2.5 bg-gradient-to-r from-cyan-600 to-cyan-500 text-white border-none rounded-xl text-[13px] font-semibold cursor-pointer hover:shadow-[0_0_24px_rgba(6,182,212,0.3)] hover:translate-y-[-1px] transition-all duration-200 disabled:opacity-50 disabled:cursor-not-allowed disabled:translate-y-0"
+                  onClick={sendEmail}
+                  disabled={!emailTo || emailSending}
+                >
+                  {emailSending ? (
+                    <><span className="w-3.5 h-3.5 border-2 border-white/30 border-t-white rounded-full animate-spin inline-block" /> Wird gesendet…</>
+                  ) : (
+                    <>{IC.mail} Jetzt senden</>
+                  )}
+                </button>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 }
 
 // ═══ KUNDEN ═══
-function KundenListe({ kunden, rechnungen, updKu, delKu }) {
+function KundenListe({ kunden, rechnungen, updKu, delKu }: { kunden: Kunde[]; rechnungen: Rechnung[]; updKu: (id: string, up: Partial<Kunde>) => void; delKu: (id: string) => void }) {
   const [search, setSearch] = useState("");
-  const [editK, setEditK] = useState(null);
-  const [delConfirm, setDelConfirm] = useState(null);
-  const [editForm, setEditForm] = useState({});
+  const [editK, setEditK] = useState<Kunde | null>(null);
+  const [delConfirm, setDelConfirm] = useState<Kunde | null>(null);
+  const [editForm, setEditForm] = useState<Partial<Kunde>>({});
   const f = kunden.filter(k => k.name?.toLowerCase().includes(search.toLowerCase()));
-  const st = kid => { const kr = rechnungen.filter(r => r.kundeId === kid); return { c: kr.length, u: kr.filter(r => r.status === "bezahlt").reduce((s, r) => s + r.gesamt, 0) }; };
-  const openEdit = k => { setEditK(k); setEditForm({ name: k.name || "", strasse: k.strasse || "", plz: k.plz || "", ort: k.ort || "", email: k.email || "", telefon: k.telefon || "" }); };
-  const hasOpenRE = kid => rechnungen.some(r => r.kundeId === kid && (r.status === "offen" || r.status === "gemahnt"));
+  const st = (kid: string) => { const kr = rechnungen.filter(r => r.kundeId === kid); return { c: kr.length, u: kr.filter(r => r.status === "bezahlt").reduce((s, r) => s + r.gesamt, 0) }; };
+  const openEdit = (k: Kunde) => { setEditK(k); setEditForm({ name: k.name || "", strasse: k.strasse || "", plz: k.plz || "", ort: k.ort || "", email: k.email || "", telefon: k.telefon || "" }); };
+  const hasOpenRE = (kid: string) => rechnungen.some(r => r.kundeId === kid && (r.status === "offen" || r.status === "gemahnt"));
   const inp = "w-full py-2.5 px-3 bg-white/[0.04] border border-white/[0.08] rounded-xl text-slate-200 text-[13px] outline-none focus:border-brand-500/50 focus:bg-white/[0.06] transition-all duration-200 placeholder:text-slate-600";
   const mInp = "w-full py-2.5 px-3 bg-white/[0.04] border border-white/[0.08] rounded-xl text-slate-200 text-[13px] outline-none focus:border-brand-500/50 transition-all duration-200 placeholder:text-slate-600";
 
@@ -1467,13 +1770,15 @@ function KundenListe({ kunden, rechnungen, updKu, delKu }) {
 }
 
 // ═══ WIEDERKEHREND ═══
-function WiederkehrendPage({ wiederkehrend, addWdk, updWdk, delWdk, kunden, rechnungen, firma }) {
+// eslint-disable-next-line @typescript-eslint/no-unused-vars
+function WiederkehrendPage({ wiederkehrend, addWdk, updWdk, delWdk, kunden, rechnungen, firma }: { wiederkehrend: WiederkehrendItem[]; addWdk: (w: Omit<WiederkehrendItem, "id">) => void; updWdk: (id: string, up: Partial<WiederkehrendItem>) => void; delWdk: (id: string) => void; kunden: Kunde[]; rechnungen: Rechnung[]; firma: Firma | null }) {
   const [showForm, setShowForm] = useState(false);
-  const [form, setForm] = useState({ name: "", kundeId: "", kundeName: "", kundeAdresse: "", kundeEmail: "", positionen: [], zahlungsziel: 14, notiz: "", gewerk: "", rabatt: 0, netto: 0, mwst: 0, gesamt: 0, interval: "monatlich", nextDue: new Date(new Date().setMonth(new Date().getMonth()+1)).toISOString().split("T")[0], aktiv: true });
-  const [kS, setKS] = useState(""); const [selK, setSelK] = useState(null);
+  const emptyForm: Omit<WiederkehrendItem, "id"> = { name: "", kundeId: "", kundeName: "", kundeAdresse: "", kundeEmail: "", positionen: [], zahlungsziel: 14, notiz: "", gewerk: "", rabatt: 0, netto: 0, mwst: 0, gesamt: 0, interval: "monatlich", nextDue: new Date(new Date().setMonth(new Date().getMonth()+1)).toISOString().split("T")[0], aktiv: true };
+  const [form, setForm] = useState<Omit<WiederkehrendItem, "id">>(emptyForm);
+  const [kS, setKS] = useState(""); const [selK, setSelK] = useState<Kunde | null>(null);
   const fK = kunden.filter(k => k.name.toLowerCase().includes(kS.toLowerCase()));
 
-  const calcFromRe = reId => {
+  const calcFromRe = (reId: string) => {
     const re = rechnungen.find(r => r.id === reId);
     if (!re) return;
     const k = kunden.find(k => k.id === re.kundeId);
@@ -1483,7 +1788,7 @@ function WiederkehrendPage({ wiederkehrend, addWdk, updWdk, delWdk, kunden, rech
 
   const doAdd = () => {
     if (!form.name || !form.kundeName) return;
-    addWdk(form); setShowForm(false); setForm({ name: "", kundeId: "", kundeName: "", kundeAdresse: "", kundeEmail: "", positionen: [], zahlungsziel: 14, notiz: "", gewerk: "", rabatt: 0, netto: 0, mwst: 0, gesamt: 0, interval: "monatlich", nextDue: new Date(new Date().setMonth(new Date().getMonth()+1)).toISOString().split("T")[0], aktiv: true }); setSelK(null); setKS("");
+    addWdk(form); setShowForm(false); setForm(emptyForm); setSelK(null); setKS("");
   };
 
   const intervals = { monatlich: "Monatlich", quartal: "Quartal", jaehrlich: "Jährlich" };
@@ -1507,7 +1812,7 @@ function WiederkehrendPage({ wiederkehrend, addWdk, updWdk, delWdk, kunden, rech
               : <div className="flex justify-between items-center bg-brand-500/[0.06] border border-brand-500/15 rounded-xl py-2.5 px-3 mt-1.5"><div><strong>{selK.name}</strong></div><button className="bg-transparent border-none text-slate-500 cursor-pointer p-1 rounded-lg hover:bg-white/[0.05] transition-colors" onClick={() => { setSelK(null); setForm({...form, kundeId: "", kundeName: ""}); }}>✕</button></div>}
           </div>
           <div className="flex gap-3">
-            <div className="flex-1"><label className={lbl}>Intervall</label><select className={sel} value={form.interval} onChange={e => setForm({...form, interval: e.target.value})}><option value="monatlich">Monatlich</option><option value="quartal">Quartal</option><option value="jaehrlich">Jährlich</option></select></div>
+            <div className="flex-1"><label className={lbl}>Intervall</label><select className={sel} value={form.interval} onChange={e => setForm({...form, interval: e.target.value as "monatlich" | "quartal" | "jaehrlich"})}><option value="monatlich">Monatlich</option><option value="quartal">Quartal</option><option value="jaehrlich">Jährlich</option></select></div>
             <div className="flex-1"><label className={lbl}>Erste Fälligkeit</label><input type="date" className={inp} value={form.nextDue} onChange={e => setForm({...form, nextDue: e.target.value})} /></div>
           </div>
           {form.positionen.length > 0 && <div className="text-[13px] text-slate-400 py-2.5 px-3.5 bg-white/[0.03] rounded-xl border border-white/[0.06]">{form.positionen.length} Position(en) übernommen · {fc(form.gesamt)}</div>}
@@ -1531,7 +1836,7 @@ function WiederkehrendPage({ wiederkehrend, addWdk, updWdk, delWdk, kunden, rech
 }
 
 // ═══ ABO ═══
-function AboPage({ plan, spl }) {
+function AboPage({ plan, spl }: { plan: string; spl: (p: string) => void }) {
   const pls = [
     { id: "free", n: "Free", p: "0", feat: ["5 Rechnungen", "3 Kunden", "KI-Vorschläge"] },
     { id: "starter", n: "Starter", p: "9,99", feat: ["50 Rechnungen", "25 Kunden", "Logo", "Vorschau", "Angebote", "PDF-Export"], pop: true },
@@ -1549,7 +1854,7 @@ function AboPage({ plan, spl }) {
 function SupabasePage() {
   const [tab, setTab] = useState("intro");
   const [copied, setCopied] = useState("");
-  const copyCode = (code, label) => { navigator.clipboard.writeText(code); setCopied(label); setTimeout(() => setCopied(""), 2000); };
+  const copyCode = (code: string, label: string) => { navigator.clipboard.writeText(code); setCopied(label); setTimeout(() => setCopied(""), 2000); };
 
   const sbtn = "flex items-center gap-1.5 px-3 py-1.5 bg-white/[0.05] text-slate-300 border border-white/[0.08] rounded-lg text-[11px] cursor-pointer whitespace-nowrap hover:bg-white/[0.08] transition-all font-medium";
 
@@ -1626,11 +1931,11 @@ function SupabasePage() {
 }
 
 // ═══ SETTINGS ═══
-function SettingsPage({ firma, sf, rechnungen, kunden, sre, skn, favoriten, setFavoriten, wiederkehrend, saveWdk, plan, spl, showT }) {
-  const [form, setForm] = useState(firma || { name: "", inhaber: "", strasse: "", plz: "", ort: "", telefon: "", email: "", web: "", steuernr: "", ustid: "", bankName: "", iban: "", bic: "", gewerk: "", logo: "" });
+function SettingsPage({ firma, sf, rechnungen, kunden, sre, skn, favoriten, setFavoriten, wiederkehrend, saveWdk, plan, spl, showT }: { firma: Firma | null; sf: (f: Firma | null) => void; rechnungen: Rechnung[]; kunden: Kunde[]; sre: (r: Rechnung[]) => void; skn: (k: Kunde[]) => void; favoriten: FavoritItem[]; setFavoriten: (f: FavoritItem[]) => void; wiederkehrend: WiederkehrendItem[]; saveWdk: (w: WiederkehrendItem[]) => void; plan: string; spl: (p: string) => void; showT: (msg: string) => void }) {
+  const [form, setForm] = useState<Firma>(firma || { name: "", inhaber: "", strasse: "", plz: "", ort: "", telefon: "", email: "", web: "", steuernr: "", ustid: "", bankName: "", iban: "", bic: "", gewerk: "", logo: "" });
   const [showR, setShowR] = useState(false);
-  const [deleteInput, setDeleteInput] = useState(""); const fRef = useRef();
-  const handleLogo = e => { const f = e.target.files[0]; if (!f) return; if (f.size > 2000000) { alert("Datei zu groß – max. 2 MB."); return; } const img = new Image(); const url = URL.createObjectURL(f); img.onload = () => { const c = document.createElement("canvas"); const MAX = 400; let w = img.width, h = img.height; if (w > MAX) { h = h * MAX / w; w = MAX; } c.width = w; c.height = h; c.getContext("2d").drawImage(img, 0, 0, w, h); const compressed = c.toDataURL("image/jpeg", 0.75); setForm(prev => ({ ...prev, logo: compressed })); URL.revokeObjectURL(url); }; img.src = url; };
+  const [deleteInput, setDeleteInput] = useState(""); const fRef = useRef<HTMLInputElement>(null);
+  const handleLogo = (e: React.ChangeEvent<HTMLInputElement>) => { const f = e.target.files?.[0]; if (!f) return; if (f.size > 2000000) { alert("Datei zu groß – max. 2 MB."); return; } const img = new Image(); const url = URL.createObjectURL(f); img.onload = () => { const c = document.createElement("canvas"); const MAX = 400; let w = img.width, h = img.height; if (w > MAX) { h = h * MAX / w; w = MAX; } c.width = w; c.height = h; c.getContext("2d")!.drawImage(img, 0, 0, w, h); const compressed = c.toDataURL("image/jpeg", 0.75); setForm(prev => ({ ...prev, logo: compressed })); URL.revokeObjectURL(url); }; img.src = url; };
 
   const inp = "w-full py-2.5 px-3 bg-white/[0.04] border border-white/[0.08] rounded-xl text-slate-200 text-[13px] outline-none focus:border-brand-500/50 focus:bg-white/[0.06] transition-all duration-200 placeholder:text-slate-600";
   const sbtn = "flex items-center gap-1.5 px-3 py-1.5 bg-white/[0.05] text-slate-300 border border-white/[0.08] rounded-lg text-[11px] cursor-pointer whitespace-nowrap hover:bg-white/[0.08] transition-all font-medium";
@@ -1655,7 +1960,7 @@ function SettingsPage({ firma, sf, rechnungen, kunden, sre, skn, favoriten, setF
           <p className="text-xs text-slate-500 mb-2.5 leading-relaxed">Exportiere alle Daten als JSON-Backup oder importiere ein vorhandenes Backup.</p>
           <div className="flex gap-2 flex-wrap">
             <button className={sbtn} onClick={() => { const data = { version: 1, date: new Date().toISOString(), firma, rechnungen, kunden, favoriten: favoriten || [], wiederkehrend: wiederkehrend || [], plan }; const blob = new Blob([JSON.stringify(data, null, 2)], { type: "application/json" }); const a = document.createElement("a"); a.href = URL.createObjectURL(blob); a.download = `RechnungsKI_Backup_${new Date().toISOString().split("T")[0]}.json`; a.click(); URL.revokeObjectURL(a.href); showT("Backup heruntergeladen!"); }}>{IC.dl} Export (.json)</button>
-            <label className={`${sbtn} cursor-pointer`}><input type="file" accept=".json" className="hidden" onChange={e => { const f = e.target.files?.[0]; if (!f) return; const reader = new FileReader(); reader.onload = ev => { try { const d = JSON.parse(ev.target.result); if (!d.version || !d.firma) { showT("Ungültiges Backup!"); return; } if (!confirm(`Backup vom ${fd(d.date)} importieren? Aktuelle Daten werden überschrieben.`)) return; sf(d.firma); sre(d.rechnungen || []); skn(d.kunden || []); if (d.favoriten) { setFavoriten(d.favoriten); sv("inv-favoriten", d.favoriten); } if (d.wiederkehrend) { saveWdk(d.wiederkehrend); } if (d.plan) { spl(d.plan); } setForm(d.firma); showT("Backup importiert!"); } catch { showT("Datei konnte nicht gelesen werden!"); } }; reader.readAsText(f); e.target.value = ""; }} />⬆ Import</label>
+            <label className={`${sbtn} cursor-pointer`}><input type="file" accept=".json" className="hidden" onChange={e => { const f = e.target.files?.[0]; if (!f) return; const reader = new FileReader(); reader.onload = ev => { try { const d = JSON.parse(ev.target?.result as string); if (!d.version || !d.firma) { showT("Ungültiges Backup!"); return; } if (!confirm(`Backup vom ${fd(d.date)} importieren? Aktuelle Daten werden überschrieben.`)) return; sf(d.firma); sre(d.rechnungen || []); skn(d.kunden || []); if (d.favoriten) { setFavoriten(d.favoriten); sv("inv-favoriten", d.favoriten); } if (d.wiederkehrend) { saveWdk(d.wiederkehrend); } if (d.plan) { spl(d.plan); } setForm(d.firma); showT("Backup importiert!"); } catch { showT("Datei konnte nicht gelesen werden!"); } }; reader.readAsText(f); e.target.value = ""; }} />⬆ Import</label>
           </div>
         </div>
         <div className="bg-danger-500/[0.04] rounded-2xl p-4 border border-danger-500/15"><h3 className="text-[14px] font-bold text-danger-400 mb-2">Gefahrenzone</h3>
@@ -1665,6 +1970,6 @@ function SettingsPage({ firma, sf, rechnungen, kunden, sre, skn, favoriten, setF
     </div>
   );
 }
-function FI({ l, v, k, f, s, w }) { return <div className="flex-1" style={w ? { maxWidth: w } : {}}><label className="text-[10px] text-slate-500 mb-1 block font-medium tracking-wide">{l}</label><input className="w-full py-2.5 px-3 bg-white/[0.04] border border-white/[0.08] rounded-xl text-slate-200 text-[13px] outline-none focus:border-brand-500/50 focus:bg-white/[0.06] transition-all duration-200" value={v || ""} onChange={e => s({ ...f, [k]: e.target.value })} /></div>; }
+function FI({ l, v, k, f, s, w }: { l: string; v: string | undefined; k: string; f: Firma; s: (v: Firma) => void; w?: number }) { return <div className="flex-1" style={w ? { maxWidth: w } : {}}><label className="text-[10px] text-slate-500 mb-1 block font-medium tracking-wide">{l}</label><input className="w-full py-2.5 px-3 bg-white/[0.04] border border-white/[0.08] rounded-xl text-slate-200 text-[13px] outline-none focus:border-brand-500/50 focus:bg-white/[0.06] transition-all duration-200" value={v || ""} onChange={e => s({ ...f, [k]: e.target.value })} /></div>; }
 
 // CSS removed — all styles are now Tailwind classes
