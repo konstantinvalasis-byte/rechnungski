@@ -84,6 +84,19 @@
   to { width: 100%; }
 }
 
+/* Kalender-Icon in date-Inputs auf dunklem Hintergrund sichtbar machen */
+input[type="date"]::-webkit-calendar-picker-indicator {
+  filter: invert(0.7) sepia(1) saturate(3) hue-rotate(200deg);
+  opacity: 0.7;
+  cursor: pointer;
+  border-radius: 3px;
+  transition: opacity 0.15s ease;
+}
+
+input[type="date"]::-webkit-calendar-picker-indicator:hover {
+  opacity: 1;
+}
+
 * {
   box-sizing: border-box;
 }

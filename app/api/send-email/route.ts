@@ -1,10 +1,48 @@
 import { NextRequest, NextResponse } from "next/server";
 import { Resend } from "resend";
+import { z } from "zod";
+import { Ratelimit } from "@upstash/ratelimit";
+import { Redis } from "@upstash/redis";
+import * as Sentry from "@sentry/nextjs";
 
 // ═══════════════════════════════════════════════════════════
 // E-MAIL API — RechnungsKI
 // POST /api/send-email
 // ═══════════════════════════════════════════════════════════
+
+// BE-02: Zod-Schema für den gesamten Request-Body
+const SendEmailSchema = z.object({
+  to: z.string().email("Ungültige Empfänger-E-Mail"),
+  ccSelf: z.boolean().optional(),
+  firmaEmail: z.string().email().optional().or(z.literal("")),
+  subject: z.string().max(200).optional(),
+  type: z.enum(["rechnung", "angebot", "mahnung"]).default("rechnung"),
+  rechnungNummer: z.string().min(1).max(50),
+  kundeName: z.string().max(200).optional(),
+  gesamt: z.number().min(0).max(9_999_999).optional(),
+  faelligDatum: z.string().max(20).optional(),
+  firmaName: z.string().max(200).optional(),
+  mahnStufe: z.number().int().min(1).max(3).optional(),
+  pdfBase64: z.string().min(1),
+  pdfName: z.string().max(100).optional(),
+});
+
+// BE-01: Rate Limiter — 10 E-Mails/Stunde pro IP via Upstash
+let ratelimit: Ratelimit | null = null;
+
+function getRatelimit(): Ratelimit | null {
+  if (!process.env.UPSTASH_REDIS_REST_URL || !process.env.UPSTASH_REDIS_REST_TOKEN) {
+    return null; // Upstash nicht konfiguriert → Rate Limiting deaktiviert (lokal)
+  }
+  if (!ratelimit) {
+    ratelimit = new Ratelimit({
+      redis: Redis.fromEnv(),
+      limiter: Ratelimit.slidingWindow(10, "1 h"),
+      analytics: false,
+    });
+  }
+  return ratelimit;
+}
 
 function formatAmount(n: number): string {
   return new Intl.NumberFormat("de-DE", { style: "currency", currency: "EUR" }).format(n);
@@ -105,8 +143,37 @@ function createEmailHtml(
 }
 
 export async function POST(req: NextRequest) {
+  // BE-01: Rate Limiting — 10 E-Mails/Stunde pro IP
+  const rl = getRatelimit();
+  if (rl) {
+    const ip = req.headers.get("x-forwarded-for")?.split(",")[0]?.trim() ?? "anonymous";
+    const { success, limit, remaining, reset } = await rl.limit(`send-email:${ip}`);
+    if (!success) {
+      return NextResponse.json(
+        { error: "Zu viele Anfragen. Bitte in einer Stunde erneut versuchen." },
+        {
+          status: 429,
+          headers: {
+            "X-RateLimit-Limit": String(limit),
+            "X-RateLimit-Remaining": String(remaining),
+            "X-RateLimit-Reset": String(reset),
+          },
+        }
+      );
+    }
+  }
+
   try {
-    const body = await req.json();
+    // BE-02: Zod-Validierung
+    const rawBody = await req.json();
+    const parseResult = SendEmailSchema.safeParse(rawBody);
+    if (!parseResult.success) {
+      return NextResponse.json(
+        { error: "Ungültige Eingabe", details: parseResult.error.flatten().fieldErrors },
+        { status: 400 }
+      );
+    }
+    const body = parseResult.data;
     const {
       to,
       ccSelf,
@@ -123,11 +190,6 @@ export async function POST(req: NextRequest) {
       pdfName,
     } = body;
 
-    // Validation
-    if (!to || !pdfBase64 || !rechnungNummer) {
-      return NextResponse.json({ error: "Pflichtfelder fehlen (to, pdfBase64, rechnungNummer)" }, { status: 400 });
-    }
-
     if (!process.env.RESEND_API_KEY) {
       return NextResponse.json(
         { error: "E-Mail-Dienst nicht konfiguriert. Bitte RESEND_API_KEY in .env.local setzen." },
@@ -137,7 +199,7 @@ export async function POST(req: NextRequest) {
 
     const resend = new Resend(process.env.RESEND_API_KEY);
 
-    const htmlBody = createEmailHtml(type ?? "rechnung", {
+    const htmlBody = createEmailHtml(type, {
       firmaName: firmaName ?? "Ihr Absender",
       kundeName: kundeName ?? "",
       rechnungNummer,
@@ -172,11 +234,15 @@ export async function POST(req: NextRequest) {
     });
 
     if (error) {
+      Sentry.captureException(new Error(`Resend Fehler: ${error.message}`), {
+        extra: { rechnungNummer, type },
+      });
       return NextResponse.json({ error: error.message }, { status: 500 });
     }
 
     return NextResponse.json({ success: true, id: data?.id });
   } catch (err: unknown) {
+    Sentry.captureException(err, { extra: { route: "/api/send-email" } });
     const message = err instanceof Error ? err.message : "Unbekannter Fehler";
     return NextResponse.json({ error: message }, { status: 500 });
   }
