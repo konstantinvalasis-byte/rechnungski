@@ -110,7 +110,7 @@ export default function NeueRechnung({ firma, kunden, addKu, addRe, updRe, nextN
           <div className="flex items-center justify-center w-9 h-9 rounded-xl bg-amber-500/15 shrink-0 text-amber-400 text-lg">{IC.star}</div>
           <div>
             <p className="text-[13px] font-bold text-amber-300 mb-1">Free-Plan: Limit erreicht</p>
-            <p className="text-[13px] text-amber-400/80">Du hast das Limit von 5 Rechnungen im kostenlosen Plan erreicht. Upgrade auf Starter oder Pro, um unbegrenzt Rechnungen zu erstellen.</p>
+            <p className="text-[13px] text-amber-400/80">Du hast das Limit von 3 Rechnungen im kostenlosen Plan erreicht. Upgrade auf Starter oder Pro, um mehr Rechnungen zu erstellen.</p>
             <button
               onClick={() => nav("abo")}
               className="mt-2.5 px-4 py-1.5 bg-gradient-to-r from-amber-500 to-amber-400 text-slate-900 rounded-lg text-[12px] font-bold cursor-pointer border-none hover:opacity-90 transition-opacity"

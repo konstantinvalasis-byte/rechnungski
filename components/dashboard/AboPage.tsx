@@ -3,10 +3,9 @@ import { IC } from "@/lib/dashboard-icons";
 
 export default function AboPage({ plan, spl }: { plan: string; spl: (p: string) => void }) {
   const pls = [
-    { id: "free", n: "Free", p: "0", feat: ["5 Rechnungen & Angebote", "3 Kunden", "KI-Preisvorschläge", "PDF-Export", "§14-konforme Rechnungen"] },
-    { id: "starter", n: "Starter", p: "9,99", feat: ["50 Rechnungen & Angebote", "25 Kunden", "Alles aus Free", "Firmenlogo auf PDFs", "E-Mail-Versand", "Wiederkehrende Rechnungen"], pop: true },
-    { id: "pro", n: "Pro", p: "24,99", feat: ["500 Rechnungen & Angebote", "Unbegr. Kunden", "Alles aus Starter", "3-Stufen-Mahnwesen", "DATEV CSV-Export"] },
-    { id: "enterprise", n: "Enterprise", p: "49,99", feat: ["Unbegrenzt", "Alles aus Pro", "Multi-User", "API-Zugang", "Direkter Support"] },
+    { id: "free", n: "Free", p: "0", feat: ["3 Rechnungen & Angebote/Monat", "3 Kunden", "KI-Preisvorschläge", "PDF-Export", "§14-konforme Rechnungen"] },
+    { id: "starter", n: "Starter", p: "7,90", feat: ["100 Rechnungen & Angebote/Monat", "100 Kunden", "Alles aus Free", "Firmenlogo auf PDFs", "E-Mail-Versand", "Wiederkehrende Rechnungen", "Mahnwesen"], pop: true },
+    { id: "pro", n: "Pro", p: "17,90", feat: ["Alles aus Starter", "3-Stufen-Mahnwesen", "DATEV CSV-Export", "Angebote → Rechnungen (1 Klick)", "Prioritäts-Support"] },
   ];
   return (
     <div className="p-6 px-7 max-md:p-4 animate-fade-in"><div className="text-center mb-8"><h1 className="text-[28px] font-extrabold bg-gradient-to-r from-brand-400 to-purple-400 bg-clip-text text-transparent tracking-tight">Wähle deinen Plan</h1><p className="text-[14px] text-slate-500 mt-2">Starte kostenlos. Upgrade jederzeit.</p></div>

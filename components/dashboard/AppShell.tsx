@@ -22,6 +22,7 @@ import WiederkehrendPage from "@/components/dashboard/WiederkehrendPage";
 import UpgradeGate from "@/components/dashboard/UpgradeGate";
 import AboPage from "@/components/dashboard/AboPage";
 import SettingsPage from "@/components/dashboard/SettingsPage";
+import HelpSection from "@/components/dashboard/HelpSection";
 
 export default function AppShell() {
   const [pg, setPg] = useState("dashboard");
@@ -87,7 +88,7 @@ export default function AppShell() {
   const logout = async () => { await abmelden(); router.push("/?abgemeldet=1"); router.refresh(); };
   const nxtNr = () => { const y = new Date().getFullYear(); const prefix = `RE-${y}-`; const maxNr = rechnungen.filter(r => r.nummer?.startsWith(prefix)).reduce((max, r) => { const n = parseInt(r.nummer.slice(prefix.length), 10); return isNaN(n) ? max : Math.max(max, n); }, 0); return `${prefix}${String(maxNr + 1).padStart(4, "0")}`; };
   const nxtAnNr = () => { const y = new Date().getFullYear(); const prefix = `AN-${y}-`; const maxNr = rechnungen.filter(r => r.nummer?.startsWith(prefix)).reduce((max, r) => { const n = parseInt(r.nummer.slice(prefix.length), 10); return isNaN(n) ? max : Math.max(max, n); }, 0); return `${prefix}${String(maxNr + 1).padStart(4, "0")}`; };
-  const lim = { free: { re: 5, ku: 3 }, starter: { re: 50, ku: 25 }, pro: { re: 500, ku: 999 }, enterprise: { re: 99999, ku: 99999 } }[plan] || { re: 5, ku: 3 };
+  const lim = { free: { re: 3, ku: 3 }, starter: { re: 100, ku: 100 }, pro: { re: 99999, ku: 99999 } }[plan] || { re: 3, ku: 3 };
   const nav = (p: string, search?: string) => {
     if (p !== "neue-rechnung") newDocTypRef.current = "rechnung";
     if (p === "neue-rechnung") setEditRe(null);
@@ -171,7 +172,7 @@ export default function AppShell() {
           <div className="bg-[#0a0a1a]/80 rounded-2xl p-5 border border-white/[0.06]">
             <div className="h-4 w-36 bg-white/[0.06] rounded mb-4" />
             <div className="flex items-end gap-2.5 h-[150px]">
-              {[...Array(6)].map((_, i) => <div key={i} className="flex-1 bg-white/[0.04] rounded-t-md" style={{ height: `${30 + Math.random() * 60}%` }} />)}
+              {[55, 70, 45, 80, 60, 75].map((h, i) => <div key={i} className="flex-1 bg-white/[0.04] rounded-t-md" style={{ height: `${h}%` }} />)}
             </div>
           </div>
           <div className="bg-[#0a0a1a]/80 rounded-2xl p-5 border border-white/[0.06]">
@@ -244,7 +245,11 @@ export default function AppShell() {
           <div className="h-1 bg-white/[0.06] rounded-full overflow-hidden mx-1">
             <div className="h-full bg-gradient-to-r from-brand-500 to-brand-400 rounded-full transition-[width] duration-500 ease-out" style={{ width: `${Math.min(rechnungen.length / lim.re * 100, 100)}%` }} />
           </div>
-          <button onClick={logout} className="mt-3 w-full flex items-center gap-2 px-3 py-2 rounded-xl text-[13px] font-medium text-slate-500 hover:text-red-400 hover:bg-red-500/[0.06] transition-all duration-200 border-none cursor-pointer bg-transparent">
+          <button onClick={() => nav("hilfe")} className={`mt-2 w-full flex items-center gap-2 px-3 py-2 rounded-xl text-[13px] font-medium border-none cursor-pointer bg-transparent transition-all duration-200 ${pg === "hilfe" ? "text-brand-400 bg-white/[0.06]" : "text-slate-500 hover:text-slate-300 hover:bg-white/[0.04]"}`}>
+            <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8"><circle cx="12" cy="12" r="10"/><path d="M9.09 9a3 3 0 015.83 1c0 2-3 3-3 3"/><line x1="12" y1="17" x2="12.01" y2="17"/></svg>
+            Hilfe & FAQ
+          </button>
+          <button onClick={logout} className="mt-1 w-full flex items-center gap-2 px-3 py-2 rounded-xl text-[13px] font-medium text-slate-500 hover:text-red-400 hover:bg-red-500/[0.06] transition-all duration-200 border-none cursor-pointer bg-transparent">
             <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8"><path d="M9 21H5a2 2 0 01-2-2V5a2 2 0 012-2h4"/><polyline points="16 17 21 12 16 7"/><line x1="21" y1="12" x2="9" y2="12"/></svg>
             Abmelden
           </button>
@@ -259,6 +264,12 @@ export default function AppShell() {
         {pg === "kunden" && <KundenListe {...{ kunden, rechnungen, updKu, delKu }} />}
         {pg === "wiederkehrend" && (plan === "free" ? <UpgradeGate feature="Wiederkehrende Rechnungen" desc="Automatisch wiederkehrende Rechnungen erstellen – ab dem Starter-Plan." nav={nav} /> : <WiederkehrendPage {...{ wiederkehrend, addWdk, updWdk, delWdk, kunden, rechnungen, firma }} />)}
         {pg === "abo" && <AboPage {...{ plan, spl }} />}
+{pg === "hilfe" && (
+  <div className="p-6 px-7 max-md:p-4 animate-fade-in">
+    <div className="mb-6"><h1 className="text-xl font-bold tracking-tight">Hilfe & FAQ</h1><p className="text-[13px] text-slate-500 mt-1">Antworten auf die häufigsten Fragen</p></div>
+    <HelpSection />
+  </div>
+)}
 {pg === "settings" && <SettingsPage {...{ firma, sf, rechnungen, kunden, sre: (r: Rechnung[]) => setRechnungen(r), skn: (k: Kunde[]) => setKunden(k), favoriten, setFavoriten, wiederkehrend, saveWdk: (w: WiederkehrendItem[]) => setWdk(w), plan, spl, showT }} />}
       </main>
 

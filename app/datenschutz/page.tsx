@@ -81,7 +81,13 @@ export default function DatenschutzSeite() {
             <p className="mt-2">Der Versand erfolgt nur auf ausdrückliche Anforderung des Nutzers. Datenschutzerklärung Resend: <a href="https://resend.com/legal/privacy-policy" target="_blank" rel="noopener noreferrer" className="text-brand-400 hover:text-brand-300 underline">resend.com/legal/privacy-policy</a></p>
           </Section>
 
-          <Section titel="7. Speicherdauer">
+          <Section titel="7. Fehler-Monitoring (Sentry)">
+            <p>Zur Erkennung und Behebung technischer Fehler setzen wir <strong className="text-slate-200">Sentry</strong> (Functional Software Inc., 45 Fremont Street, San Francisco, CA 94105, USA) ein. Im Fehlerfall werden technische Diagnosedaten (Stack Trace, betroffene URL, Browsertyp, anonymisierte IP-Adresse) an Sentry übermittelt.</p>
+            <p className="mt-2">Es werden keine personenbezogenen Inhaltsdaten (z.B. Rechnungsinhalte oder Kundendaten) übertragen. Die Verarbeitung erfolgt auf Grundlage unseres berechtigten Interesses an der Stabilität und Sicherheit des Dienstes (Art. 6 Abs. 1 lit. f DSGVO). Für Übertragungen in die USA gelten die Standardvertragsklauseln gem. Art. 46 DSGVO.</p>
+            <p className="mt-2">Datenschutzerklärung Sentry: <a href="https://sentry.io/privacy/" target="_blank" rel="noopener noreferrer" className="text-brand-400 hover:text-brand-300 underline">sentry.io/privacy</a></p>
+          </Section>
+
+          <Section titel="9. Speicherdauer">
             <p>Personenbezogene Daten werden gelöscht, sobald der Zweck der Verarbeitung entfällt:</p>
             <ul className="list-disc pl-5 flex flex-col gap-1.5 mt-2">
               <li>Kontodaten: Unmittelbar nach Löschung des Nutzerkontos.</li>
@@ -90,7 +96,7 @@ export default function DatenschutzSeite() {
             </ul>
           </Section>
 
-          <Section titel="8. Deine Rechte">
+          <Section titel="10. Deine Rechte">
             <p>Du hast als betroffene Person folgende Rechte:</p>
             <ul className="list-disc pl-5 flex flex-col gap-1.5 mt-2">
               <li><strong className="text-slate-200">Auskunft</strong> (Art. 15 DSGVO): Welche Daten wir über dich verarbeiten.</li>
@@ -103,16 +109,16 @@ export default function DatenschutzSeite() {
             <p className="mt-3">Du hast außerdem das Recht, dich bei der zuständigen Datenschutz-Aufsichtsbehörde zu beschweren. Zuständig ist der Landesbeauftragte für den Datenschutz Baden-Württemberg.</p>
           </Section>
 
-          <Section titel="9. Cookies">
+          <Section titel="11. Cookies">
             <p>Diese Website verwendet ausschließlich technisch notwendige Session-Cookies für die Authentifizierung (Supabase Auth Token). Es werden keine Tracking-Cookies oder Drittanbieter-Cookies eingesetzt.</p>
             <p className="mt-2">Da keine Analyse- oder Marketing-Cookies verwendet werden, ist kein Cookie-Banner erforderlich.</p>
           </Section>
 
-          <Section titel="10. Datensicherheit">
+          <Section titel="12. Datensicherheit">
             <p>Alle Datenübertragungen erfolgen über HTTPS (TLS-Verschlüsselung). Passwörter werden ausschließlich als bcrypt-Hashwerte gespeichert. Datenbankzugriffe sind über Row-Level-Security (RLS) abgesichert — jeder Nutzer kann nur auf seine eigenen Daten zugreifen.</p>
           </Section>
 
-          <Section titel="11. Kontakt">
+          <Section titel="13. Kontakt">
             <p>Für Fragen zum Datenschutz oder zur Ausübung deiner Rechte wende dich an:</p>
             <Adresse />
           </Section>
@@ -147,12 +153,13 @@ function Adresse() {
   return (
     <div className="mt-3 p-3.5 bg-white/[0.03] rounded-xl border border-white/[0.06] text-[13px] text-slate-400 leading-relaxed">
       <strong className="text-slate-300">RechnungsKI</strong><br />
-      Dino [Nachname]<br />
-      [Straße & Hausnummer]<br />
-      70[XXX] Stuttgart<br />
+      Konstantin Valasis<br />
+      Darmstädter Straße 7<br />
+      70376 Stuttgart<br />
       Deutschland<br />
       <br />
-      E-Mail: <a href="mailto:datenschutz@rechnungski.de" className="text-brand-400 hover:text-brand-300 transition-colors">datenschutz@rechnungski.de</a>
+      E-Mail: <a href="mailto:info@rechnungs-ki.de" className="text-brand-400 hover:text-brand-300 transition-colors">info@rechnungs-ki.de</a><br />
+      Telefon: <a href="tel:+4915679799879" className="text-brand-400 hover:text-brand-300 transition-colors">+49 156 79799879</a>
     </div>
   )
 }

@@ -129,8 +129,7 @@ export const FAQS: Faq[] = [
 ];
 
 export const PLANS: Plan[] = [
-  { name: "Free", price: 0, priceYearly: 0, desc: "Zum Ausprobieren", features: ["5 Rechnungen & Angebote", "3 Kunden", "KI-Preisvorschläge", "PDF-Export", "§14-konforme Rechnungen"] },
-  { name: "Starter", price: 9.99, priceYearly: 7.99, desc: "Einzelunternehmer", features: ["50 Rechnungen & Angebote", "25 Kunden", "Alles aus Free", "Firmenlogo auf PDFs", "E-Mail-Versand", "Wiederkehrende Rechnungen"], popular: true },
-  { name: "Pro", price: 24.99, priceYearly: 19.99, desc: "Wachsende Betriebe", features: ["500 Rechnungen & Angebote", "Unbegr. Kunden", "Alles aus Starter", "3-Stufen-Mahnwesen", "DATEV CSV-Export"] },
-  { name: "Enterprise", price: 49.99, priceYearly: 39.99, desc: "Teams & Agenturen", features: ["Unbegrenzt", "Alles aus Pro", "Multi-User", "API-Zugang", "Direkter Support"] },
+  { name: "Free", price: 0, priceYearly: 0, desc: "Zum Ausprobieren", features: ["3 Rechnungen & Angebote/Monat", "3 Kunden", "KI-Preisvorschläge", "PDF-Export", "§14-konforme Rechnungen"] },
+  { name: "Starter", price: 7.90, priceYearly: 6.30, desc: "Für Einzelunternehmer", features: ["100 Rechnungen & Angebote/Monat", "100 Kunden", "Alles aus Free", "Firmenlogo auf PDFs", "E-Mail-Versand", "Wiederkehrende Rechnungen", "Mahnwesen"], popular: true },
+  { name: "Pro", price: 17.90, priceYearly: 14.30, desc: "Für wachsende Betriebe", features: ["Alles aus Starter", "3-Stufen-Mahnwesen", "DATEV CSV-Export", "Angebote → Rechnungen (1 Klick)", "Prioritäts-Support"] },
 ];

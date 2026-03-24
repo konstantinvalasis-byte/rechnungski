@@ -39,7 +39,7 @@ interface Row {
 const ROWS: Row[] = [
   {
     feature: "Preis (Einsteiger-Plan)",
-    rechnungski: "9,99 €/Mo",
+    rechnungski: "7,90 €/Mo",
     sevdesk: "19,90 €/Mo",
     lexoffice: "14,90 €/Mo",
     note: "Günstigster Einstieg",

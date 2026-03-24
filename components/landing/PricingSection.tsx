@@ -54,7 +54,7 @@ export default function PricingSection({ billing, setBilling }: Props) {
         </div>
 
         <div className="grid sm:grid-cols-3 gap-4">
-          {PLANS.filter((p) => p.name !== "Enterprise").map((plan) => (
+          {PLANS.map((plan) => (
             <div
               key={plan.name}
               className={`relative flex flex-col p-6 rounded-2xl transition-all duration-300 hover:-translate-y-1 ${
@@ -71,7 +71,7 @@ export default function PricingSection({ billing, setBilling }: Props) {
               <div className="text-xs font-bold text-brand-600 uppercase tracking-wide">{plan.name}</div>
               <div className="flex items-baseline gap-1 mt-2 mb-1">
                 <span className="text-3xl font-extrabold tracking-tight">
-                  {billing === "yearly" ? plan.priceYearly : plan.price}€
+                  {plan.price === 0 ? "0" : (billing === "yearly" ? plan.priceYearly : plan.price).toFixed(2).replace(".", ",")}€
                 </span>
                 <span className="text-xs text-slate-400 font-medium">/Mo</span>
               </div>
