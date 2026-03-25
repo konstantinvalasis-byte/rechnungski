@@ -26,8 +26,8 @@ export default function WiederkehrendPage({ wiederkehrend, addWdk, updWdk, delWd
 
   const intervals: Record<string, string> = { monatlich: "Monatlich", quartal: "Quartal", jaehrlich: "Jährlich" };
 
-  const inp = "w-full py-2.5 px-3 bg-white/[0.04] border border-white/[0.08] rounded-xl text-slate-200 text-[13px] outline-none focus:border-brand-500/50 focus:bg-white/[0.06] transition-all duration-200 placeholder:text-slate-600";
-  const sel = "w-full py-2.5 px-3 bg-white/[0.04] border border-white/[0.08] rounded-xl text-slate-200 text-[13px] outline-none cursor-pointer";
+  const inp = "w-full py-2.5 px-3 bg-white/[0.08] border border-white/[0.18] rounded-xl text-slate-200 text-[13px] outline-none focus:border-brand-500/50 focus:bg-white/[0.11] transition-all duration-200 placeholder:text-slate-500";
+  const sel = "w-full py-2.5 px-3 bg-white/[0.08] border border-white/[0.18] rounded-xl text-slate-200 text-[13px] outline-none cursor-pointer";
   const lbl = "text-[11px] font-semibold text-slate-400 mb-1.5 block tracking-wide";
 
   return (

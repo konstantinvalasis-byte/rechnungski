@@ -3,11 +3,12 @@ import { useState, useEffect, useRef } from "react";
 import type { Firma, Rechnung, Kunde, FavoritItem, Position } from "@/lib/db";
 import { uid, fc } from "@/lib/dashboard-utils";
 import { IC } from "@/lib/dashboard-icons";
-import { BRANCHEN_KATEGORIEN, GV } from "@/lib/dashboard-data";
+import { BRANCHEN_KATEGORIEN } from "@/lib/dashboard-data";
 import { validateRechnung } from "@/lib/dashboard-validation";
 import { openAsPdf } from "@/lib/dashboard-pdf";
+import PositionenListe from "@/components/dashboard/PositionenListe";
 
-export default function NeueRechnung({ firma, kunden, addKu, addRe, updRe, nextNr, nextAnNr, nav, plan, lim: _lim, canCreate, editRechnung, onEditDone, favoriten = [], addFav, delFav, initDocTyp = "rechnung" }: { firma: Firma | null; kunden: Kunde[]; addKu: (k: Omit<Kunde, "id">) => Promise<Kunde>; addRe: (r: Rechnung) => Promise<void>; updRe: (id: string, up: Partial<Rechnung>) => void; nextNr: string; nextAnNr: string; nav: (pg: string) => void; plan: string; lim: { re: number; ku: number }; canCreate: boolean; editRechnung: Rechnung | null; onEditDone?: () => void; favoriten?: FavoritItem[]; addFav: (v: Omit<FavoritItem, "id">) => void; delFav: (id: string) => void; initDocTyp?: string }) {
+export default function NeueRechnung({ firma, kunden, addKu, addRe, updRe, nextNr, nextAnNr, nav, plan, lim: _lim, canCreate, editRechnung, onEditDone, favoriten = [], addFav, updFav, delFav, initDocTyp = "rechnung", initKundeId = null, initGewerk = "" }: { firma: Firma | null; kunden: Kunde[]; addKu: (k: Omit<Kunde, "id">) => Promise<Kunde>; addRe: (r: Rechnung) => Promise<void>; updRe: (id: string, up: Partial<Rechnung>) => void; nextNr: string; nextAnNr: string; nav: (pg: string) => void; plan: string; lim: { re: number; ku: number }; canCreate: boolean; editRechnung: Rechnung | null; onEditDone?: () => void; favoriten?: FavoritItem[]; addFav: (v: Omit<FavoritItem, "id">) => void; updFav: (id: string, up: Omit<FavoritItem, "id">) => void; delFav: (id: string) => void; initDocTyp?: string; initKundeId?: string | null; initGewerk?: string }) {
   // Im Free-Plan kein Logo auf PDFs
   const firmaForPdf = firma && plan === "free" ? { ...firma, logo: "" } : firma;
   const [gw, setGw] = useState(firma?.gewerk || "");
@@ -40,6 +41,17 @@ export default function NeueRechnung({ firma, kunden, addKu, addRe, updRe, nextN
     /* eslint-enable react-hooks/set-state-in-effect */
   }, [editRechnung, kunden]);
 
+  // Kunden und Gewerk vorbelegen (z.B. aus Kundenliste)
+  useEffect(() => {
+    if (!initKundeId || editRechnung) return;
+    const k = kunden.find(k => k.id === initKundeId);
+    if (k) { setSelK(k); setKS(k.name); }
+    if (initGewerk) {
+      setGw(initGewerk);
+      setSonstigesGw(!Object.values(BRANCHEN_KATEGORIEN).flat().includes(initGewerk));
+    }
+  }, [initKundeId]); // eslint-disable-line react-hooks/exhaustive-deps
+
   // Dropdown bei Klick außerhalb schließen
   useEffect(() => {
     const handler = (e: MouseEvent) => { if (kRef.current && !kRef.current.contains(e.target as Node)) setShowKD(false); };
@@ -48,8 +60,8 @@ export default function NeueRechnung({ firma, kunden, addKu, addRe, updRe, nextN
   }, []);
 
   const fK = kS ? kunden.filter(k => k.name.toLowerCase().includes(kS.toLowerCase())) : kunden;
-  const addP = (p: Partial<Position> & { beschreibung: string; einheit: string; preis: number; typ?: "arbeit" | "material" }) => setPos([...pos, { beschreibung: p.beschreibung, einheit: p.einheit, preis: p.preis, typ: p.typ || "arbeit", id: uid(), menge: p.menge || 1, mwst: firma?.kleinunternehmer ? 0 : (p.mwst ?? 19) }]);
-  const updP = (pid: string, f: string, v: string | number) => setPos(pos.map(p => p.id === pid ? { ...p, [f]: v } : p));
+  const addP = (p: Partial<Position> & { beschreibung: string; einheit: string; preis: number; typ?: "arbeit" | "material" }) => setPos([...pos, { beschreibung: p.beschreibung, einheit: p.einheit, preis: p.preis, typ: p.typ, id: uid(), menge: p.menge || 1, mwst: firma?.kleinunternehmer ? 0 : (p.mwst ?? 19) }]);
+  const updP = (pid: string, f: string, v: string | number | undefined) => setPos(pos.map(p => p.id === pid ? { ...p, [f]: v } : p));
   const rmP = (pid: string) => setPos(pos.filter(p => p.id !== pid));
   const netto = pos.reduce((s, p) => s + p.menge * p.preis, 0);
   const rabattB = netto * rabatt / 100; const nettoNR = netto - rabattB;
@@ -90,9 +102,8 @@ export default function NeueRechnung({ firma, kunden, addKu, addRe, updRe, nextN
     }
   };
 
-  const inp = "w-full py-2.5 px-3 bg-white/[0.04] border border-white/[0.08] rounded-xl text-slate-200 text-[13px] outline-none focus:border-brand-500/50 focus:bg-white/[0.06] transition-all duration-200 placeholder:text-slate-600";
-  const sel = "w-full py-2.5 px-3 bg-white/[0.04] border border-white/[0.08] rounded-xl text-slate-200 text-[13px] outline-none cursor-pointer";
-  const posI = "py-[6px] px-2 bg-white/[0.04] border border-white/[0.06] rounded-lg text-slate-200 text-[11px] outline-none focus:border-brand-500/50 transition-colors";
+  const inp = "w-full py-2.5 px-3 bg-white/[0.08] border border-white/[0.18] rounded-xl text-slate-200 text-[13px] outline-none focus:border-brand-500/50 focus:bg-white/[0.11] transition-all duration-200 placeholder:text-slate-500";
+  const sel = "w-full py-2.5 px-3 bg-white/[0.08] border border-white/[0.18] rounded-xl text-slate-200 text-[13px] outline-none cursor-pointer";
 
   if (!firma) return <div className="p-6 px-7 animate-fade-in"><div className="flex flex-col items-center justify-center py-12 text-center"><div className="w-12 h-12 rounded-xl bg-white/[0.04] border border-white/[0.06] flex items-center justify-center mb-3 text-slate-500">{IC.gear}</div><h2 className="text-lg font-bold">Firmendaten fehlen</h2><button className="flex items-center gap-1.5 px-5 py-2.5 bg-gradient-to-r from-brand-600 to-brand-500 text-white border-none rounded-xl text-[13px] font-semibold cursor-pointer mt-4 hover:shadow-[0_0_24px_rgba(99,102,241,0.3)] transition-all" onClick={() => nav("settings")}>Einstellungen</button></div></div>;
 
@@ -135,7 +146,7 @@ export default function NeueRechnung({ firma, kunden, addKu, addRe, updRe, nextN
                 type="text"
                 autoFocus
                 placeholder="Eigene Branche eingeben …"
-                className="mt-2 w-full py-2.5 px-3 bg-white/[0.04] border border-white/[0.08] rounded-xl text-slate-200 text-[13px] outline-none focus:border-brand-500/50 focus:bg-white/[0.06] transition-all duration-200 placeholder:text-slate-600"
+                className="mt-2 w-full py-2.5 px-3 bg-white/[0.08] border border-white/[0.18] rounded-xl text-slate-200 text-[13px] outline-none focus:border-brand-500/50 focus:bg-white/[0.11] transition-all duration-200 placeholder:text-slate-500"
                 value={gw}
                 onChange={e => { setGw(e.target.value); setShowV(false); }}
               />
@@ -220,41 +231,12 @@ export default function NeueRechnung({ firma, kunden, addKu, addRe, updRe, nextN
               </div>
             )}
           </div>
-          <div className="bg-[#0a0a1a]/80 rounded-2xl p-4 border border-white/[0.06]">
-            <div className="flex justify-between items-center flex-wrap gap-1.5">
-              <label className="text-[11px] font-semibold text-slate-400 tracking-wide">Positionen</label>
-              <div className="flex gap-2">{pos.length > 0 && <div className="text-[10px] text-slate-500 flex gap-2.5"><span>Arb: {fc(arbS)}</span><span>Mat: {fc(matS)}</span></div>}{gw && <button className="flex items-center gap-1.5 px-3 py-1.5 bg-gradient-to-r from-brand-600 to-purple-600 text-white border-none rounded-lg text-[11px] font-semibold cursor-pointer hover:shadow-[0_0_16px_rgba(99,102,241,0.3)] transition-all" onClick={() => setShowV(!showV)}>{IC.star} Vorschläge</button>}</div>
-            </div>
-            {favoriten.length > 0 && <div className="bg-brand-500/[0.06] border border-brand-500/15 rounded-xl p-3 mt-2 mb-2"><div className="text-[10px] text-warning-500 font-bold uppercase tracking-[0.1em] mb-1.5">★ Favoriten</div><div className="flex flex-wrap gap-1.5">{favoriten.map((v, i) => <div key={i} className="relative group/fav"><button className="flex flex-col gap-px py-1.5 pl-2.5 pr-6 bg-white/[0.04] border border-white/[0.06] rounded-lg text-slate-200 cursor-pointer text-[11px] text-left hover:border-brand-500/30 transition-all" onClick={() => addP(v)}><span className="text-[12px]">{v.beschreibung}</span><span className="opacity-40 text-[10px]">{fc(v.preis)}/{v.einheit}</span></button><button className="absolute top-1 right-1 w-4 h-4 flex items-center justify-center text-[10px] text-warning-500 hover:text-warning-300 bg-transparent border-none cursor-pointer opacity-0 group-hover/fav:opacity-100 transition-opacity" onClick={() => delFav(v.id)} title="Entfernen">✕</button></div>)}</div></div>}
-            {showV && gw && <div className="bg-brand-500/[0.06] border border-brand-500/15 rounded-xl p-3 mt-2"><div className="flex flex-wrap gap-1.5">{((GV as Record<string, { beschreibung: string; einheit: string; preis: number; typ: "arbeit" | "material" }[]>)[gw] || []).map((v, i) => <div key={i} className="relative group/sug"><button className="flex flex-col gap-px py-1.5 pl-2.5 pr-6 bg-white/[0.04] border border-white/[0.06] rounded-lg text-slate-200 cursor-pointer text-[11px] text-left hover:border-brand-500/30 transition-all" onClick={() => addP(v)}><span className="text-[12px]">{v.beschreibung}</span><span className="opacity-40 text-[10px]">{fc(v.preis)}/{v.einheit}</span></button><button className="absolute top-1 right-1 w-4 h-4 flex items-center justify-center text-[10px] text-slate-500 hover:text-warning-400 bg-transparent border-none cursor-pointer opacity-0 group-hover/sug:opacity-100 transition-opacity" onClick={() => addFav(v)} title="Als Favorit speichern">★</button></div>)}</div></div>}
-            {pos.length > 0 && <div className="mt-3">
-              {/* Mobile: Card-Layout */}
-              <div className="flex flex-col gap-2 md:hidden">
-                {pos.map((p, idx) => <div key={p.id} className="bg-white/[0.03] border border-white/[0.06] rounded-xl p-3 flex flex-col gap-2">
-                  <div className="flex items-center gap-2">
-                    <span className="text-[10px] font-bold text-slate-600 shrink-0 w-4 text-center">{idx + 1}</span>
-                    <input className={`${posI} flex-1`} placeholder="Beschreibung" value={p.beschreibung} onChange={e => updP(p.id, "beschreibung", e.target.value)} />
-                    <button className="bg-transparent border-none text-slate-600 cursor-pointer p-1 rounded-lg hover:text-slate-300 transition-colors shrink-0" onClick={() => rmP(p.id)}>{IC.trash}</button>
-                  </div>
-                  <div className="flex gap-1.5">
-                    <div className="flex flex-col gap-1 flex-1"><span className="text-[9px] font-semibold text-slate-600 uppercase tracking-wide">Typ</span><select className={`${posI} w-full`} value={p.typ} onChange={e => updP(p.id, "typ", e.target.value)}><option value="arbeit">Arbeit</option><option value="material">Material</option></select></div>
-                    <div className="flex flex-col gap-1 flex-1"><span className="text-[9px] font-semibold text-slate-600 uppercase tracking-wide">Menge</span><input className={`${posI} text-center w-full`} type="number" min=".01" step=".01" value={p.menge} onChange={e => updP(p.id, "menge", parseFloat(e.target.value) || 0)} /></div>
-                    <div className="flex flex-col gap-1 flex-1"><span className="text-[9px] font-semibold text-slate-600 uppercase tracking-wide">Einheit</span><input className={`${posI} text-center w-full`} value={p.einheit} onChange={e => updP(p.id, "einheit", e.target.value)} /></div>
-                  </div>
-                  <div className="flex gap-1.5 items-end">
-                    <div className="flex flex-col gap-1 flex-1"><span className="text-[9px] font-semibold text-slate-600 uppercase tracking-wide">Preis (€)</span><input className={`${posI} text-right w-full`} type="number" min="0" step=".01" value={p.preis} onChange={e => updP(p.id, "preis", parseFloat(e.target.value) || 0)} /></div>
-                    <div className="flex flex-col gap-1 flex-1"><span className="text-[9px] font-semibold text-slate-600 uppercase tracking-wide">MwSt</span><select className={`${posI} w-full`} value={p.mwst} onChange={e => updP(p.id, "mwst", parseInt(e.target.value))}><option value={19}>19%</option><option value={7}>7%</option><option value={0}>0%</option></select></div>
-                    <div className="flex flex-col gap-1 flex-1 items-end"><span className="text-[9px] font-semibold text-slate-600 uppercase tracking-wide">Summe</span><span className="py-[6px] text-[12px] font-bold text-brand-400">{fc(p.menge * p.preis)}</span></div>
-                  </div>
-                </div>)}
-              </div>
-              {/* Desktop: Tabellen-Layout */}
-              <div className="hidden md:block overflow-x-auto"><div className="flex gap-1 py-1.5 px-1 text-[9px] font-semibold text-slate-500 uppercase tracking-[0.1em] border-b border-white/[0.06]"><span style={{ flex: 2.5 }}>Beschr.</span><span style={{ flex: .6 }}>Typ</span><span style={{ flex: .6 }}>Menge</span><span style={{ flex: .6 }}>Einh.</span><span style={{ flex: .7, textAlign: "right" }}>Preis</span><span style={{ flex: .5 }}>MwSt</span><span style={{ flex: .7, textAlign: "right" }}>Sum.</span><span className="w-6" /></div>
-                {pos.map(p => <div key={p.id} className="flex gap-1 items-center py-1 border-b border-white/[0.04]"><input className={posI} style={{ flex: 2.5 }} value={p.beschreibung} onChange={e => updP(p.id, "beschreibung", e.target.value)} /><select className={posI} style={{ flex: .6 }} value={p.typ} onChange={e => updP(p.id, "typ", e.target.value)}><option value="arbeit">Arb</option><option value="material">Mat</option></select><input className={`${posI} text-center`} style={{ flex: .6 }} type="number" min=".01" step=".01" value={p.menge} onChange={e => updP(p.id, "menge", parseFloat(e.target.value) || 0)} /><input className={`${posI} text-center`} style={{ flex: .6 }} value={p.einheit} onChange={e => updP(p.id, "einheit", e.target.value)} /><input className={`${posI} text-right`} style={{ flex: .7 }} type="number" min="0" step=".01" value={p.preis} onChange={e => updP(p.id, "preis", parseFloat(e.target.value) || 0)} /><select className={posI} style={{ flex: .5 }} value={p.mwst} onChange={e => updP(p.id, "mwst", parseInt(e.target.value))}><option value={19}>19</option><option value={7}>7</option><option value={0}>0</option></select><span style={{ flex: .7, textAlign: "right", fontWeight: 600, fontSize: 11 }}>{fc(p.menge * p.preis)}</span><button className="bg-transparent border-none text-slate-500 cursor-pointer p-1 rounded-lg hover:text-slate-300 transition-colors" onClick={() => rmP(p.id)}>{IC.trash}</button></div>)}
-              </div>
-            </div>}
-            <button className="flex items-center gap-1.5 py-2.5 bg-transparent border-2 border-dashed border-white/[0.08] rounded-xl text-slate-500 text-[13px] cursor-pointer w-full justify-center mt-2 hover:border-white/[0.15] hover:text-slate-300 transition-all" onClick={() => addP({ beschreibung: "", einheit: "Stk", preis: 0, typ: "arbeit" })}>{IC.plus} Position</button>
-          </div>
+          <PositionenListe
+            pos={pos} updP={updP} rmP={rmP} addP={addP}
+            favoriten={favoriten} addFav={addFav} updFav={updFav} delFav={delFav}
+            gw={gw} showV={showV} setShowV={setShowV}
+            arbS={arbS} matS={matS}
+          />
           <div className="bg-[#0a0a1a]/80 rounded-2xl p-4 border border-white/[0.06]"><div className="flex gap-3 flex-wrap"><div className="w-[100px]"><label className="text-[11px] font-semibold text-slate-400 mb-1.5 block tracking-wide">Rabatt %</label><input className={inp} type="number" min="0" max="100" value={rabatt} onChange={e => setRabatt(Math.min(100, Math.max(0, parseFloat(e.target.value) || 0)))} /></div><div className="flex-1 min-w-[180px]"><label className="text-[11px] font-semibold text-slate-400 mb-1.5 block tracking-wide">Notiz</label><input className={inp} placeholder="..." value={notiz} onChange={e => setNotiz(e.target.value)} /></div></div></div>
         </div>
         <div className="sticky top-6 self-start max-md:static">

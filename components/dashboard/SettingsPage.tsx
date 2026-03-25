@@ -13,7 +13,7 @@ export default function SettingsPage({ firma, sf, rechnungen, kunden, sre, skn, 
   const [deleteInput, setDeleteInput] = useState(""); const fRef = useRef<HTMLInputElement>(null);
   const handleLogo = (e: React.ChangeEvent<HTMLInputElement>) => { const f = e.target.files?.[0]; if (!f) return; if (f.size > 2000000) { alert("Datei zu groß – max. 2 MB."); return; } const img = new Image(); const url = URL.createObjectURL(f); img.onload = () => { const c = document.createElement("canvas"); const MAX = 400; let w = img.width, h = img.height; if (w > MAX) { h = h * MAX / w; w = MAX; } c.width = w; c.height = h; c.getContext("2d")!.drawImage(img, 0, 0, w, h); const compressed = c.toDataURL("image/jpeg", 0.75); setForm(prev => ({ ...prev, logo: compressed })); URL.revokeObjectURL(url); }; img.src = url; };
 
-  const inp = "w-full py-2.5 px-3 bg-white/[0.04] border border-white/[0.08] rounded-xl text-slate-200 text-[13px] outline-none focus:border-brand-500/50 focus:bg-white/[0.06] transition-all duration-200 placeholder:text-slate-600";
+  const inp = "w-full py-2.5 px-3 bg-white/[0.08] border border-white/[0.18] rounded-xl text-slate-200 text-[13px] outline-none focus:border-brand-500/50 focus:bg-white/[0.11] transition-all duration-200 placeholder:text-slate-500";
   const sbtn = "flex items-center gap-1.5 px-3 py-1.5 bg-white/[0.05] text-slate-300 border border-white/[0.08] rounded-lg text-[11px] cursor-pointer whitespace-nowrap hover:bg-white/[0.08] transition-all font-medium";
 
   return (

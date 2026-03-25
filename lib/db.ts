@@ -39,7 +39,7 @@ export interface Position {
   menge: number
   preis: number
   mwst: number
-  typ: 'arbeit' | 'material'
+  typ?: 'arbeit' | 'material'
 }
 
 export interface Rechnung {
@@ -72,7 +72,7 @@ export interface FavoritItem {
   einheit: string
   preis: number
   mwst?: number
-  typ: 'arbeit' | 'material'
+  typ?: 'arbeit' | 'material'
 }
 
 export interface WiederkehrendItem {
@@ -269,7 +269,7 @@ export async function ladeRechnungen(): Promise<Rechnung[]> {
         menge: Number(p.menge) || 1,
         preis: Number(p.einzelpreis) || 0,
         mwst: Number(p.mwst_satz) || 19,
-        typ: (p.typ as 'arbeit' | 'material') || 'arbeit',
+        typ: (p.typ as 'arbeit' | 'material') || undefined,
       })),
   }))
 }
@@ -448,7 +448,7 @@ export async function ladeFavoriten(): Promise<FavoritItem[]> {
     einheit: f.einheit || 'Stk.',
     preis: Number(f.preis) || 0,
     mwst: f.mwst_satz || 19,
-    typ: (f.typ as 'arbeit' | 'material') || 'arbeit',
+    typ: (f.typ as 'arbeit' | 'material') || undefined,
   }))
 }
 
@@ -473,13 +473,25 @@ export async function favoritHinzufuegen(fav: Omit<FavoritItem, 'id'>): Promise<
     einheit: data.einheit || 'Stk.',
     preis: Number(data.preis) || 0,
     mwst: data.mwst_satz || 19,
-    typ: (data.typ as 'arbeit' | 'material') || 'arbeit',
+    typ: (data.typ as 'arbeit' | 'material') || undefined,
   }
 }
 
 export async function favoritLoeschen(id: string): Promise<void> {
   const sb = createSupabaseBrowser()
   const { error } = await sb.from('favoriten').delete().eq('id', id)
+  if (error) throw new Error(error.message)
+}
+
+export async function favoritAktualisieren(id: string, up: Omit<FavoritItem, 'id'>): Promise<void> {
+  const sb = createSupabaseBrowser()
+  const { error } = await sb.from('favoriten').update({
+    beschreibung: up.beschreibung,
+    einheit: up.einheit,
+    preis: up.preis,
+    mwst_satz: up.mwst || 19,
+    typ: up.typ || null,
+  }).eq('id', id)
   if (error) throw new Error(error.message)
 }
 

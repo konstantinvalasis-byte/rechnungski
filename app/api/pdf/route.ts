@@ -1,7 +1,6 @@
 // Server-seitige PDF-Generierung mit @react-pdf/renderer
 
-// eslint-disable-next-line @typescript-eslint/no-require-imports
-const { renderToBuffer } = require("@react-pdf/renderer");
+import { renderToBuffer } from "@react-pdf/renderer";
 import { NextRequest, NextResponse } from "next/server";
 import React from "react";
 import { RechnungPdf, MahnungPdf } from "@/lib/pdf-rechnung";
@@ -59,7 +58,8 @@ export async function POST(req: NextRequest) {
       },
     });
   } catch (err) {
+    const msg = err instanceof Error ? err.message : String(err);
     console.error("PDF-Generierung fehlgeschlagen:", err);
-    return NextResponse.json({ error: "PDF-Generierung fehlgeschlagen" }, { status: 500 });
+    return NextResponse.json({ error: msg || "PDF-Generierung fehlgeschlagen" }, { status: 500 });
   }
 }

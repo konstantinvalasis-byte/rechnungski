@@ -30,7 +30,7 @@ export default function OnboardingWizard({ onComplete }: { onComplete: (firma: F
 
   const progress = Math.round((step / (steps.length - 1)) * 100);
 
-  const inp = "w-full py-2.5 px-3 bg-white/[0.04] border border-white/[0.08] rounded-xl text-slate-200 text-[13px] outline-none focus:border-brand-500/50 focus:bg-white/[0.06] transition-all duration-200 placeholder:text-slate-600";
+  const inp = "w-full py-2.5 px-3 bg-white/[0.08] border border-white/[0.18] rounded-xl text-slate-200 text-[13px] outline-none focus:border-brand-500/50 focus:bg-white/[0.11] transition-all duration-200 placeholder:text-slate-500";
   const oblbl = "text-[11px] font-semibold text-slate-400 mb-1 block tracking-wide";
 
   return (
@@ -89,7 +89,7 @@ export default function OnboardingWizard({ onComplete }: { onComplete: (firma: F
                 <input
                   type="text"
                   placeholder="Frei eingeben – z.B. Tätowierer, Yoga, Tierarzt …"
-                  className="w-full py-2.5 px-3 bg-white/[0.04] border border-white/[0.08] rounded-xl text-slate-200 text-[13px] outline-none focus:border-brand-500/50 focus:bg-white/[0.06] transition-all duration-200 placeholder:text-slate-600"
+                  className="w-full py-2.5 px-3 bg-white/[0.08] border border-white/[0.18] rounded-xl text-slate-200 text-[13px] outline-none focus:border-brand-500/50 focus:bg-white/[0.11] transition-all duration-200 placeholder:text-slate-500"
                   value={Object.values(BRANCHEN_KATEGORIEN).flat().includes(form.gewerk) ? "" : form.gewerk}
                   onChange={e => setForm({ ...form, gewerk: e.target.value })}
                 />

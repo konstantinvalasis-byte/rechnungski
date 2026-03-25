@@ -4,7 +4,7 @@ export type GVEintrag = {
   beschreibung: string;
   einheit: string;
   preis: number;
-  typ: "arbeit" | "material";
+  typ?: "arbeit" | "material";
 };
 
 export const BRANCHEN_KATEGORIEN: Record<string, string[]> = {
@@ -15,7 +15,7 @@ export const BRANCHEN_KATEGORIEN: Record<string, string[]> = {
   "Bildung & Schulung": ["Nachhilfe", "Sprachunterricht", "IT-Schulung", "Musikunterricht", "Fahrschule"],
   "Transport & Logistik": ["Umzugsservice", "Kurierdienst", "Transportservice"],
   "Reinigung & Pflege": ["Gebäudereinigung", "Haushaltsservice", "Textilreinigung"],
-  "Events & Gastronomie": ["Catering", "DJ/Musik", "Eventplanung", "Veranstaltungstechnik"],
+  "Events & Gastronomie": ["Catering", "DJ/Musik", "Eventplanung", "Veranstaltungstechnik", "Hotel"],
   "Sonstiges": ["Freiberufler (allgemein)", "Sonstige Dienstleistung"],
 };
 
@@ -256,6 +256,14 @@ export const GV: Record<string, GVEintrag[]> = {
     { beschreibung: "Lichttechnik (Miete/Tag)", einheit: "Tag", preis: 200, typ: "material" },
     { beschreibung: "Techniker vor Ort (Std)", einheit: "Std", preis: 65, typ: "arbeit" },
     { beschreibung: "Auf-/Abbau", einheit: "Pauschal", preis: 300, typ: "arbeit" },
+  ],
+  "Hotel": [
+    { beschreibung: "Übernachtung (Einzelzimmer)", einheit: "Nacht", preis: 90 },
+    { beschreibung: "Übernachtung (Doppelzimmer)", einheit: "Nacht", preis: 130 },
+    { beschreibung: "Frühstück (pro Person)", einheit: "Pers.", preis: 18 },
+    { beschreibung: "Halbpension (pro Person)", einheit: "Pers.", preis: 35 },
+    { beschreibung: "Tagungspauschale", einheit: "Pers.", preis: 75 },
+    { beschreibung: "Parkplatz (pro Tag)", einheit: "Tag", preis: 12 },
   ],
   // ── SONSTIGES ──
   "Freiberufler (allgemein)": [

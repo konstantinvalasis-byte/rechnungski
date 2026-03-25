@@ -71,7 +71,7 @@ function LoginFormular() {
         </div>
 
         {/* Card */}
-        <div className="bg-white/[0.03] border border-white/[0.08] rounded-2xl p-7 backdrop-blur-sm shadow-[0_0_0_1px_rgba(255,255,255,0.02),0_24px_48px_rgba(0,0,0,0.4)]">
+        <div className="bg-[#0d0d22] md:bg-white/[0.03] border border-white/[0.12] md:border-white/[0.08] rounded-2xl p-7 md:backdrop-blur-sm shadow-[0_8px_32px_rgba(0,0,0,0.5)] md:shadow-[0_0_0_1px_rgba(255,255,255,0.02),0_24px_48px_rgba(0,0,0,0.4)]">
           <h1 className="text-[22px] font-bold text-white tracking-tight mb-1">Willkommen zurück</h1>
           <p className="text-[13px] text-slate-500 mb-6">Melde dich in deinem Konto an</p>
 
@@ -96,7 +96,7 @@ function LoginFormular() {
                 value={email}
                 onChange={e => setEmail(e.target.value)}
                 placeholder="max@beispiel.de"
-                className="w-full bg-white/[0.04] border border-white/[0.08] rounded-xl px-3.5 py-2.5 text-slate-200 placeholder-slate-600 text-[13px] outline-none focus:border-brand-500/50 focus:bg-white/[0.06] transition-all duration-200"
+                className="w-full bg-white/[0.08] border border-white/[0.18] rounded-xl px-3.5 py-2.5 text-slate-200 placeholder-slate-500 text-[13px] outline-none focus:border-brand-500/50 focus:bg-white/[0.11] transition-all duration-200"
               />
             </div>
 
@@ -113,7 +113,7 @@ function LoginFormular() {
                 value={passwort}
                 onChange={e => setPasswort(e.target.value)}
                 placeholder="••••••••"
-                className="w-full bg-white/[0.04] border border-white/[0.08] rounded-xl px-3.5 py-2.5 text-slate-200 placeholder-slate-600 text-[13px] outline-none focus:border-brand-500/50 focus:bg-white/[0.06] transition-all duration-200"
+                className="w-full bg-white/[0.08] border border-white/[0.18] rounded-xl px-3.5 py-2.5 text-slate-200 placeholder-slate-500 text-[13px] outline-none focus:border-brand-500/50 focus:bg-white/[0.11] transition-all duration-200"
               />
             </div>
 

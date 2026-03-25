@@ -3,7 +3,7 @@
 import React from "react";
 import { Document, Page, View, Text, Image, StyleSheet } from "@react-pdf/renderer";
 import type { Firma, Rechnung } from "@/lib/db";
-import { fc, fd } from "@/lib/dashboard-utils";
+import { fc, fd, safeSrc } from "@/lib/dashboard-utils";
 import { mahnung } from "@/lib/dashboard-export";
 
 // ─────────────────────────────────────────────
@@ -25,50 +25,50 @@ const YELLOW_TEXT = "#92400e";
 // ─────────────────────────────────────────────
 const s = StyleSheet.create({
   page: {
-    paddingTop: 40,
-    paddingBottom: 40,
-    paddingLeft: 48,
-    paddingRight: 48,
+    paddingTop: 28,
+    paddingBottom: 48,
+    paddingLeft: 44,
+    paddingRight: 44,
     fontFamily: "Helvetica",
-    fontSize: 13,
+    fontSize: 11,
     color: "#111111",
-    lineHeight: 1.5,
+    lineHeight: 1.4,
   },
 
   // Header
-  header: { flexDirection: "row", justifyContent: "space-between", marginBottom: 30 },
-  firmaName: { fontSize: 17, fontFamily: "Helvetica-Bold", marginBottom: 3 },
-  firmaDetail: { fontSize: 11, color: MUTED, lineHeight: 1.4 },
-  docTitle: { fontSize: 22, fontFamily: "Helvetica-Bold", color: BRAND, textAlign: "right" },
-  docMeta: { fontSize: 12, color: MUTED, textAlign: "right", marginTop: 3, lineHeight: 1.4 },
+  header: { flexDirection: "row", justifyContent: "space-between", marginBottom: 18 },
+  firmaName: { fontSize: 14, fontFamily: "Helvetica-Bold", marginBottom: 2 },
+  firmaDetail: { fontSize: 9, color: MUTED, lineHeight: 1.4 },
+  docTitle: { fontSize: 18, fontFamily: "Helvetica-Bold", color: BRAND, textAlign: "right" },
+  docMeta: { fontSize: 10, color: MUTED, textAlign: "right", marginTop: 3, lineHeight: 1.4 },
 
   // Empfänger-Box
   recipientBox: {
     backgroundColor: LIGHT_BG,
     borderRadius: 6,
-    padding: 14,
-    marginBottom: 24,
+    padding: 9,
+    marginBottom: 12,
   },
   recipientLabel: {
-    fontSize: 9,
+    fontSize: 8,
     color: VERY_MUTED,
     letterSpacing: 0.8,
-    marginBottom: 3,
+    marginBottom: 2,
     fontFamily: "Helvetica-Bold",
   },
-  recipientName: { fontFamily: "Helvetica-Bold", fontSize: 13, marginBottom: 2 },
-  recipientAddress: { fontSize: 12, color: MUTED },
+  recipientName: { fontFamily: "Helvetica-Bold", fontSize: 11, marginBottom: 1 },
+  recipientAddress: { fontSize: 10, color: MUTED },
 
   // Tabelle
   tableHeaderRow: {
     flexDirection: "row",
     borderBottomWidth: 2,
     borderBottomColor: BORDER,
-    paddingBottom: 7,
+    paddingBottom: 5,
     marginBottom: 0,
   },
   tableHeaderCell: {
-    fontSize: 9,
+    fontSize: 8,
     fontFamily: "Helvetica-Bold",
     color: VERY_MUTED,
   },
@@ -76,13 +76,13 @@ const s = StyleSheet.create({
     flexDirection: "row",
     borderBottomWidth: 1,
     borderBottomColor: ROW_BORDER,
-    paddingTop: 7,
-    paddingBottom: 7,
-    minHeight: 24,
+    paddingTop: 4,
+    paddingBottom: 4,
+    minHeight: 18,
   },
-  tableCell: { fontSize: 12, paddingHorizontal: 3 },
-  tableCellBold: { fontSize: 12, fontFamily: "Helvetica-Bold", paddingHorizontal: 3 },
-  tableCellMuted: { fontSize: 10, color: "#888888", paddingHorizontal: 3 },
+  tableCell: { fontSize: 10, paddingHorizontal: 3 },
+  tableCellBold: { fontSize: 10, fontFamily: "Helvetica-Bold", paddingHorizontal: 3 },
+  tableCellMuted: { fontSize: 9, color: "#888888", paddingHorizontal: 3 },
 
   // Spaltenbreiten (flex-Anteile)
   colPos: { width: "5%" },
@@ -94,36 +94,63 @@ const s = StyleSheet.create({
   colSumme: { width: "15%", alignItems: "flex-end" },
 
   // Summen-Block
-  summaryOuter: { flexDirection: "row", justifyContent: "flex-end", marginTop: 22 },
-  summaryBox: { width: 260 },
+  summaryOuter: { flexDirection: "row", justifyContent: "flex-end", marginTop: 12 },
+  summaryBox: { width: 240 },
   summaryRow: {
     flexDirection: "row",
     justifyContent: "space-between",
-    paddingVertical: 4,
-    fontSize: 13,
+    paddingVertical: 3,
+    fontSize: 11,
   },
-  summaryRowMuted: { color: MUTED, fontSize: 12 },
-  summaryRowRed: { color: RED, fontSize: 12 },
+  summaryRowMuted: { color: MUTED, fontSize: 10 },
+  summaryRowRed: { color: RED, fontSize: 10 },
   summaryTotal: {
     flexDirection: "row",
     justifyContent: "space-between",
     borderTopWidth: 2,
     borderTopColor: "#111111",
-    paddingTop: 8,
-    marginTop: 4,
-    fontSize: 18,
+    paddingTop: 6,
+    marginTop: 3,
+    fontSize: 15,
     fontFamily: "Helvetica-Bold",
+  },
+
+  // Einleitungstext
+  introText: {
+    fontSize: 10,
+    color: "#333333",
+    lineHeight: 1.5,
+    marginBottom: 10,
+  },
+
+  // Abschlusstext
+  outroBox: {
+    marginTop: 12,
+    paddingTop: 8,
+    borderTopWidth: 1,
+    borderTopColor: BORDER,
+  },
+  outroText: {
+    fontSize: 10,
+    color: "#333333",
+    lineHeight: 1.6,
+  },
+  outroSignoff: {
+    fontSize: 10,
+    color: MUTED,
+    marginTop: 5,
+    lineHeight: 1.4,
   },
 
   // Notiz
   noteBox: {
-    marginTop: 18,
-    padding: 10,
+    marginTop: 12,
+    padding: 8,
     backgroundColor: LIGHT_BG,
     borderRadius: 5,
   },
-  noteText: { fontSize: 11, color: MUTED },
-  noteBold: { fontFamily: "Helvetica-Bold", fontSize: 11, color: MUTED },
+  noteText: { fontSize: 9, color: MUTED },
+  noteBold: { fontFamily: "Helvetica-Bold", fontSize: 9, color: MUTED },
 
   // §19 Hinweis
   kleinBox: {
@@ -137,12 +164,15 @@ const s = StyleSheet.create({
     borderColor: YELLOW_BORDER,
     borderRadius: 5,
   },
-  kleinText: { fontSize: 11, color: YELLOW_TEXT },
+  kleinText: { fontSize: 9, color: YELLOW_TEXT },
 
   // Footer
   footer: {
-    marginTop: 28,
-    paddingTop: 14,
+    position: "absolute",
+    bottom: 24,
+    left: 44,
+    right: 44,
+    paddingTop: 10,
     borderTopWidth: 1,
     borderTopColor: BORDER,
     flexDirection: "row",
@@ -156,11 +186,12 @@ const s = StyleSheet.create({
 // ─────────────────────────────────────────────
 export function RechnungPdf({ rechnung, firma }: { rechnung: Rechnung; firma: Firma }) {
   const pos = rechnung.positionen || [];
+  const klein = !!firma.kleinunternehmer;
   const arbeit = pos.filter(p => p.typ === "arbeit").reduce((s, p) => s + p.menge * p.preis, 0);
   const mat = pos.filter(p => p.typ === "material").reduce((s, p) => s + p.menge * p.preis, 0);
   const nettoVR = pos.reduce((s, p) => s + p.menge * p.preis, 0);
   const rabattB = nettoVR * (rechnung.rabatt || 0) / 100;
-  const mwstB = pos.reduce((s, p) => s + p.menge * p.preis * (1 - (rechnung.rabatt || 0) / 100) * p.mwst / 100, 0);
+  const mwstB = klein ? 0 : pos.reduce((s, p) => s + p.menge * p.preis * (1 - (rechnung.rabatt || 0) / 100) * p.mwst / 100, 0);
 
   const docLabel = rechnung.typ === "angebot" ? "ANGEBOT" : "RECHNUNG";
   const empfLabel = rechnung.typ === "angebot" ? "ANGEBOT AN" : "RECHNUNGSEMPFÄNGER";
@@ -172,8 +203,8 @@ export function RechnungPdf({ rechnung, firma }: { rechnung: Rechnung; firma: Fi
         <View style={s.header}>
           {/* Links: Firma */}
           <View>
-            {firma.logo ? (
-              <Image src={firma.logo} style={{ maxHeight: 55, maxWidth: 170, marginBottom: 8, objectFit: "contain" }} />
+            {safeSrc(firma.logo) ? (
+              <Image src={safeSrc(firma.logo)!} style={{ maxHeight: 55, maxWidth: 170, marginBottom: 8, objectFit: "contain" }} />
             ) : null}
             <Text style={s.firmaName}>{firma.name}</Text>
             <Text style={s.firmaDetail}>
@@ -191,7 +222,7 @@ export function RechnungPdf({ rechnung, firma }: { rechnung: Rechnung; firma: Fi
               {rechnung.faelligDatum ? "\nFällig: " + fd(rechnung.faelligDatum) : ""}
               {rechnung.zeitraumVon && rechnung.zeitraumBis
                 ? "\nLeistungszeitraum: " + fd(rechnung.zeitraumVon) + " – " + fd(rechnung.zeitraumBis)
-                : ""}
+                : rechnung.typ !== "angebot" ? "\nLeistungsdatum entspricht\nRechnungsdatum" : ""}
             </Text>
           </View>
         </View>
@@ -203,6 +234,13 @@ export function RechnungPdf({ rechnung, firma }: { rechnung: Rechnung; firma: Fi
           <Text style={s.recipientAddress}>{rechnung.kundeAdresse}</Text>
         </View>
 
+        {/* ── EINLEITUNGSTEXT ── */}
+        <Text style={s.introText}>
+          {rechnung.typ === "angebot"
+            ? `vielen Dank für Ihr Interesse. Gerne unterbreiten wir Ihnen folgendes Angebot für die angefragten Leistungen:`
+            : `für die erbrachten Leistungen erlauben wir uns, Ihnen folgende Positionen in Rechnung zu stellen:`}
+        </Text>
+
         {/* ── TABELLE ── */}
         {/* Kopfzeile */}
         <View style={s.tableHeaderRow}>
@@ -211,7 +249,7 @@ export function RechnungPdf({ rechnung, firma }: { rechnung: Rechnung; firma: Fi
           <View style={s.colTyp}><Text style={s.tableHeaderCell}>TYP</Text></View>
           <View style={s.colMenge}><Text style={[s.tableHeaderCell, { textAlign: "right" }]}>MENGE</Text></View>
           <View style={s.colPreis}><Text style={[s.tableHeaderCell, { textAlign: "right" }]}>PREIS</Text></View>
-          <View style={s.colMwst}><Text style={[s.tableHeaderCell, { textAlign: "right" }]}>MWST</Text></View>
+          {!klein && <View style={s.colMwst}><Text style={[s.tableHeaderCell, { textAlign: "right" }]}>MWST</Text></View>}
           <View style={s.colSumme}><Text style={[s.tableHeaderCell, { textAlign: "right" }]}>SUMME</Text></View>
         </View>
         {/* Positionen */}
@@ -219,10 +257,10 @@ export function RechnungPdf({ rechnung, firma }: { rechnung: Rechnung; firma: Fi
           <View key={i} style={s.tableRow} wrap={false}>
             <View style={s.colPos}><Text style={[s.tableCell, { color: MUTED }]}>{i + 1}</Text></View>
             <View style={s.colDesc}><Text style={s.tableCell}>{p.beschreibung}</Text></View>
-            <View style={s.colTyp}><Text style={s.tableCellMuted}>{p.typ === "material" ? "Material" : "Arbeit"}</Text></View>
+            <View style={s.colTyp}><Text style={s.tableCellMuted}>{p.typ === "material" ? "Material" : p.typ === "arbeit" ? "Arbeit" : ""}</Text></View>
             <View style={s.colMenge}><Text style={[s.tableCell, { textAlign: "right" }]}>{p.menge} {p.einheit}</Text></View>
             <View style={s.colPreis}><Text style={[s.tableCell, { textAlign: "right" }]}>{fc(p.preis)}</Text></View>
-            <View style={s.colMwst}><Text style={[s.tableCell, { textAlign: "right" }]}>{Number(p.mwst)}%</Text></View>
+            {!klein && <View style={s.colMwst}><Text style={[s.tableCell, { textAlign: "right" }]}>{Number(p.mwst)}%</Text></View>}
             <View style={s.colSumme}><Text style={[s.tableCellBold, { textAlign: "right" }]}>{fc(p.menge * p.preis)}</Text></View>
           </View>
         ))}
@@ -240,19 +278,23 @@ export function RechnungPdf({ rechnung, firma }: { rechnung: Rechnung; firma: Fi
                 <Text>Materialkosten</Text><Text>{fc(mat)}</Text>
               </View>
             )}
-            <View style={s.summaryRow}>
-              <Text>Netto</Text><Text>{fc(nettoVR)}</Text>
-            </View>
+            {!klein && (
+              <View style={s.summaryRow}>
+                <Text>Netto</Text><Text>{fc(nettoVR)}</Text>
+              </View>
+            )}
             {rechnung.rabatt > 0 && (
               <View style={[s.summaryRow, s.summaryRowRed]}>
                 <Text>Rabatt ({rechnung.rabatt}%)</Text><Text>-{fc(rabattB)}</Text>
               </View>
             )}
-            <View style={s.summaryRow}>
-              <Text>MwSt</Text><Text>{fc(mwstB)}</Text>
-            </View>
+            {!klein && (
+              <View style={s.summaryRow}>
+                <Text>MwSt</Text><Text>{fc(mwstB)}</Text>
+              </View>
+            )}
             <View style={s.summaryTotal}>
-              <Text>Brutto</Text><Text>{fc(rechnung.gesamt)}</Text>
+              <Text>{klein ? "Gesamtbetrag" : "Brutto"}</Text><Text>{fc(rechnung.gesamt)}</Text>
             </View>
           </View>
         </View>
@@ -270,6 +312,20 @@ export function RechnungPdf({ rechnung, firma }: { rechnung: Rechnung; firma: Fi
             <Text style={s.kleinText}>Gemäß §19 UStG wird keine Umsatzsteuer berechnet.</Text>
           </View>
         ) : null}
+
+        {/* ── ABSCHLUSSTEXT ── */}
+        <View style={s.outroBox} wrap={false}>
+          <Text style={s.outroText}>
+            {rechnung.typ === "angebot"
+              ? `Dieses Angebot ist freibleibend und gilt für 30 Tage ab dem Angebotsdatum. Bei Fragen stehen wir Ihnen jederzeit gerne zur Verfügung.`
+              : `Wir bitten Sie, den Gesamtbetrag von ${fc(rechnung.gesamt)} innerhalb von 14 Tagen${rechnung.faelligDatum ? " bis zum " + fd(rechnung.faelligDatum) : ""} auf das unten angegebene Konto zu überweisen. Bitte geben Sie dabei die Rechnungsnummer ${rechnung.nummer} als Verwendungszweck an.`}
+          </Text>
+          <Text style={s.outroSignoff}>
+            {rechnung.typ === "angebot"
+              ? `Wir freuen uns auf Ihren Auftrag und eine gute Zusammenarbeit.\nMit freundlichen Grüßen\n${firma.inhaber || firma.name}`
+              : `Vielen Dank für Ihr Vertrauen und Ihren Auftrag.\nMit freundlichen Grüßen\n${firma.inhaber || firma.name}`}
+          </Text>
+        </View>
 
         {/* ── FOOTER ── */}
         <View style={s.footer}>
@@ -302,14 +358,14 @@ export function MahnungPdf({ rechnung, firma, stufe }: { rechnung: Rechnung; fir
         {/* Header */}
         <View style={[s.header, { marginBottom: 40 }]}>
           <View>
-            {firma.logo ? (
-              <Image src={firma.logo} style={{ maxHeight: 50, maxWidth: 160, marginBottom: 6, objectFit: "contain" }} />
+            {safeSrc(firma.logo) ? (
+              <Image src={safeSrc(firma.logo)!} style={{ maxHeight: 50, maxWidth: 160, marginBottom: 6, objectFit: "contain" }} />
             ) : null}
-            <Text style={{ fontSize: 16, fontFamily: "Helvetica-Bold", marginBottom: 3 }}>{firma.name}</Text>
+            <Text style={{ fontSize: 14, fontFamily: "Helvetica-Bold", marginBottom: 2 }}>{firma.name}</Text>
             <Text style={s.firmaDetail}>{firma.strasse || ""}, {firma.plz || ""} {firma.ort || ""}</Text>
           </View>
           <View style={{ alignItems: "flex-end" }}>
-            <Text style={{ fontSize: 20, fontFamily: "Helvetica-Bold", color: farbe, textAlign: "right" }}>{label}</Text>
+            <Text style={{ fontSize: 18, fontFamily: "Helvetica-Bold", color: farbe, textAlign: "right" }}>{label}</Text>
             <Text style={s.docMeta}>
               Datum: {fd(new Date().toISOString())}{"\n"}Zu Rechnung: {rechnung.nummer}
             </Text>

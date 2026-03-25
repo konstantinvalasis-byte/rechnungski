@@ -320,7 +320,7 @@ export default function HelpSection() {
             placeholder="Frage suchen…"
             value={suche}
             onChange={e => { setSuche(e.target.value); setOffen(null); }}
-            className="w-full py-2 pl-[34px] pr-8 bg-white/[0.04] border border-white/[0.07] rounded-xl text-[13px] text-slate-200 placeholder:text-slate-600 outline-none focus:border-brand-500/40 focus:bg-white/[0.06] transition-all duration-200"
+            className="w-full py-2 pl-[34px] pr-8 bg-white/[0.08] border border-white/[0.18] rounded-xl text-[13px] text-slate-200 placeholder:text-slate-500 outline-none focus:border-brand-500/40 focus:bg-white/[0.11] transition-all duration-200"
           />
           {suche && (
             <button onClick={() => { setSuche(""); setOffen(null); }} className="absolute right-2.5 top-1/2 -translate-y-1/2 text-slate-600 hover:text-slate-400 transition-colors bg-transparent border-none cursor-pointer p-0.5">

@@ -84,7 +84,7 @@ export default function RechnungenListe({ rechnungen, updRe, delRe, nav, dupRe, 
   const sbtn = "flex items-center gap-1.5 px-3 py-2 bg-white/[0.05] text-slate-300 border border-white/[0.08] rounded-lg text-[11px] cursor-pointer whitespace-nowrap hover:bg-white/[0.08] transition-all font-medium";
   const sbtnG = "flex items-center gap-1.5 px-3 py-2 bg-success-500/10 text-success-400 border border-success-500/20 rounded-lg text-[11px] cursor-pointer whitespace-nowrap font-medium hover:bg-success-500/15 transition-all";
   const dbtn = "px-2.5 py-2 bg-danger-500/10 text-danger-400 border border-danger-500/20 rounded-lg text-[11px] cursor-pointer font-medium hover:bg-danger-500/15 transition-all";
-  const inp = "w-full py-2.5 px-3 bg-white/[0.04] border border-white/[0.08] rounded-xl text-slate-200 text-[13px] outline-none focus:border-brand-500/50 focus:bg-white/[0.06] transition-all duration-200 placeholder:text-slate-600";
+  const inp = "w-full py-2.5 px-3 bg-white/[0.08] border border-white/[0.18] rounded-xl text-slate-200 text-[13px] outline-none focus:border-brand-500/50 focus:bg-white/[0.11] transition-all duration-200 placeholder:text-slate-500";
 
   return (
     <div className="p-6 px-7 max-md:p-4 animate-fade-in">

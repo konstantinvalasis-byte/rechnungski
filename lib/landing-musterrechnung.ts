@@ -52,7 +52,7 @@ export function getMusterRechnungHtml(): string {
         <div style="font-size:12px;color:#666;margin-top:4px">Nr. RE-2026-0047</div>
         <div style="font-size:12px;color:#666">Datum: 10.03.2026</div>
         <div style="font-size:12px;color:#666">Fällig: 24.03.2026</div>
-        <div style="font-size:11px;color:#666;margin-top:4px">Leistungszeitraum: 06.03.2026\u2013 10.03.2026</div>
+        <div style="font-size:11px;color:#666;margin-top:4px">Leistungszeitraum: 06.03.2026 – 10.03.2026</div>
       </div>
     </div>
     <div style="background:#f8f9fa;border-radius:6px;padding:14px;margin-bottom:24px">
@@ -60,6 +60,7 @@ export function getMusterRechnungHtml(): string {
       <div style="font-weight:600">Weber Hausverwaltung GmbH</div>
       <div style="font-size:12px;color:#666">Maximilianstraße 42<br>80538 München</div>
     </div>
+    <p style="font-size:12px;color:#333;line-height:1.6;margin-bottom:18px">für die erbrachten Leistungen erlauben wir uns, Ihnen folgende Positionen in Rechnung zu stellen:</p>
     <table style="margin-bottom:22px">
       <thead><tr style="border-bottom:2px solid #e5e7eb">
         <th style="padding:7px 8px;font-size:10px;font-weight:600;color:#999;text-transform:uppercase;text-align:left">Pos</th>
@@ -81,8 +82,9 @@ export function getMusterRechnungHtml(): string {
         <div class="sum-row sum-total"><span>Brutto</span><span>${fc(brutto)}</span></div>
       </div>
     </div>
-    <div style="margin-top:18px;padding:10px 14px;background:#f8f9fa;border-radius:5px;font-size:11px;color:#666">
-      <strong>Hinweis:</strong> Bitte überweisen Sie den Betrag bis zum 24.03.2026 auf unser Konto. Vielen Dank für Ihren Auftrag!
+    <div style="margin-top:22px;padding-top:14px;border-top:1px solid #e5e7eb">
+      <p style="font-size:12px;color:#333;line-height:1.7;margin-bottom:10px">Wir bitten Sie, den Gesamtbetrag von ${fc(brutto)} bis zum 24.03.2026 auf das unten angegebene Konto zu überweisen. Bitte geben Sie dabei die Rechnungsnummer RE-2026-0047 als Verwendungszweck an.</p>
+      <p style="font-size:12px;color:#666;line-height:1.7">Vielen Dank für Ihr Vertrauen und Ihren Auftrag.<br><br>Mit freundlichen Grüßen<br>Hans Müller</p>
     </div>
     <div style="margin-top:28px;padding-top:14px;border-top:1px solid #e5e7eb;display:flex;justify-content:space-between;font-size:10px;color:#999">
       <span>Sparkasse München · IBAN: DE89 3704 0044 0532 0130 00</span>

@@ -162,3 +162,38 @@ alter table rechnungen
 -- typ Spalte in rechnungspositionen ergänzen
 alter table rechnungspositionen
   add column if not exists typ text default 'arbeit';
+
+-- ═══════════════════════════════════════════════════════════
+-- AUDIT-LOGS (§239 HGB — Revisionssicherheit)
+-- Protokolliert alle Änderungen an Rechnungen und Kunden.
+-- Einträge dürfen NUR hinzugefügt, niemals geändert oder
+-- gelöscht werden (Unveränderlichkeit per RLS erzwungen).
+-- Stand: 2026-03-24
+-- ═══════════════════════════════════════════════════════════
+
+CREATE TABLE IF NOT EXISTS audit_logs (
+  id            uuid PRIMARY KEY DEFAULT gen_random_uuid(),
+  user_id       uuid NOT NULL REFERENCES auth.users(id) ON DELETE CASCADE,
+  tabelle       text NOT NULL,           -- z.B. 'rechnungen', 'kunden'
+  datensatz_id  uuid NOT NULL,           -- ID des betroffenen Datensatzes
+  aktion        text NOT NULL            -- 'erstellt', 'geaendert', 'geloescht', 'storniert', 'mahnung'
+                CHECK (aktion IN ('erstellt', 'geaendert', 'geloescht', 'storniert', 'mahnung')),
+  alte_werte    jsonb,                   -- Snapshot vor der Änderung (NULL bei erstellt)
+  neue_werte    jsonb,                   -- Snapshot nach der Änderung (NULL bei geloescht)
+  zeitpunkt     timestamptz NOT NULL DEFAULT now()
+);
+
+-- Index für schnelle Abfragen pro Nutzer und Datensatz
+CREATE INDEX IF NOT EXISTS audit_logs_user_id_idx       ON audit_logs(user_id);
+CREATE INDEX IF NOT EXISTS audit_logs_datensatz_id_idx  ON audit_logs(datensatz_id);
+CREATE INDEX IF NOT EXISTS audit_logs_zeitpunkt_idx     ON audit_logs(zeitpunkt DESC);
+
+-- RLS: Nutzer darf nur eigene Logs lesen, nie schreiben/löschen
+ALTER TABLE audit_logs ENABLE ROW LEVEL SECURITY;
+
+DROP POLICY IF EXISTS "audit_logs_select_own" ON audit_logs;
+CREATE POLICY "audit_logs_select_own" ON audit_logs
+  FOR SELECT USING (auth.uid() = user_id);
+
+-- INSERT nur über Service-Role (Cron / API-Routen) oder direkt via DB-Trigger
+-- Kein UPDATE, kein DELETE für Nutzer — Unveränderlichkeit garantiert
