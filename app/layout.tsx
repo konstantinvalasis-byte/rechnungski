@@ -5,6 +5,14 @@ export const metadata: Metadata = {
   title: "RechnungsKI – Rechnungen in 2 Minuten",
   description:
     "KI-Rechnungssoftware für Dienstleister, Handwerker und Freelancer. §14-konform, PDF-Export, DATEV-ready.",
+  icons: {
+    icon: [
+      { url: "/icon", type: "image/png", sizes: "32x32" },
+    ],
+    apple: [
+      { url: "/apple-icon", type: "image/png", sizes: "180x180" },
+    ],
+  },
 };
 
 const jsonLd = {
