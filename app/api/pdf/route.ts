@@ -43,7 +43,8 @@ export async function POST(req: NextRequest) {
         ? React.createElement(MahnungPdf, { rechnung, firma, stufe: mahnStufe ?? 1 })
         : React.createElement(RechnungPdf, { rechnung, firma });
 
-    let buffer: Buffer = await renderToBuffer(doc);
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    let buffer: Buffer = await renderToBuffer(doc as any);
 
     // ZUGFeRD: XML in PDF einbetten
     if (format === "zugferd") {
