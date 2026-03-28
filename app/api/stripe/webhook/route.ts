@@ -9,9 +9,6 @@ import type Stripe from "stripe";
 // Stripe sendet Events bei: Kauf, Update, Kündigung, Fehlschlag.
 // ═══════════════════════════════════════════════════════════
 
-// Next.js darf den Body nicht parsen — Stripe braucht den Raw-Body für die Signaturprüfung
-export const config = { api: { bodyParser: false } };
-
 // Stripe-Plan-Name auf internen Plan mappen
 function mapPlanFromPriceId(priceId: string): string {
   const starterIds = [
