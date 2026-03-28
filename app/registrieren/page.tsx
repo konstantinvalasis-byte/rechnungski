@@ -1,11 +1,13 @@
 'use client'
 
-import { useState } from 'react'
+import { useState, Suspense } from 'react'
 import { createSupabaseBrowser } from '@/lib/supabase-browser'
+import { useSearchParams } from 'next/navigation'
 import Link from 'next/link'
 
-export default function RegistrierenSeite() {
-  const [email, setEmail] = useState('')
+function RegistrierenForm() {
+  const searchParams = useSearchParams()
+  const [email, setEmail] = useState(searchParams.get('email') || '')
   const [passwort, setPasswort] = useState('')
   const [passwortWdh, setPasswortWdh] = useState('')
   const [laden, setLaden] = useState(false)
@@ -196,5 +198,13 @@ export default function RegistrierenSeite() {
         </p>
       </div>
     </div>
+  )
+}
+
+export default function RegistrierenSeite() {
+  return (
+    <Suspense fallback={<div className="min-h-screen bg-[#050510]" />}>
+      <RegistrierenForm />
+    </Suspense>
   )
 }

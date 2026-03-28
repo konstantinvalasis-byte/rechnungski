@@ -166,6 +166,23 @@ const s = StyleSheet.create({
   },
   kleinText: { fontSize: 9, color: YELLOW_TEXT },
 
+  // GiroCode QR-Box
+  giroRow: {
+    flexDirection: "row",
+    justifyContent: "space-between",
+    alignItems: "flex-start",
+    marginTop: 14,
+    paddingTop: 10,
+    borderTopWidth: 1,
+    borderTopColor: BORDER,
+  },
+  giroLeft: { flex: 1 },
+  giroLabel: { fontSize: 9, fontFamily: "Helvetica-Bold", color: MUTED, letterSpacing: 0.5, marginBottom: 4 },
+  giroText: { fontSize: 9, color: MUTED, lineHeight: 1.5 },
+  giroRight: { alignItems: "center", marginLeft: 16 },
+  giroQr: { width: 72, height: 72 },
+  giroCaption: { fontSize: 7, color: VERY_MUTED, marginTop: 3, textAlign: "center" },
+
   // Footer
   footer: {
     position: "absolute",
@@ -184,7 +201,7 @@ const s = StyleSheet.create({
 // ─────────────────────────────────────────────
 // Rechnung-Dokument
 // ─────────────────────────────────────────────
-export function RechnungPdf({ rechnung, firma }: { rechnung: Rechnung; firma: Firma }) {
+export function RechnungPdf({ rechnung, firma, giroCodeUrl }: { rechnung: Rechnung; firma: Firma; giroCodeUrl?: string }) {
   const pos = rechnung.positionen || [];
   const klein = !!firma.kleinunternehmer;
   const arbeit = pos.filter(p => p.typ === "arbeit").reduce((s, p) => s + p.menge * p.preis, 0);
@@ -326,6 +343,29 @@ export function RechnungPdf({ rechnung, firma }: { rechnung: Rechnung; firma: Fi
               : `Vielen Dank für Ihr Vertrauen und Ihren Auftrag.\nMit freundlichen Grüßen\n${firma.inhaber || firma.name}`}
           </Text>
         </View>
+
+        {/* ── GIROCODE ── */}
+        {giroCodeUrl && rechnung.typ !== "angebot" && firma.iban ? (
+          <View style={s.giroRow} wrap={false}>
+            <View style={s.giroLeft}>
+              <Text style={s.giroLabel}>ZAHLUNG PER QR-CODE</Text>
+              <Text style={s.giroText}>
+                Scannen Sie diesen Code mit Ihrer Banking-App,{"\n"}
+                um die Überweisung automatisch vorzubefüllen.
+              </Text>
+              <Text style={[s.giroText, { marginTop: 5 }]}>
+                Empfänger: {firma.inhaber || firma.name}{"\n"}
+                IBAN: {firma.iban}{"\n"}
+                Betrag: {fc(rechnung.gesamt)}{"\n"}
+                Verwendungszweck: {rechnung.nummer}
+              </Text>
+            </View>
+            <View style={s.giroRight}>
+              <Image src={giroCodeUrl} style={s.giroQr} />
+              <Text style={s.giroCaption}>GiroCode (EPC)</Text>
+            </View>
+          </View>
+        ) : null}
 
         {/* ── FOOTER ── */}
         <View style={s.footer}>

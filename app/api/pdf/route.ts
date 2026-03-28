@@ -7,6 +7,7 @@ import { RechnungPdf, MahnungPdf } from "@/lib/pdf-rechnung";
 import type { Firma, Rechnung } from "@/lib/db";
 import { generiereERechnungXml } from "@/lib/erechnung-xml";
 import { betteXmlEin } from "@/lib/erechnung-embed";
+import { erstelleGiroCodeDataUrl } from "@/lib/girocode";
 
 export const runtime = "nodejs";
 
@@ -37,11 +38,23 @@ export async function POST(req: NextRequest) {
       });
     }
 
+    // GiroCode nur für Rechnungen mit IBAN generieren (nicht für Angebote/Mahnungen)
+    let giroCodeUrl: string | undefined;
+    if (typ === "rechnung" && rechnung.typ !== "angebot" && firma.iban) {
+      giroCodeUrl = await erstelleGiroCodeDataUrl({
+        empfaengerName: firma.inhaber || firma.name,
+        iban: firma.iban,
+        bic: firma.bic,
+        betrag: rechnung.gesamt,
+        verwendungszweck: rechnung.nummer,
+      });
+    }
+
     // PDF generieren (für plain PDF und ZUGFeRD)
     const doc =
       typ === "mahnung"
         ? React.createElement(MahnungPdf, { rechnung, firma, stufe: mahnStufe ?? 1 })
-        : React.createElement(RechnungPdf, { rechnung, firma });
+        : React.createElement(RechnungPdf, { rechnung, firma, giroCodeUrl });
 
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
     let buffer: Buffer = await renderToBuffer(doc as any);

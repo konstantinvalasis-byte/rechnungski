@@ -23,6 +23,44 @@ export default function NeueRechnung({ firma, kunden, addKu, addRe, updRe, nextN
   const [zvon, setZvon] = useState(""); const [zbis, setZbis] = useState(""); const [valE, setValE] = useState<string[]>([]);
   const zbisRef = useRef<HTMLInputElement>(null);
 
+  const DRAFT_KEY = "neueRechnungDraft";
+
+  // Draft-State nach Vorschau-Navigation wiederherstellen
+  useEffect(() => {
+    if (editRechnung) return;
+    // Frische Navigation: Flag prüfen und löschen
+    const isFresh = sessionStorage.getItem("neueRechnungFresh");
+    if (isFresh) {
+      sessionStorage.removeItem("neueRechnungFresh");
+      sessionStorage.removeItem(DRAFT_KEY);
+      return;
+    }
+    // Zurück nach Vorschau: Draft wiederherstellen
+    const saved = sessionStorage.getItem(DRAFT_KEY);
+    if (!saved) return;
+    try {
+      const d = JSON.parse(saved);
+      setGw(d.gw ?? "");
+      setSonstigesGw(d.sonstigesGw ?? false);
+      setKS(d.kS ?? "");
+      setNeuK(d.neuK ?? { name: "", strasse: "", plz: "", ort: "", email: "" });
+      setShowN(d.showN ?? false);
+      setPos(d.pos ?? []);
+      setZiel(d.ziel ?? 14);
+      setNotiz(d.notiz ?? "");
+      setRabatt(d.rabatt ?? 0);
+      setTyp(d.typ ?? "rechnung");
+      setDatum(d.datum ?? new Date().toISOString().split("T")[0]);
+      setZvon(d.zvon ?? "");
+      setZbis(d.zbis ?? "");
+      if (d.selKId) {
+        const k = kunden.find(k => k.id === d.selKId);
+        if (k) { setSelK(k); setKS(k.name); }
+      }
+      sessionStorage.removeItem(DRAFT_KEY);
+    } catch (_) { /* Ignore */ }
+  }, []); // eslint-disable-line react-hooks/exhaustive-deps
+
   useEffect(() => {
     if (!editRechnung) return;
     /* eslint-disable react-hooks/set-state-in-effect */
@@ -93,6 +131,7 @@ export default function NeueRechnung({ firma, kunden, addKu, addRe, updRe, nextN
       } else {
         await addRe(re);
       }
+      sessionStorage.removeItem(DRAFT_KEY);
       nav("rechnungen");
     } catch (err) {
       setValE([err instanceof Error ? err.message : "Fehler beim Speichern. Bitte versuche es erneut."]);
@@ -256,6 +295,8 @@ export default function NeueRechnung({ firma, kunden, addKu, addRe, updRe, nextN
               <button className="flex items-center gap-1.5 w-full justify-center mt-3 px-4 py-2 bg-white/[0.04] text-slate-400 border border-white/[0.08] rounded-xl text-[12px] font-medium cursor-pointer hover:bg-white/[0.07] hover:text-slate-200 transition-all duration-200" onClick={() => {
                 const previewKunde = selK || (neuK.name ? { id: "", ...neuK } as Kunde : null);
                 if (!previewKunde || !firma) return;
+                // Draft speichern, damit bei Zurück-Navigation die Eingaben erhalten bleiben
+                sessionStorage.setItem(DRAFT_KEY, JSON.stringify({ gw, sonstigesGw, kS, selKId: selK?.id ?? null, neuK, showN, pos, ziel, notiz, rabatt, typ, datum, zvon, zbis }));
                 const kundeAdresse = [previewKunde.strasse, [previewKunde.plz, previewKunde.ort].filter(Boolean).join(" ")].filter(Boolean).join(", ");
                 const cleanPos = pos.filter(p => p.beschreibung.trim() !== "");
                 const pNetto = cleanPos.reduce((s, p) => s + p.menge * p.preis, 0);

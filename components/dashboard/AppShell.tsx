@@ -88,7 +88,7 @@ export default function AppShell() {
 
   const nav = (p: string, search?: string) => {
     if (p !== "neue-rechnung") { newDocTypRef.current = "rechnung"; setNewDocTyp("rechnung"); setInitKundeId(null); }
-    if (p === "neue-rechnung") { setEditRe(null); setInitKundeId(null); }
+    if (p === "neue-rechnung") { setEditRe(null); setInitKundeId(null); sessionStorage.setItem("neueRechnungFresh", "1"); }
     setPg(p); setMobNav(false);
     const s = search ?? "";
     if (search !== undefined) setReSearch(s); else setReSearch("");
@@ -97,11 +97,13 @@ export default function AppShell() {
   const navNewDoc = (typ: "rechnung" | "angebot") => {
     newDocTypRef.current = typ;
     setNewDocTyp(typ);
+    sessionStorage.setItem("neueRechnungFresh", "1");
     setPg("neue-rechnung"); setMobNav(false); setReSearch("");
     window.history.pushState({ pg: "neue-rechnung", reSearch: "" }, "");
   };
   const navEdit = (r: Rechnung) => {
     setEditRe(r); setPg("neue-rechnung"); setMobNav(false);
+    sessionStorage.setItem("neueRechnungFresh", "1");
     window.history.pushState({ pg: "neue-rechnung", reSearch: "" }, "");
   };
   const navNewDocForKunde = (kundeId: string) => {
@@ -109,6 +111,7 @@ export default function AppShell() {
     setNewDocTyp("rechnung");
     setInitKundeId(kundeId);
     setEditRe(null);
+    sessionStorage.setItem("neueRechnungFresh", "1");
     setPg("neue-rechnung"); setMobNav(false); setReSearch("");
     window.history.pushState({ pg: "neue-rechnung", reSearch: "" }, "");
   };

@@ -59,7 +59,7 @@ export default function PageRenderer(props: Props) {
       {pg === "rechnungen" && <RechnungenListe {...{ rechnungen, updRe, delRe, nav, dupRe, firma, onEdit: navEdit, initialSearch: reSearch, showT, nxtNr, plan, konvertierAngebot }} />}
       {pg === "kunden" && <KundenListe {...{ kunden, rechnungen, updKu, delKu }} />}
       {pg === "wiederkehrend" && (plan === "free" ? <UpgradeGate feature="Wiederkehrende Rechnungen" desc="Automatisch wiederkehrende Rechnungen erstellen – ab dem Starter-Plan." nav={nav} /> : <WiederkehrendPage {...{ wiederkehrend, addWdk, updWdk, delWdk, kunden, rechnungen, firma }} />)}
-      {pg === "abo" && <AboPage {...{ plan, spl }} />}
+      {pg === "abo" && <AboPage plan={plan} />}
       {pg === "hilfe" && (
         <div className="p-6 px-7 max-md:p-4 animate-fade-in">
           <div className="mb-6"><h1 className="text-xl font-bold tracking-tight">Hilfe & FAQ</h1><p className="text-[13px] text-slate-500 mt-1">Antworten auf die häufigsten Fragen</p></div>

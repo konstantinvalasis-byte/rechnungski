@@ -38,7 +38,11 @@ export interface Database {
           gewerk: string | null
           logo: string | null
           kleinunternehmer: boolean | null
-          plan: string | null
+          plan: string
+          subscription_status: string
+          plan_period: string
+          stripe_customer_id: string | null
+          stripe_subscription_id: string | null
           aktualisiert_am: string | null
         }
         Insert: {
@@ -59,7 +63,11 @@ export interface Database {
           gewerk?: string | null
           logo?: string | null
           kleinunternehmer?: boolean | null
-          plan?: string | null
+          plan?: string
+          subscription_status?: string
+          plan_period?: string
+          stripe_customer_id?: string | null
+          stripe_subscription_id?: string | null
           aktualisiert_am?: string | null
         }
         Update: {
@@ -80,7 +88,11 @@ export interface Database {
           gewerk?: string | null
           logo?: string | null
           kleinunternehmer?: boolean | null
-          plan?: string | null
+          plan?: string
+          subscription_status?: string
+          plan_period?: string
+          stripe_customer_id?: string | null
+          stripe_subscription_id?: string | null
           aktualisiert_am?: string | null
         }
         Relationships: []

@@ -197,3 +197,23 @@ CREATE POLICY "audit_logs_select_own" ON audit_logs
 
 -- INSERT nur über Service-Role (Cron / API-Routen) oder direkt via DB-Trigger
 -- Kein UPDATE, kein DELETE für Nutzer — Unveränderlichkeit garantiert
+
+-- ═══════════════════════════════════════════════════════════
+-- STRIPE-SPALTEN in profiles (Schritt 4 Stripe-Integration)
+-- Stand: 2026-03-26
+-- ═══════════════════════════════════════════════════════════
+
+ALTER TABLE profiles
+  ADD COLUMN IF NOT EXISTS stripe_customer_id      text,
+  ADD COLUMN IF NOT EXISTS stripe_subscription_id  text,
+  ADD COLUMN IF NOT EXISTS plan                    text NOT NULL DEFAULT 'free',
+  ADD COLUMN IF NOT EXISTS subscription_status     text NOT NULL DEFAULT 'inactive',
+  ADD COLUMN IF NOT EXISTS plan_period             text NOT NULL DEFAULT 'monthly'; -- 'monthly' | 'yearly'
+
+-- Unique-Index damit kein Nutzer zwei Customer-IDs bekommt
+CREATE UNIQUE INDEX IF NOT EXISTS profiles_stripe_customer_id_idx
+  ON profiles(stripe_customer_id)
+  WHERE stripe_customer_id IS NOT NULL;
+
+-- Webhook-Handler darf profiles über service_role updaten (kein RLS-Block)
+-- (service_role key wird nur serverseitig verwendet — nie im Frontend)

@@ -132,13 +132,20 @@ export default function HeroSection({ email, setEmail, submitted, handleSubmit, 
           </div>
 
           {/* Trust Signals */}
-          <div className="mt-6 flex flex-wrap gap-x-5 gap-y-2">
+          <div className="mt-6 flex flex-wrap items-center gap-x-5 gap-y-2">
             {["Keine Kreditkarte", "5 Rechnungen gratis", "DSGVO-konform"].map((text) => (
               <span key={text} className="flex items-center gap-1.5 text-xs text-slate-400 font-medium">
                 <CheckIcon className="w-3.5 h-3.5 text-success-500" />
                 {text}
               </span>
             ))}
+            <span className="text-slate-300/40 hidden sm:inline">·</span>
+            <button
+              onClick={onOpenLogin}
+              className="text-xs text-slate-400 hover:text-brand-600 transition-colors font-medium underline underline-offset-2 decoration-slate-300 hover:decoration-brand-500"
+            >
+              Schon ein Konto? Anmelden
+            </button>
           </div>
 
           <button

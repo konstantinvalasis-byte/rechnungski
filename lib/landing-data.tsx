@@ -131,5 +131,5 @@ export const FAQS: Faq[] = [
 export const PLANS: Plan[] = [
   { name: "Free", price: 0, priceYearly: 0, desc: "Zum Ausprobieren", features: ["3 Rechnungen & Angebote/Monat", "3 Kunden", "KI-Preisvorschläge", "PDF-Export", "§14-konforme Rechnungen"] },
   { name: "Starter", price: 7.90, priceYearly: 6.30, desc: "Für Einzelunternehmer", features: ["100 Rechnungen & Angebote/Monat", "100 Kunden", "Alles aus Free", "Firmenlogo auf PDFs", "E-Mail-Versand", "Wiederkehrende Rechnungen", "Mahnwesen"], popular: true },
-  { name: "Pro", price: 17.90, priceYearly: 14.30, desc: "Für wachsende Betriebe", features: ["Alles aus Starter", "3-Stufen-Mahnwesen", "DATEV CSV-Export", "Angebote → Rechnungen (1 Klick)", "Prioritäts-Support"] },
+  { name: "Pro", price: 17.90, priceYearly: 14.30, desc: "Für wachsende Betriebe", features: ["Unbegrenzte Rechnungen & Kunden", "Alles aus Starter", "3-Stufen-Mahnwesen", "DATEV CSV-Export", "Angebote → Rechnungen (1 Klick)", "Prioritäts-Support"] },
 ];

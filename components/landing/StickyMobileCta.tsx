@@ -23,6 +23,12 @@ export default function StickyMobileCta() {
         >
           Kostenlos starten →
         </a>
+        <a
+          href="/login"
+          className="flex items-center justify-center w-full mt-2 py-2 text-xs text-slate-500 font-medium hover:text-slate-700 transition-colors"
+        >
+          Schon ein Konto? Anmelden
+        </a>
       </div>
     </div>
   );
