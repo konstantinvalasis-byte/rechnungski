@@ -1,5 +1,5 @@
 "use client";
-import { useState } from "react";
+import { useState, useEffect, useRef } from "react";
 import type { Firma, Rechnung } from "@/lib/db";
 import { fc, fd } from "@/lib/dashboard-utils";
 import { IC } from "@/lib/dashboard-icons";
@@ -25,6 +25,29 @@ export default function RechnungenListe({ rechnungen, updRe, delRe, nav, dupRe, 
   const [emailSending, setEmailSending] = useState(false);
   const [emailErr, setEmailErr] = useState("");
   const [pdfMenuId, setPdfMenuId] = useState<string | null>(null);
+  const [pdfMenuAnchor, setPdfMenuAnchor] = useState<{top?: number, bottom?: number, right?: number, left?: number} | null>(null);
+  const pdfMenuRef = useRef<HTMLDivElement>(null);
+  const pdfBtnRef = useRef<Element | null>(null);
+  const [dupConfirm, setDupConfirm] = useState<Rechnung | null>(null);
+  const [konvertierConfirm, setKonvertierConfirm] = useState<Rechnung | null>(null);
+  const [upgradeHint, setUpgradeHint] = useState(false);
+
+  useEffect(() => {
+    if (!pdfMenuId) return;
+    const handleClick = (e: MouseEvent) => {
+      // Schließen wenn außerhalb des Dropdowns UND außerhalb des Trigger-Buttons geklickt
+      if (
+        pdfMenuRef.current &&
+        !pdfMenuRef.current.contains(e.target as Node) &&
+        pdfBtnRef.current &&
+        !pdfBtnRef.current.contains(e.target as Node)
+      ) {
+        setPdfMenuId(null); setPdfMenuAnchor(null);
+      }
+    };
+    document.addEventListener("mousedown", handleClick);
+    return () => document.removeEventListener("mousedown", handleClick);
+  }, [pdfMenuId]);
 
   const openEmailModal = (r: Rechnung, type: "rechnung"|"mahnung" = "rechnung", mahnStufe = 1) => {
     const isAngebot = r.typ === "angebot";
@@ -87,10 +110,33 @@ export default function RechnungenListe({ rechnungen, updRe, delRe, nav, dupRe, 
   const inp = "w-full py-2.5 px-3 bg-white/[0.08] border border-white/[0.18] rounded-xl text-slate-200 text-[13px] outline-none focus:border-brand-500/50 focus:bg-white/[0.11] transition-all duration-200 placeholder:text-slate-500";
 
   return (
+    <>
     <div className="p-6 px-7 max-md:p-4 animate-fade-in">
       <div className="flex justify-between items-start mb-6 flex-wrap gap-2.5"><div><h1 className="text-xl font-bold tracking-tight">Rechnungen</h1><p className="text-[13px] text-slate-500 mt-1">{rechnungen.length} insgesamt</p></div><div className="flex gap-2 flex-wrap">{(plan === "pro" || plan === "enterprise") ? <button className={sbtn} onClick={exportDatev}>{IC.dl} DATEV</button> : <button className={`${sbtn} opacity-40 cursor-not-allowed`} title="Ab Pro-Plan verfügbar" onClick={() => nav("abo")}>{IC.dl} DATEV 🔒</button>}<button className="flex items-center gap-1.5 px-5 py-2.5 bg-gradient-to-r from-brand-600 to-brand-500 text-white border-none rounded-xl text-[13px] font-semibold cursor-pointer hover:shadow-[0_0_24px_rgba(99,102,241,0.3)] hover:translate-y-[-1px] transition-all duration-200" onClick={() => nav("neue-rechnung")}>{IC.plus} Neu</button></div></div>
       <div className="flex flex-col gap-2 mb-5 md:flex-row md:items-center md:gap-2.5"><div className="relative w-full md:flex-1"><span className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-600 flex">{IC.search}</span><input className={`${inp} pl-[34px] ${search ? "pr-8" : ""}`} placeholder="Suchen..." value={search} onChange={e => setSearch(e.target.value)} />{search && <button className="absolute right-2.5 top-1/2 -translate-y-1/2 text-slate-500 hover:text-slate-300 transition-colors text-[13px]" onClick={() => setSearch("")}>✕</button>}</div><div className="overflow-x-auto w-full md:w-auto shrink-0"><div className="flex gap-0.5 bg-white/[0.04] rounded-xl p-0.5 border border-white/[0.06] w-max">{["alle", "offen", "bezahlt", "gemahnt", "storniert", "angebot"].map(f => <button key={f} className={`px-3 py-1.5 border-none rounded-lg text-[12px] cursor-pointer font-medium transition-all ${filter === f ? "bg-white/[0.08] text-white" : "bg-transparent text-slate-500 hover:text-slate-300"}`} onClick={() => setFilter(f)}>{f.charAt(0).toUpperCase() + f.slice(1)}</button>)}</div></div></div>
-      {fl.length === 0 ? <div className="flex flex-col items-center justify-center py-12 text-center"><div className="w-12 h-12 rounded-xl bg-white/[0.04] border border-white/[0.06] flex items-center justify-center mb-3 text-slate-500">{IC.doc}</div><h2 className="text-lg font-bold">Keine Ergebnisse</h2></div> :
+      {fl.length === 0 ? (
+        <div className="flex flex-col items-center justify-center py-12 text-center">
+          <div className="w-12 h-12 rounded-xl bg-white/[0.04] border border-white/[0.06] flex items-center justify-center mb-3 text-slate-500">{IC.doc}</div>
+          <h2 className="text-lg font-bold">{rechnungen.length === 0 ? "Noch keine Rechnungen" : filter !== "alle" ? `Keine ${filter.charAt(0).toUpperCase() + filter.slice(1)}-Rechnungen` : "Keine Treffer"}</h2>
+          <p className="text-[13px] text-slate-500 mt-1 mb-4">
+            {rechnungen.length === 0
+              ? "Erstelle deine erste Rechnung und versende sie direkt als PDF."
+              : search
+              ? `Kein Treffer für „${search}"`
+              : filter !== "alle"
+              ? `Du hast noch keine Rechnungen mit Status „${filter}".`
+              : "Keine Rechnungen in dieser Ansicht."}
+          </p>
+          {rechnungen.length === 0 && (
+            <button
+              className="flex items-center gap-1.5 px-5 py-2.5 bg-gradient-to-r from-brand-600 to-brand-500 text-white border-none rounded-xl text-[13px] font-semibold cursor-pointer hover:shadow-[0_0_24px_rgba(99,102,241,0.3)] transition-all duration-200"
+              onClick={() => nav("neue-rechnung")}
+            >
+              {IC.plus} Erste Rechnung erstellen
+            </button>
+          )}
+        </div>
+      ) :
         <div className="bg-[#0a0a1a]/80 rounded-2xl border border-white/[0.06] overflow-hidden"><div className="flex gap-1 py-2.5 px-4 text-[10px] font-semibold text-slate-500 uppercase tracking-[0.1em] bg-white/[0.02] border-b border-white/[0.06] max-md:hidden"><span style={{ flex: 1 }}>Nr.</span><span style={{ flex: 1.5 }}>Kunde</span><span style={{ flex: .7 }}>Datum</span><span style={{ flex: .8, textAlign: "right" }}>Betrag</span><span style={{ flex: .6, textAlign: "center" }}>Status</span><span style={{ flex: 2, textAlign: "right" }}>Aktionen</span></div>
           {fl.map(r => <div key={r.id} className="flex gap-1 py-3 px-4 items-center border-b border-white/[0.04] text-[13px] hover:bg-white/[0.02] transition-colors max-md:flex-col max-md:items-start max-md:gap-2 max-md:px-3">
             <div className="flex items-center gap-2 w-full md:hidden">
@@ -109,62 +155,50 @@ export default function RechnungenListe({ rechnungen, updRe, delRe, nav, dupRe, 
             <span className="font-semibold text-[13px] text-right max-md:hidden" style={{ flex: .8 }}>{fc(r.gesamt)}</span>
             <span className="text-center max-md:hidden" style={{ flex: .6 }}><SB s={r.status} /></span>
             <span className="flex gap-1 justify-end flex-nowrap max-md:w-full max-md:justify-start" style={{ flex: 2 }}>
-              {firmaForPdf && <div className="relative">
-                <button
+              {firmaForPdf && <button
                   className="flex items-center gap-1 px-2.5 py-1.5 bg-brand-500/10 text-brand-300 border border-brand-500/20 rounded-lg text-[11px] cursor-pointer whitespace-nowrap font-medium hover:bg-brand-500/15 transition-all"
-                  onClick={() => setPdfMenuId(pdfMenuId === r.id ? null : r.id)}
+                  onClick={(e) => {
+                    if (pdfMenuId === r.id) {
+                      setPdfMenuId(null); setPdfMenuAnchor(null);
+                    } else {
+                      pdfBtnRef.current = e.currentTarget;
+                      const rect = e.currentTarget.getBoundingClientRect();
+                      const menuW = 208; // w-52
+                      const margin = 8;
+                      // Vertikal
+                      const spaceBelow = window.innerHeight - rect.bottom - 4;
+                      const vertical = spaceBelow < 130
+                        ? { bottom: window.innerHeight - rect.top + 4 }
+                        : { top: rect.bottom + 4 };
+                      // Horizontal: rechts-ausgerichtet wenn Platz vorhanden, sonst links-ausgerichtet
+                      const menuLeft = rect.right - menuW;
+                      if (menuLeft >= margin) {
+                        setPdfMenuAnchor({ ...vertical, right: window.innerWidth - rect.right });
+                      } else {
+                        const left = Math.max(margin, Math.min(rect.left, window.innerWidth - menuW - margin));
+                        setPdfMenuAnchor({ ...vertical, left });
+                      }
+                      setPdfMenuId(r.id);
+                    }
+                  }}
                 >
                   {IC.pdf} PDF ▾
-                </button>
-                {pdfMenuId === r.id && (
-                  <div
-                    className="absolute right-0 top-full mt-1 z-50 w-52 bg-[#1a1f2e] border border-white/[0.08] rounded-xl shadow-xl overflow-hidden"
-                    onMouseLeave={() => setPdfMenuId(null)}
-                  >
-                    <button
-                      className="w-full flex items-center gap-2 px-3 py-2.5 text-[12px] text-slate-300 hover:bg-white/[0.05] transition-all text-left"
-                      onClick={() => { downloadPdf(r, firmaForPdf); setPdfMenuId(null); }}
-                    >
-                      {IC.pdf} <span>PDF herunterladen</span>
-                    </button>
-                    {r.typ !== "angebot" && r.typ !== "storno" && (
-                      <>
-                        <div className="border-t border-white/[0.06]" />
-                        {firma?.steuernr || firma?.ustid ? (
-                          <>
-                            <button
-                              className="w-full flex items-center gap-2 px-3 py-2.5 text-[12px] text-slate-300 hover:bg-white/[0.05] transition-all text-left"
-                              onClick={() => { downloadZugferd(r, firmaForPdf); setPdfMenuId(null); }}
-                            >
-                              {IC.pdf} <span>ZUGFeRD PDF</span>
-                            </button>
-                            <button
-                              className="w-full flex items-center gap-2 px-3 py-2.5 text-[12px] text-slate-300 hover:bg-white/[0.05] transition-all text-left"
-                              onClick={() => { downloadXrechnung(r, firmaForPdf); setPdfMenuId(null); }}
-                            >
-                              <span className="text-slate-500">{'</>'}</span> <span>XRechnung XML</span>
-                            </button>
-                          </>
-                        ) : (
-                          <div className="px-3 py-2.5 text-[11px] text-slate-500 italic">
-                            Steuernr. in Einstellungen hinterlegen für E-Rechnung
-                          </div>
-                        )}
-                      </>
-                    )}
-                  </div>
-                )}
-              </div>}
-              {firma && (plan === "starter" || plan === "pro" || plan === "enterprise") && <button className="flex items-center gap-1 px-2.5 py-1.5 bg-cyan-500/10 text-cyan-300 border border-cyan-500/20 rounded-lg text-[11px] cursor-pointer whitespace-nowrap font-medium hover:bg-cyan-500/15 transition-all" onClick={() => openEmailModal(r, "rechnung")} title="Per E-Mail senden">{IC.mail}</button>}
+                </button>}
+              {firma && (plan === "starter" || plan === "pro" || plan === "enterprise")
+                ? <button className="flex items-center gap-1 px-2.5 py-1.5 bg-cyan-500/10 text-cyan-300 border border-cyan-500/20 rounded-lg text-[11px] cursor-pointer whitespace-nowrap font-medium hover:bg-cyan-500/15 transition-all" onClick={() => openEmailModal(r, "rechnung")} title="Per E-Mail senden">{IC.mail}</button>
+                : <button className="flex items-center gap-1 px-2.5 py-1.5 bg-white/[0.03] text-slate-600 border border-white/[0.06] rounded-lg text-[11px] cursor-pointer whitespace-nowrap font-medium transition-all" onClick={() => setUpgradeHint(true)} title="E-Mail versenden (ab Starter)">{IC.mail} 🔒</button>
+              }
               {r.status === "offen" && <button className={sbtnG} onClick={() => setBezahltConfirm(r)} title="Als bezahlt markieren">{IC.check}<span className="max-md:hidden"> Bezahlt</span></button>}
-              {(r.status === "offen" || r.status === "gemahnt") && firma && (plan === "pro" || plan === "enterprise") && <button className={sbtn} onClick={() => { setMahnM(r); setMahnS(r.mahnstufe ? Math.min(r.mahnstufe + 1, 3) : (r.status === "gemahnt" ? 2 : 1)); }} title="Mahnung erstellen">🔔</button>}
-              {r.status === "angebot" && <button className={sbtnG} onClick={() => konvertierAngebot(r.id, r.datum)}>→RE</button>}
+              {(r.status === "offen" || r.status === "gemahnt") && firma && (plan === "starter" || plan === "pro" || plan === "enterprise") && <button className={sbtn} onClick={() => { setMahnM(r); setMahnS(r.mahnstufe ? Math.min(r.mahnstufe + 1, 3) : (r.status === "gemahnt" ? 2 : 1)); }} title="Mahnung erstellen">🔔</button>}
+              {r.status === "angebot" && <button className={sbtnG} onClick={() => setKonvertierConfirm(r)} title="In Rechnung umwandeln">→RE</button>}
               {r.status !== "storniert" && <button className={sbtn} onClick={() => onEdit(r)} title="Bearbeiten">✏️</button>}
-              <button className={sbtn} onClick={() => dupRe(r)}>{IC.copy}</button>
+              <button className={sbtn} onClick={() => setDupConfirm(r)} title="Duplizieren">{IC.copy}</button>
               {r.status !== "storniert" && r.status !== "bezahlt" && <button className={dbtn} onClick={() => setStornierConfirm(r)}><span className="max-md:hidden">Storno</span><span className="md:hidden">✕</span></button>}
               {(r.status === "storniert" || r.status === "angebot") && <button className={dbtn} onClick={() => setDeleteConfirm(r)}>{IC.trash}</button>}
             </span>
           </div>)}</div>}
+
+
 
       {mahnM && firma && <div className="fixed inset-0 bg-black/70 backdrop-blur-sm flex items-center justify-center z-[1000] p-4" onClick={() => setMahnM(null)}><div className="bg-[#0f0f1a] border border-white/[0.08] rounded-2xl max-w-[560px] w-full max-h-[90vh] overflow-y-auto shadow-[0_24px_80px_rgba(0,0,0,0.6)]" onClick={e => e.stopPropagation()}><div className="p-6 max-md:p-4"><div className="flex items-center justify-between mb-3"><h2 className="text-[16px] font-bold">Zahlungserinnerung</h2><button className="bg-transparent border-none text-slate-500 cursor-pointer p-1.5 rounded-lg hover:bg-white/[0.06] hover:text-slate-200 transition-colors" onClick={() => setMahnM(null)}>{IC.x}</button></div><div className="flex gap-1 mb-4 bg-white/[0.04] rounded-xl p-0.5 w-fit border border-white/[0.06]">{[1, 2, 3].map(s => <button key={s} className={`px-3 py-1.5 border-none rounded-lg text-[12px] cursor-pointer font-medium transition-all ${mahnS === s ? "bg-white/[0.08] text-white" : "bg-transparent text-slate-500"}`} onClick={() => setMahnS(s)}>{s}. Mahnung</button>)}</div><textarea className="w-full min-h-[180px] p-4 bg-white/[0.04] border border-white/[0.08] rounded-xl text-[13px] font-sans text-slate-200 resize-y outline-none" value={mahnung(mahnM, firma, mahnS)} readOnly /><div className="flex gap-2 mt-4 justify-end flex-wrap"><button className="flex items-center gap-1.5 px-3 py-1.5 bg-brand-500/10 text-brand-300 border border-brand-500/20 rounded-lg text-[11px] cursor-pointer font-medium" onClick={() => { openAsPdf(mahnM, firma, "mahnung", mahnS); setMahnM(null); }}>{IC.pdf} PDF</button><button className="flex items-center gap-1.5 px-3 py-1.5 bg-cyan-500/10 text-cyan-300 border border-cyan-500/20 rounded-lg text-[11px] cursor-pointer font-medium hover:bg-cyan-500/15 transition-all" onClick={() => { setMahnM(null); openEmailModal(mahnM, "mahnung", mahnS); }}>{IC.mail} Per E-Mail</button><button className="flex items-center gap-1.5 px-5 py-2.5 bg-gradient-to-r from-brand-600 to-brand-500 text-white border-none rounded-xl text-[13px] font-semibold cursor-pointer hover:shadow-[0_0_24px_rgba(99,102,241,0.3)] transition-all" onClick={() => { navigator.clipboard.writeText(mahnung(mahnM, firma, mahnS)); setMahnM(null); if (showT) showT("Text kopiert"); }}>Kopieren</button><button className={sbtn} onClick={() => setMahnM(null)}>Schließen</button></div></div></div></div>}
 
@@ -173,6 +207,71 @@ export default function RechnungenListe({ rechnungen, updRe, delRe, nav, dupRe, 
       {stornierConfirm && <div className="fixed inset-0 bg-black/70 backdrop-blur-sm flex items-center justify-center z-[1000] p-4" onClick={() => setStornierConfirm(null)}><div className="bg-[#0f0f1a] border border-white/[0.08] rounded-2xl max-w-[400px] w-full max-h-[90vh] overflow-y-auto shadow-[0_24px_80px_rgba(0,0,0,0.6)]" onClick={e => e.stopPropagation()}><div className="p-6 max-md:p-4"><div className="flex items-center justify-between mb-3"><h2 className="text-[16px] font-bold">Rechnung stornieren?</h2><button className="bg-transparent border-none text-slate-500 cursor-pointer p-1.5 rounded-lg hover:bg-white/[0.06] hover:text-slate-200 transition-colors" onClick={() => setStornierConfirm(null)}>{IC.x}</button></div><p className="text-[13px] text-slate-400 mb-5 leading-relaxed"><strong className="text-slate-200">{stornierConfirm.nummer}</strong> – {stornierConfirm.kundeName}<br />Betrag: {fc(stornierConfirm.gesamt)}<br /><br />Die Rechnung wird als storniert markiert und aus allen Auswertungen ausgeschlossen.</p><div className="flex gap-2 justify-end"><button className={dbtn} onClick={() => { updRe(stornierConfirm.id, { status: "storniert" }); setStornierConfirm(null); }}>Ja, stornieren</button><button className={sbtn} onClick={() => setStornierConfirm(null)}>Abbrechen</button></div></div></div></div>}
 
       {deleteConfirm && <div className="fixed inset-0 bg-black/70 backdrop-blur-sm flex items-center justify-center z-[1000] p-4" onClick={() => setDeleteConfirm(null)}><div className="bg-[#0f0f1a] border border-white/[0.08] rounded-2xl max-w-[400px] w-full max-h-[90vh] overflow-y-auto shadow-[0_24px_80px_rgba(0,0,0,0.6)]" onClick={e => e.stopPropagation()}><div className="p-6 max-md:p-4"><div className="flex items-center justify-between mb-3"><h2 className="text-[16px] font-bold">Rechnung endgültig löschen?</h2><button className="bg-transparent border-none text-slate-500 cursor-pointer p-1.5 rounded-lg hover:bg-white/[0.06] hover:text-slate-200 transition-colors" onClick={() => setDeleteConfirm(null)}>{IC.x}</button></div><p className="text-[13px] text-slate-400 mb-5 leading-relaxed"><strong className="text-slate-200">{deleteConfirm.nummer}</strong> – {deleteConfirm.kundeName}<br />Betrag: {fc(deleteConfirm.gesamt)}<br /><br /><span className="text-danger-400">Die Rechnung wird unwiderruflich gelöscht und kann nicht wiederhergestellt werden.</span></p><div className="flex gap-2 justify-end"><button className={dbtn} onClick={() => { delRe(deleteConfirm.id); setDeleteConfirm(null); }}>Endgültig löschen</button><button className={sbtn} onClick={() => setDeleteConfirm(null)}>Abbrechen</button></div></div></div></div>}
+
+      {/* ── DUPLIKAT-BESTÄTIGUNG ── */}
+      {dupConfirm && (
+        <div className="fixed inset-0 bg-black/70 backdrop-blur-sm flex items-center justify-center z-[1000] p-4" onClick={() => setDupConfirm(null)}>
+          <div className="bg-[#0f0f1a] border border-white/[0.08] rounded-2xl max-w-[400px] w-full shadow-[0_24px_80px_rgba(0,0,0,0.6)]" onClick={e => e.stopPropagation()}>
+            <div className="p-6">
+              <div className="flex items-center justify-between mb-3">
+                <h2 className="text-[16px] font-bold">Rechnung duplizieren?</h2>
+                <button className="bg-transparent border-none text-slate-500 cursor-pointer p-1.5 rounded-lg hover:bg-white/[0.06] transition-colors" onClick={() => setDupConfirm(null)}>{IC.x}</button>
+              </div>
+              <p className="text-[13px] text-slate-400 mb-5 leading-relaxed">
+                <strong className="text-slate-200">{dupConfirm.nummer}</strong> – {dupConfirm.kundeName}<br />
+                Es wird eine neue Kopie mit heutigem Datum und Status „Offen" erstellt.
+              </p>
+              <div className="flex gap-2 justify-end">
+                <button className={sbtn} onClick={() => { dupRe(dupConfirm); setDupConfirm(null); }}>{IC.copy} Duplizieren</button>
+                <button className={sbtn} onClick={() => setDupConfirm(null)}>Abbrechen</button>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* ── ANGEBOT→RECHNUNG-BESTÄTIGUNG ── */}
+      {konvertierConfirm && (
+        <div className="fixed inset-0 bg-black/70 backdrop-blur-sm flex items-center justify-center z-[1000] p-4" onClick={() => setKonvertierConfirm(null)}>
+          <div className="bg-[#0f0f1a] border border-white/[0.08] rounded-2xl max-w-[400px] w-full shadow-[0_24px_80px_rgba(0,0,0,0.6)]" onClick={e => e.stopPropagation()}>
+            <div className="p-6">
+              <div className="flex items-center justify-between mb-3">
+                <h2 className="text-[16px] font-bold">Angebot in Rechnung umwandeln?</h2>
+                <button className="bg-transparent border-none text-slate-500 cursor-pointer p-1.5 rounded-lg hover:bg-white/[0.06] transition-colors" onClick={() => setKonvertierConfirm(null)}>{IC.x}</button>
+              </div>
+              <p className="text-[13px] text-slate-400 mb-5 leading-relaxed">
+                <strong className="text-slate-200">{konvertierConfirm.nummer}</strong> – {konvertierConfirm.kundeName}<br />
+                Das Angebot erhält eine neue Rechnungsnummer und den Status „Offen". Diese Aktion kann nicht rückgängig gemacht werden.
+              </p>
+              <div className="flex gap-2 justify-end">
+                <button className={sbtnG} onClick={() => { konvertierAngebot(konvertierConfirm.id, konvertierConfirm.datum); setKonvertierConfirm(null); }}>→ Umwandeln</button>
+                <button className={sbtn} onClick={() => setKonvertierConfirm(null)}>Abbrechen</button>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* ── UPGRADE-HINWEIS (E-Mail Free) ── */}
+      {upgradeHint && (
+        <div className="fixed inset-0 bg-black/70 backdrop-blur-sm flex items-center justify-center z-[1000] p-4" onClick={() => setUpgradeHint(false)}>
+          <div className="bg-[#0f0f1a] border border-white/[0.08] rounded-2xl max-w-[400px] w-full shadow-[0_24px_80px_rgba(0,0,0,0.6)]" onClick={e => e.stopPropagation()}>
+            <div className="p-6">
+              <div className="flex items-center justify-between mb-3">
+                <h2 className="text-[16px] font-bold">E-Mail-Versand</h2>
+                <button className="bg-transparent border-none text-slate-500 cursor-pointer p-1.5 rounded-lg hover:bg-white/[0.06] transition-colors" onClick={() => setUpgradeHint(false)}>{IC.x}</button>
+              </div>
+              <p className="text-[13px] text-slate-400 mb-5 leading-relaxed">
+                Rechnungen und Mahnungen direkt per E-Mail versenden ist ab dem <strong className="text-slate-200">Starter-Plan</strong> verfügbar. Im Free-Plan kannst du PDFs herunterladen und manuell versenden.
+              </p>
+              <div className="flex gap-2 justify-end">
+                <button className="flex items-center gap-1.5 px-5 py-2.5 bg-gradient-to-r from-brand-600 to-brand-500 text-white border-none rounded-xl text-[13px] font-semibold cursor-pointer hover:shadow-[0_0_24px_rgba(99,102,241,0.3)] transition-all" onClick={() => { setUpgradeHint(false); nav("abo"); }}>Jetzt upgraden →</button>
+                <button className={sbtn} onClick={() => setUpgradeHint(false)}>Schließen</button>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
 
       {/* ── E-MAIL MODAL ── */}
       {emailM && firma && (
@@ -255,5 +354,51 @@ export default function RechnungenListe({ rechnungen, updRe, delRe, nav, dupRe, 
         </div>
       )}
     </div>
+
+    {/* PDF-Dropdown — außerhalb des animate-fade-in Containers, damit kein Stacking-Context-Bug */}
+    {pdfMenuId && pdfMenuAnchor && firmaForPdf && (() => {
+      const r = fl.find(x => x.id === pdfMenuId);
+      if (!r) return null;
+      return (
+        <div
+          ref={pdfMenuRef}
+          className="fixed z-[9999] w-52 bg-[#1a1f2e] border border-white/[0.08] rounded-xl shadow-xl overflow-hidden"
+          style={{ top: pdfMenuAnchor.top, bottom: pdfMenuAnchor.bottom, right: pdfMenuAnchor.right, left: pdfMenuAnchor.left }}
+        >
+          <button
+            className="w-full flex items-center gap-2 px-3 py-2.5 text-[12px] text-slate-300 hover:bg-white/[0.05] transition-all text-left"
+            onClick={() => { downloadPdf(r, firmaForPdf); setPdfMenuId(null); setPdfMenuAnchor(null); }}
+          >
+            {IC.pdf} <span>PDF herunterladen</span>
+          </button>
+          {r.typ !== "angebot" && r.typ !== "storno" && (
+            <>
+              <div className="border-t border-white/[0.06]" />
+              {firma?.steuernr || firma?.ustid ? (
+                <>
+                  <button
+                    className="w-full flex items-center gap-2 px-3 py-2.5 text-[12px] text-slate-300 hover:bg-white/[0.05] transition-all text-left"
+                    onClick={() => { downloadZugferd(r, firmaForPdf); setPdfMenuId(null); setPdfMenuAnchor(null); }}
+                  >
+                    {IC.pdf} <span>ZUGFeRD PDF</span>
+                  </button>
+                  <button
+                    className="w-full flex items-center gap-2 px-3 py-2.5 text-[12px] text-slate-300 hover:bg-white/[0.05] transition-all text-left"
+                    onClick={() => { downloadXrechnung(r, firmaForPdf); setPdfMenuId(null); setPdfMenuAnchor(null); }}
+                  >
+                    <span className="text-slate-500">{'</>'}</span> <span>XRechnung XML</span>
+                  </button>
+                </>
+              ) : (
+                <div className="px-3 py-2.5 text-[11px] text-slate-500 italic">
+                  Steuernr. in Einstellungen hinterlegen für E-Rechnung
+                </div>
+              )}
+            </>
+          )}
+        </div>
+      );
+    })()}
+    </>
   );
 }

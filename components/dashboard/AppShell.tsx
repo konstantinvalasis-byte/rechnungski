@@ -35,6 +35,7 @@ export default function AppShell() {
   const [newDocTyp, setNewDocTyp] = useState<"rechnung" | "angebot">("rechnung");
   const newDocTypRef = useRef<"rechnung" | "angebot">("rechnung");
   const [initKundeId, setInitKundeId] = useState<string | null>(null);
+  const [neuKundeTrigger, setNeuKundeTrigger] = useState(0);
 
   useEffect(() => {
     let mounted = true;
@@ -85,6 +86,8 @@ export default function AppShell() {
   const nxtNr = () => naechsteRechnungsnummer(rechnungen);
   const nxtAnNr = () => naechsteAngebotsnummer(rechnungen);
   const lim = { free: { re: 3, ku: 3 }, starter: { re: 100, ku: 100 }, pro: { re: 99999, ku: 99999 } }[plan] || { re: 3, ku: 3 };
+  // Nur aktive Rechnungen (keine Stornos, keine Angebote) zählen gegen das Limit
+  const aktivRechnungen = rechnungen.filter(r => r.status !== "storniert" && r.typ !== "angebot");
 
   const nav = (p: string, search?: string) => {
     if (p !== "neue-rechnung") { newDocTypRef.current = "rechnung"; setNewDocTyp("rechnung"); setInitKundeId(null); }
@@ -265,7 +268,7 @@ export default function AppShell() {
             {pg === "kunden" && (
               <button
                 className="flex items-center gap-1 px-3 py-1.5 bg-brand-600/90 text-white rounded-xl text-[12px] font-semibold active:scale-95 active:opacity-75 transition-all border-none cursor-pointer"
-                onClick={() => nav("kunden")}
+                onClick={() => setNeuKundeTrigger(t => t + 1)}
               >
                 {IC.plus}<span>Neu</span>
               </button>
@@ -282,28 +285,39 @@ export default function AppShell() {
             <div className="w-8 h-8 rounded-xl bg-gradient-to-br from-brand-500 to-brand-600 flex items-center justify-center text-white shadow-[0_0_28px_rgba(99,102,241,0.4),0_0_56px_rgba(99,102,241,0.15)]">{IC.star}</div>
             <div>
               <div className="text-[15px] font-bold tracking-tight">RechnungsKI</div>
-              <div className="text-[9px] font-bold text-brand-400 uppercase tracking-[0.08em]">{plan} Plan</div>
+              <div className="text-[9px] font-bold text-brand-400 uppercase tracking-[0.08em]">{plan.charAt(0).toUpperCase() + plan.slice(1)} Plan</div>
             </div>
           </div>
           <div className="flex flex-col gap-0.5 flex-1 relative z-10">
             {navItems.map(n => (
-              <button key={n.id} onClick={() => nav(n.id)}
-                className={`group flex items-center gap-2.5 py-2 px-3 border-none rounded-xl cursor-pointer text-[13px] font-medium text-left relative transition-all duration-200 active:scale-95 active:opacity-70 ${pg === n.id ? "bg-brand-500/[0.1] text-white shadow-[inset_3px_0_0_rgba(99,102,241,0.85),inset_0_1px_0_rgba(255,255,255,0.05)]" : "bg-transparent text-slate-400 hover:bg-white/[0.04] hover:text-slate-200"}`}>
-                <span className={`flex transition-all duration-200 ${pg === n.id ? "text-brand-400" : "opacity-40 group-hover:opacity-70"}`}>{n.icon}</span>
-                <span>{n.l}</span>
-                {n.id === "rechnungen" && rechnungen.filter(r => r.status === "offen").length > 0 && (
-                  <span className="absolute right-2.5 bg-danger-500 text-white text-[9px] font-bold min-w-[18px] h-[18px] flex items-center justify-center rounded-full shadow-[0_0_8px_rgba(239,68,68,0.4)]">{rechnungen.filter(r => r.status === "offen").length}</span>
+              <div key={n.id} className="group/nav relative">
+                <button onClick={() => nav(n.id)}
+                  className={`w-full flex items-center gap-2.5 py-2 px-3 border-none rounded-xl cursor-pointer text-[13px] font-medium text-left relative transition-all duration-200 active:scale-95 active:opacity-70 ${pg === n.id ? "bg-brand-500/[0.1] text-white shadow-[inset_3px_0_0_rgba(99,102,241,0.85),inset_0_1px_0_rgba(255,255,255,0.05)]" : "bg-transparent text-slate-400 hover:bg-white/[0.04] hover:text-slate-200"}`}>
+                  <span className={`flex transition-all duration-200 ${pg === n.id ? "text-brand-400" : "opacity-40 group-hover/nav:opacity-70"}`}>{n.icon}</span>
+                  <span>{n.l}</span>
+                  {n.id === "rechnungen" && rechnungen.filter(r => r.status === "offen").length > 0 && (
+                    <span className="absolute right-2.5 bg-danger-500 text-white text-[9px] font-bold min-w-[18px] h-[18px] flex items-center justify-center rounded-full shadow-[0_0_8px_rgba(239,68,68,0.4)]">{rechnungen.filter(r => r.status === "offen").length}</span>
+                  )}
+                </button>
+                {n.id === "kunden" && (
+                  <button
+                    className="absolute right-2 top-1/2 -translate-y-1/2 opacity-0 group-hover/nav:opacity-100 w-5 h-5 flex items-center justify-center rounded-md text-slate-400 hover:text-white hover:bg-white/[0.1] transition-all duration-150 border-none cursor-pointer bg-transparent"
+                    onClick={e => { e.stopPropagation(); nav("kunden"); setNeuKundeTrigger(t => t + 1); }}
+                    title="Neuen Kunden anlegen"
+                  >
+                    {IC.plus}
+                  </button>
                 )}
-              </button>
+              </div>
             ))}
           </div>
           <div className="border-t border-white/[0.06] pt-4 mt-2 relative z-10">
             <div className="flex items-center justify-between px-1 mb-2">
               <span className="text-[10px] text-slate-500 font-medium">Rechnungen</span>
-              <span className="text-[10px] text-slate-500 font-mono">{rechnungen.length}/{lim.re === 99999 ? "∞" : lim.re}</span>
+              <span className="text-[10px] text-slate-500 font-mono">{aktivRechnungen.length}/{lim.re === 99999 ? "∞" : lim.re}</span>
             </div>
             <div className="h-1 bg-white/[0.06] rounded-full overflow-hidden mx-1">
-              <div className="h-full bg-gradient-to-r from-brand-500 to-brand-400 rounded-full transition-[width] duration-500 ease-out" style={{ width: `${Math.min(rechnungen.length / lim.re * 100, 100)}%` }} />
+              <div className="h-full bg-gradient-to-r from-brand-500 to-brand-400 rounded-full transition-[width] duration-500 ease-out" style={{ width: `${Math.min(aktivRechnungen.length / lim.re * 100, 100)}%` }} />
             </div>
             <button onClick={() => nav("hilfe")} className={`mt-2 w-full flex items-center gap-2 px-3 py-2 rounded-xl text-[13px] font-medium border-none cursor-pointer bg-transparent transition-all duration-200 active:scale-95 active:opacity-70 ${pg === "hilfe" ? "text-brand-400 bg-white/[0.06]" : "text-slate-500 hover:text-slate-300 hover:bg-white/[0.04]"}`}>
               <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8"><circle cx="12" cy="12" r="10"/><path d="M9.09 9a3 3 0 015.83 1c0 2-3 3-3 3"/><line x1="12" y1="17" x2="12.01" y2="17"/></svg>
@@ -318,7 +332,7 @@ export default function AppShell() {
 
         <PageRenderer
           firma={firma} kunden={kunden} rechnungen={rechnungen} favoriten={favoriten}
-          wiederkehrend={wiederkehrend} plan={plan} lim={lim}
+          wiederkehrend={wiederkehrend} plan={plan} lim={lim} aktivRechnungen={aktivRechnungen}
           addRe={addRe} updRe={updRe} delRe={delRe} dupRe={dupRe}
           addKu={addKu} updKu={updKu} delKu={delKu}
           addFav={addFav} updFav={updFav} delFav={delFav}
@@ -327,6 +341,7 @@ export default function AppShell() {
           konvertierAngebot={konvertierAngebot} nxtNr={nxtNr} nxtAnNr={nxtAnNr}
           setRechnungen={setRechnungen} setKunden={setKunden}
           setFavoriten={setFavoriten} setWdk={setWdk}
+          neuKundeTrigger={neuKundeTrigger}
         />
 
         {/* Toast */}

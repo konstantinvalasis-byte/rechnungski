@@ -27,7 +27,9 @@ export async function GET(request: NextRequest) {
     const { error } = await supabase.auth.exchangeCodeForSession(code)
 
     if (!error) {
-      return NextResponse.redirect(`${origin}/dashboard`)
+      // E-Mail ist jetzt bestätigt — Session beenden, User soll sich bewusst einloggen
+      await supabase.auth.signOut()
+      return NextResponse.redirect(`${origin}/email-bestaetigt`)
     }
   }
 

@@ -19,6 +19,8 @@ type Props = {
   wiederkehrend: WiederkehrendItem[];
   plan: string;
   lim: { re: number; ku: number };
+  aktivRechnungen: Rechnung[];
+  neuKundeTrigger: number;
   addRe: (r: Rechnung) => Promise<void>;
   updRe: (rid: string, up: Partial<Rechnung>) => Promise<void>;
   delRe: (rid: string) => Promise<void>;
@@ -45,7 +47,7 @@ type Props = {
 };
 
 export default function PageRenderer(props: Props) {
-  const { firma, kunden, rechnungen, favoriten, wiederkehrend, plan, lim, addRe, updRe, delRe, dupRe, addKu, updKu, delKu, addFav, updFav, delFav, addWdk, updWdk, delWdk, sf, spl, showT, konvertierAngebot, nxtNr, nxtAnNr, setRechnungen, setKunden, setFavoriten, setWdk } = props;
+  const { firma, kunden, rechnungen, favoriten, wiederkehrend, plan, lim, aktivRechnungen, neuKundeTrigger, addRe, updRe, delRe, dupRe, addKu, updKu, delKu, addFav, updFav, delFav, addWdk, updWdk, delWdk, sf, spl, showT, konvertierAngebot, nxtNr, nxtAnNr, setRechnungen, setKunden, setFavoriten, setWdk } = props;
   const { pg, nav, navNewDoc, editRe, setEditRe, navEdit, reSearch, newDocTyp, initKundeId } = useNavigation();
 
   const initGewerk = initKundeId
@@ -55,9 +57,9 @@ export default function PageRenderer(props: Props) {
   return (
     <main className="flex-1 min-w-0 overflow-y-auto max-md:pb-[58px]" id="main-content">
       {pg === "dashboard" && <DashboardOverview {...{ rechnungen, kunden, firma, nav, navNewDoc, updRe, addRe, addKu, nxtNr, plan, lim }} />}
-      {pg === "neue-rechnung" && <NeueRechnung {...{ firma, kunden, addKu, addRe, updRe, nextNr: nxtNr(), nextAnNr: nxtAnNr(), nav, plan, lim, canCreate: rechnungen.length < lim.re, editRechnung: editRe, onEditDone: () => setEditRe(null), favoriten, addFav, updFav, delFav, initDocTyp: newDocTyp, initKundeId, initGewerk }} />}
+      {pg === "neue-rechnung" && <NeueRechnung {...{ firma, kunden, addKu, addRe, updRe, nextNr: nxtNr(), nextAnNr: nxtAnNr(), nav, plan, lim, canCreate: aktivRechnungen.length < lim.re, editRechnung: editRe, onEditDone: () => setEditRe(null), favoriten, addFav, updFav, delFav, initDocTyp: newDocTyp, initKundeId, initGewerk }} />}
       {pg === "rechnungen" && <RechnungenListe {...{ rechnungen, updRe, delRe, nav, dupRe, firma, onEdit: navEdit, initialSearch: reSearch, showT, nxtNr, plan, konvertierAngebot }} />}
-      {pg === "kunden" && <KundenListe {...{ kunden, rechnungen, updKu, delKu }} />}
+      {pg === "kunden" && <KundenListe {...{ kunden, rechnungen, updKu, delKu, addKu, triggerNew: neuKundeTrigger }} />}
       {pg === "wiederkehrend" && (plan === "free" ? <UpgradeGate feature="Wiederkehrende Rechnungen" desc="Automatisch wiederkehrende Rechnungen erstellen – ab dem Starter-Plan." nav={nav} /> : <WiederkehrendPage {...{ wiederkehrend, addWdk, updWdk, delWdk, kunden, rechnungen, firma }} />)}
       {pg === "abo" && <AboPage plan={plan} />}
       {pg === "hilfe" && (

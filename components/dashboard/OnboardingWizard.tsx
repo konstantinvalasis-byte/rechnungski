@@ -9,12 +9,14 @@ export default function OnboardingWizard({ onComplete }: { onComplete: (firma: F
   const [, setBrancheKat] = useState("");
   const [form, setForm] = useState({ name: "", inhaber: "", strasse: "", plz: "", ort: "", telefon: "", email: "", web: "", steuernr: "", ustid: "", bankName: "", iban: "", bic: "", gewerk: "", logo: "" });
   const [logoErr, setLogoErr] = useState("");
+  const [steuerAck, setSteuerAck] = useState(false);
   const fRef = useRef<HTMLInputElement>(null);
   const handleLogo = (e: React.ChangeEvent<HTMLInputElement>) => { const f = e.target.files?.[0]; if (!f) return; if (f.size > 2000000) { setLogoErr("Datei zu groß – max. 2 MB erlaubt."); return; } setLogoErr(""); const img = new Image(); const url = URL.createObjectURL(f); img.onload = () => { const c = document.createElement("canvas"); const MAX = 400; let w = img.width, h = img.height; if (w > MAX) { h = h * MAX / w; w = MAX; } c.width = w; c.height = h; c.getContext("2d")!.drawImage(img, 0, 0, w, h); const compressed = c.toDataURL("image/jpeg", 0.75); setForm(prev => ({ ...prev, logo: compressed })); URL.revokeObjectURL(url); }; img.src = url; };
 
   const canNext = () => {
     if (step === 1) return !!form.gewerk;
     if (step === 2) return !!form.name;
+    if (step === 3) return !!(form.steuernr || form.ustid || steuerAck);
     return true;
   };
 
@@ -129,7 +131,25 @@ export default function OnboardingWizard({ onComplete }: { onComplete: (firma: F
               <div className="text-center text-slate-600 text-[13px] py-1">– oder –</div>
               <div><label className={oblbl}>USt-IdNr.</label><input className={inp} placeholder="DE123456789" value={form.ustid} onChange={e => setForm({ ...form, ustid: e.target.value })} /></div>
             </div>
-            {!form.steuernr && !form.ustid && <div className="mt-4 p-3.5 bg-warning-500/[0.06] rounded-xl border border-warning-500/15 text-[13px] text-warning-500 flex items-start gap-2.5"><span className="mt-0.5">{IC.shield}</span><span>Du kannst diesen Schritt überspringen, aber deine Rechnungen werden ohne Steuernr./USt-ID nicht §14-konform sein.</span></div>}
+            {!form.steuernr && !form.ustid && (
+              <div className="mt-4 flex flex-col gap-3">
+                <div className="p-3.5 bg-warning-500/[0.06] rounded-xl border border-warning-500/15 text-[13px] text-warning-500 flex items-start gap-2.5">
+                  <span className="mt-0.5">{IC.shield}</span>
+                  <span>Ohne Steuernr. oder USt-ID werden deine Rechnungen <strong>nicht §14-konform</strong> sein und können vom Finanzamt beanstandet werden.</span>
+                </div>
+                <label className="flex items-start gap-3 cursor-pointer group px-1">
+                  <div
+                    className={`mt-0.5 w-4 h-4 rounded border flex items-center justify-center shrink-0 transition-all text-[10px] ${steuerAck ? "bg-warning-500 border-warning-500 text-white" : "border-white/[0.2] bg-transparent"}`}
+                    onClick={() => setSteuerAck(v => !v)}
+                  >
+                    {steuerAck && "✓"}
+                  </div>
+                  <span className="text-[13px] text-slate-400 leading-relaxed group-hover:text-slate-300 transition-colors">
+                    Ich verstehe, dass meine Rechnungen ohne Steuernummer nicht rechtskonform sind, und trage diese später in den Einstellungen nach.
+                  </span>
+                </label>
+              </div>
+            )}
           </div>
         )}
 
@@ -164,6 +184,12 @@ export default function OnboardingWizard({ onComplete }: { onComplete: (firma: F
               <input ref={fRef} type="file" accept="image/png,image/jpeg" className="hidden" onChange={handleLogo} />
               {logoErr && <p className="text-[13px] text-danger-500 mt-3 font-semibold">⚠ {logoErr}</p>}
               {!form.logo && !logoErr && <p className="text-[13px] text-slate-600 mt-4">Du kannst diesen Schritt überspringen und das Logo später hinzufügen.</p>}
+              {form.logo && (
+                <div className="mt-4 flex items-start gap-2 px-3 py-2.5 bg-warning-500/[0.07] border border-warning-500/20 rounded-xl max-w-[320px]">
+                  <svg className="shrink-0 mt-0.5 text-warning-400" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="12"/><line x1="12" y1="16" x2="12.01" y2="16"/></svg>
+                  <p className="text-[12px] text-warning-400 leading-relaxed">Im kostenlosen Plan erscheint das Logo <strong>nicht</strong> auf PDFs. Upgrade auf Starter oder Pro, um es einzubinden.</p>
+                </div>
+              )}
             </div>
           </div>
         )}

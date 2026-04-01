@@ -314,7 +314,7 @@ export default function NeueRechnung({ firma, kunden, addKu, addRe, updRe, nextN
                 <p className="text-[11px] text-slate-500 mt-1.5">Upgrade erforderlich, um weitere Rechnungen zu erstellen.</p>
               </div>
             ) : (
-              <button className="flex items-center gap-1.5 w-full justify-center mt-2 px-4 py-2.5 bg-gradient-to-r from-brand-600 to-brand-500 text-white border-none rounded-xl text-[13px] font-semibold cursor-pointer hover:shadow-[0_0_24px_rgba(99,102,241,0.3)] hover:translate-y-[-1px] transition-all duration-200" style={{ opacity: (pos.length === 0 || (!selK && !neuK.name)) ? .4 : 1 }} disabled={pos.length === 0 || (!selK && !neuK.name) || saving} onClick={doSave}>{saving ? "..." : editRechnung ? "Speichern" : "Erstellen"}</button>
+              <button className="flex items-center gap-1.5 w-full justify-center mt-2 px-4 py-2.5 bg-gradient-to-r from-brand-600 to-brand-500 text-white border-none rounded-xl text-[13px] font-semibold cursor-pointer hover:shadow-[0_0_24px_rgba(99,102,241,0.3)] hover:translate-y-[-1px] transition-all duration-200" style={{ opacity: (pos.length === 0 || (!selK && !neuK.name)) ? .4 : 1 }} disabled={pos.length === 0 || (!selK && !neuK.name) || saving} onClick={doSave}>{saving ? <><span className="w-3.5 h-3.5 border-2 border-white/30 border-t-white rounded-full animate-spin inline-block" />{editRechnung ? " Speichern…" : " Erstellen…"}</> : editRechnung ? "Speichern" : "Erstellen"}</button>
             )}
           </div>
         </div>

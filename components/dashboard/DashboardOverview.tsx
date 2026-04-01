@@ -23,7 +23,7 @@ export default function DashboardOverview({ rechnungen, kunden, firma, nav, navN
   const offen = rechnungen.filter(r => r.status === "offen");
   const ueber = offen.filter(r => new Date(r.faelligDatum) < new Date());
   const firmaFehler = validateFirma(firma);
-  const months = []; for (let i = 5; i >= 0; i--) { const d = new Date(); d.setMonth(d.getMonth() - i); months.push({ l: d.toLocaleDateString("de-DE", { month: "short" }), s: paid.filter(r => { const rd = new Date(r.datum); return rd.getMonth() === d.getMonth() && rd.getFullYear() === d.getFullYear(); }).reduce((s, r) => s + r.gesamt, 0), k: `${d.getFullYear()}-${d.getMonth()}` }); }
+  const months = []; for (let i = 5; i >= 0; i--) { const d = new Date(); d.setDate(1); d.setMonth(d.getMonth() - i); months.push({ l: d.toLocaleDateString("de-DE", { month: "short" }), s: paid.filter(r => { const rd = new Date(r.datum); return rd.getMonth() === d.getMonth() && rd.getFullYear() === d.getFullYear(); }).reduce((s, r) => s + r.gesamt, 0), k: `${d.getFullYear()}-${d.getMonth()}` }); }
   const maxUmsatz = Math.max(...months.map(m => m.s), 1);
   const totalUmsatz = paid.reduce((s, r) => s + r.gesamt, 0);
   const offenSum = offen.reduce((s, r) => s + r.gesamt, 0);
