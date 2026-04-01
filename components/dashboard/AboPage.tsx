@@ -3,15 +3,69 @@ import { useState } from "react";
 import { IC } from "@/lib/dashboard-icons";
 import type { Plan, Period } from "@/lib/stripe";
 
+// BILLING_DISABLED: Auf true setzen wenn Stripe reaktiviert werden soll
+const BILLING_ENABLED = process.env.NEXT_PUBLIC_BILLING_ENABLED === 'true';
+
 const pls = [
   { id: "free" as Plan,    n: "Free",    p: "0",     feat: ["3 Rechnungen & Angebote/Monat", "3 Kunden", "KI-Preisvorschläge", "PDF-Export", "§14-konforme Rechnungen"] },
   { id: "starter" as Plan, n: "Starter", p: "7,90",  feat: ["100 Rechnungen & Angebote/Monat", "100 Kunden", "Alles aus Free", "Firmenlogo auf PDFs", "E-Mail-Versand", "Wiederkehrende Rechnungen", "Mahnwesen"], pop: true },
   { id: "pro" as Plan,     n: "Pro",     p: "17,90", feat: ["Unbegrenzte Rechnungen & Kunden", "Alles aus Starter", "3-Stufen-Mahnwesen", "DATEV CSV-Export", "Angebote → Rechnungen (1 Klick)", "Prioritäts-Support"] },
 ];
 
+const ALL_FEATURES = [
+  "Unbegrenzte Rechnungen & Angebote",
+  "Unbegrenzte Kunden",
+  "Firmenlogo auf PDFs",
+  "E-Mail-Versand direkt aus der App",
+  "Wiederkehrende Rechnungen",
+  "3-Stufen-Mahnwesen",
+  "DATEV CSV-Export",
+  "Angebote → Rechnungen (1 Klick)",
+  "§14-konforme Rechnungen",
+  "PDF-Export",
+];
+
 export default function AboPage({ plan, period = "monthly" }: { plan: string; period?: Period }) {
   const [loading, setLoading] = useState<Plan | null>(null);
 
+  // ── Launch-Modus: Billing deaktiviert ──────────────────────────────────────
+  if (!BILLING_ENABLED) {
+    return (
+      <div className="p-6 px-7 max-md:p-4 animate-fade-in">
+        <div className="text-center mb-8">
+          <div className="inline-flex items-center gap-2 bg-success-500/10 border border-success-500/20 text-success-400 text-[12px] font-semibold px-3.5 py-1.5 rounded-full mb-4">
+            <span className="w-1.5 h-1.5 rounded-full bg-success-400 animate-pulse" />
+            Launch-Angebot aktiv
+          </div>
+          <h1 className="text-[28px] font-extrabold bg-gradient-to-r from-brand-400 to-purple-400 bg-clip-text text-transparent tracking-tight">Aktuell kostenlos</h1>
+          <p className="text-[14px] text-slate-400 mt-2 max-w-md mx-auto">
+            RechnungsKI ist während der Einführungsphase komplett kostenlos — alle Funktionen inklusive.
+          </p>
+        </div>
+
+        <div className="max-w-sm mx-auto rounded-2xl p-6 bg-gradient-to-b from-brand-500/10 to-brand-600/5 border-2 border-brand-500/40 shadow-[0_0_40px_rgba(99,102,241,0.08)]">
+          <div className="text-[12px] font-semibold text-brand-400 mb-1">Dein aktueller Zugang</div>
+          <div className="flex items-baseline gap-1 mb-5">
+            <span className="text-[36px] font-extrabold tracking-tight">0 €</span>
+            <span className="text-[13px] text-slate-500">/Monat</span>
+          </div>
+          <div className="flex flex-col gap-2">
+            {ALL_FEATURES.map((f, i) => (
+              <div key={i} className="flex items-center gap-2 text-[13px]">
+                <span className="text-success-500 flex">{IC.check}</span>{f}
+              </div>
+            ))}
+          </div>
+        </div>
+
+        <p className="text-center text-[12px] text-slate-600 mt-6">
+          Bezahlpläne kommen bald. Du wirst rechtzeitig informiert.
+        </p>
+      </div>
+    );
+  }
+
+  // ── Normaler Modus: Stripe aktiv ───────────────────────────────────────────
   async function handleUpgrade(planId: Plan) {
     if (planId === "free" || planId === plan) return;
     setLoading(planId);
@@ -79,7 +133,7 @@ export default function AboPage({ plan, period = "monthly" }: { plan: string; pe
                   : "flex items-center gap-1.5 px-3 py-2 bg-white/[0.05] text-slate-300 border border-white/[0.08] rounded-xl text-[12px] cursor-pointer font-medium hover:bg-white/[0.08] disabled:opacity-60"
               }`}
             >
-              {loading === p.id ? "Wird geladen…" : plan === p.id ? "Aktuell" : p.id === "free" ? "Kostenlos" : "Upgraden"}
+              {loading === p.id ? "Wird geladen…" : plan === p.id ? "Aktuell" : p.id === "free" ? "Kostenlos" : (["free","starter","pro"].indexOf(p.id) < ["free","starter","pro"].indexOf(plan)) ? "Downgraden" : "Upgraden"}
             </button>
           </div>
         ))}

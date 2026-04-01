@@ -664,6 +664,10 @@ export async function wiederkehrendImportieren(items: WiederkehrendItem[]): Prom
 // PLAN
 // ═══════════════════════════════════════════════════════════
 export async function ladePlan(): Promise<string> {
+  // BILLING_DISABLED: Während des Launch-Zeitraums haben alle Nutzer Pro-Zugang
+  // Zum Reaktivieren: NEXT_PUBLIC_BILLING_ENABLED=true in .env setzen
+  if (process.env.NEXT_PUBLIC_BILLING_ENABLED !== 'true') return 'pro'
+
   const sb = createSupabaseBrowser()
   const { data: { user } } = await sb.auth.getUser()
   if (!user) return 'free'
