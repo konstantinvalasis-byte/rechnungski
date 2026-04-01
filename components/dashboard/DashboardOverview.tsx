@@ -124,11 +124,8 @@ export default function DashboardOverview({ rechnungen, kunden, firma, nav, navN
         </div>
       )}
 
-      {/* KPI cards — Mobile: horizontal scroll mit Snap, Desktop: 4-Spalten Grid */}
-      <div
-        className="flex md:grid md:grid-cols-4 overflow-x-auto md:overflow-visible gap-3 mb-5 max-md:px-4 max-md:-mx-4 max-md:pb-2 snap-x snap-mandatory md:snap-none"
-        style={{ scrollbarWidth: "none", WebkitOverflowScrolling: "touch" } as React.CSSProperties}
-      >
+      {/* KPI cards — Mobile: 2x2 Grid, Desktop: 4-Spalten Grid */}
+      <div className="grid grid-cols-2 md:grid-cols-4 gap-3 mb-5">
         {[
           { l: "Umsatz", v: fc(totalUmsatz), s: `${paid.length} bezahlt`, c: "text-success-500", gc: "from-success-500/10 to-success-600/5", ico: IC.euro, link: "rechnungen", accent: "bg-success-500", glowHover: "group-hover:shadow-[0_8px_32px_rgba(16,185,129,0.08)]" },
           { l: "Offen", v: fc(offenSum), s: `${offen.length} Rechnungen`, c: "text-warning-500", gc: "from-warning-500/10 to-warning-600/5", ico: IC.doc, link: "rechnungen", accent: "bg-warning-500", glowHover: "group-hover:shadow-[0_8px_32px_rgba(245,158,11,0.08)]" },
@@ -136,8 +133,8 @@ export default function DashboardOverview({ rechnungen, kunden, firma, nav, navN
           { l: "Kunden", v: kunden.length, c: "text-brand-400", gc: "from-brand-500/10 to-brand-600/5", s: "gespeichert", ico: IC.users, link: "kunden", accent: "bg-brand-400", glowHover: "group-hover:shadow-[0_8px_32px_rgba(99,102,241,0.1)]" },
         ].map((k, i) => (
           <button key={i} onClick={() => nav(k.link)}
-            className={`group relative bg-[#0a0a1a]/80 rounded-2xl p-4 border border-white/[0.06] overflow-hidden hover:border-white/[0.12] hover:scale-[1.02] hover:-translate-y-0.5 active:scale-[0.95] active:opacity-75 transition-all duration-150 text-left cursor-pointer animate-fade-up max-md:shrink-0 max-md:snap-start md:w-full ${k.glowHover}`}
-            style={{ animationDelay: `${i * 65}ms`, minWidth: "calc(50vw - 24px)" } as React.CSSProperties}
+            className={`group relative bg-[#0a0a1a]/80 rounded-2xl p-4 border border-white/[0.06] overflow-hidden hover:border-white/[0.12] hover:scale-[1.02] hover:-translate-y-0.5 active:scale-[0.95] active:opacity-75 transition-all duration-150 text-left cursor-pointer animate-fade-up w-full ${k.glowHover}`}
+            style={{ animationDelay: `${i * 65}ms` } as React.CSSProperties}
           >
             {/* Left accent bar */}
             <div className={`absolute left-0 top-4 bottom-4 w-[3px] rounded-r-full ${k.accent}`} />
