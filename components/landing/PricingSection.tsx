@@ -53,6 +53,33 @@ export default function PricingSection({ billing, setBilling }: Props) {
           </div>
         </div>
 
+        {/* Launch-Banner */}
+        <div className="relative mb-8 overflow-hidden rounded-2xl">
+          {/* Hintergrund-Gradient + animierter Shimmer */}
+          <div className="absolute inset-0 bg-gradient-to-r from-emerald-500 via-teal-500 to-emerald-600" />
+          <div
+            className="absolute inset-0 opacity-30"
+            style={{
+              backgroundImage: "repeating-linear-gradient(105deg, transparent, transparent 60px, rgba(255,255,255,0.07) 60px, rgba(255,255,255,0.07) 61px)",
+            }}
+          />
+          <div className="relative flex flex-col sm:flex-row items-center justify-between gap-3 px-6 py-4">
+            <div className="flex items-center gap-3">
+              <span className="flex items-center justify-center w-8 h-8 rounded-full bg-white/20 text-white shrink-0 text-base">🎉</span>
+              <div>
+                <div className="text-white font-bold text-[14px] leading-tight">Launch-Angebot: Aktuell komplett kostenlos</div>
+                <div className="text-emerald-100 text-[12px] mt-0.5">Alle Features inklusive — kein Kreditkarte, keine versteckten Kosten.</div>
+              </div>
+            </div>
+            <div className="flex items-center gap-2 shrink-0">
+              <span className="flex items-center gap-1.5 bg-white/15 border border-white/25 text-white text-[11px] font-semibold px-3 py-1.5 rounded-full">
+                <span className="w-1.5 h-1.5 rounded-full bg-emerald-200 animate-pulse" />
+                Begrenzte Zeit
+              </span>
+            </div>
+          </div>
+        </div>
+
         <div className="grid sm:grid-cols-3 gap-4">
           {PLANS.map((plan) => (
             <div
