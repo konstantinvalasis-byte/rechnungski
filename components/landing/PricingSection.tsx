@@ -53,34 +53,11 @@ export default function PricingSection({ billing, setBilling }: Props) {
           </div>
         </div>
 
-        {/* Launch-Banner */}
-        <div className="relative mb-8 overflow-hidden rounded-2xl">
-          {/* Hintergrund-Gradient + animierter Shimmer */}
-          <div className="absolute inset-0 bg-gradient-to-r from-emerald-500 via-teal-500 to-emerald-600" />
-          <div
-            className="absolute inset-0 opacity-30"
-            style={{
-              backgroundImage: "repeating-linear-gradient(105deg, transparent, transparent 60px, rgba(255,255,255,0.07) 60px, rgba(255,255,255,0.07) 61px)",
-            }}
-          />
-          <div className="relative flex flex-col sm:flex-row items-center justify-between gap-3 px-6 py-4">
-            <div className="flex items-center gap-3">
-              <span className="flex items-center justify-center w-8 h-8 rounded-full bg-white/20 text-white shrink-0 text-base">🎉</span>
-              <div>
-                <div className="text-white font-bold text-[14px] leading-tight">Launch-Angebot: Aktuell komplett kostenlos</div>
-                <div className="text-emerald-100 text-[12px] mt-0.5">Alle Features inklusive — kein Kreditkarte, keine versteckten Kosten.</div>
-              </div>
-            </div>
-            <div className="flex items-center gap-2 shrink-0">
-              <span className="flex items-center gap-1.5 bg-white/15 border border-white/25 text-white text-[11px] font-semibold px-3 py-1.5 rounded-full">
-                <span className="w-1.5 h-1.5 rounded-full bg-emerald-200 animate-pulse" />
-                Begrenzte Zeit
-              </span>
-            </div>
-          </div>
-        </div>
+        {/* Pricing-Grid mit Launch-Overlay */}
+        <div className="relative">
 
-        <div className="grid sm:grid-cols-3 gap-4">
+          {/* Pricing Cards — dahinter, leicht ausgeblendet */}
+          <div className="grid sm:grid-cols-3 gap-4 select-none pointer-events-none" style={{ filter: "blur(1px)", opacity: 0.35 }}>
           {PLANS.map((plan) => (
             <div
               key={plan.name}
@@ -125,7 +102,38 @@ export default function PricingSection({ billing, setBilling }: Props) {
               </a>
             </div>
           ))}
-        </div>
+          </div>
+
+          {/* Launch-Overlay — liegt über den Cards */}
+          <div className="absolute inset-0 flex items-center justify-center px-4">
+            <div className="relative w-full max-w-lg overflow-hidden rounded-2xl shadow-2xl shadow-emerald-200/60">
+              <div className="absolute inset-0 bg-gradient-to-br from-emerald-500 via-teal-500 to-emerald-600" />
+              <div
+                className="absolute inset-0 opacity-20"
+                style={{ backgroundImage: "repeating-linear-gradient(110deg, transparent, transparent 50px, rgba(255,255,255,0.1) 50px, rgba(255,255,255,0.1) 51px)" }}
+              />
+              <div className="relative px-8 py-8 text-center">
+                <div className="inline-flex items-center gap-2 bg-white/20 border border-white/30 text-white text-[11px] font-bold px-3 py-1.5 rounded-full mb-4 tracking-wide uppercase">
+                  <span className="w-1.5 h-1.5 rounded-full bg-white animate-pulse" />
+                  Launch-Angebot
+                </div>
+                <div className="text-white font-extrabold text-[26px] leading-tight tracking-tight mb-2">
+                  Aktuell komplett kostenlos
+                </div>
+                <p className="text-emerald-100 text-[14px] mb-6 leading-relaxed">
+                  Alle Features inklusive — keine Kreditkarte,<br />keine versteckten Kosten.
+                </p>
+                <a
+                  href="/registrieren"
+                  className="inline-flex items-center gap-2 bg-white text-emerald-700 font-bold text-[14px] px-6 py-3 rounded-xl shadow-lg hover:shadow-xl hover:-translate-y-0.5 transition-all duration-200"
+                >
+                  Jetzt kostenlos starten →
+                </a>
+              </div>
+            </div>
+          </div>
+
+        </div>{/* Ende relative wrapper */}
 
         {/* Enterprise-Link */}
         <p className="text-center text-xs text-slate-400 mt-6">
